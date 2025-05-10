@@ -1,0 +1,29 @@
+global-exclude *.py[cod] __pycache__
+global-exclude *.so *.dll *.dylib
+global-exclude *.o
+global-exclude *.swp
+
+recursive-include freeform *.rst
+recursive-include freeform/data *.json
+
+include CHANGELOG.rst
+include README.rst
+include LICENSE.txt
+include requirements.txt
+include pyproject.toml
+
+exclude .gitattributes
+exclude .tokeignore
+exclude .coveragerc
+exclude tox.ini
+exclude TODO.rst
+exclude CONTRIBUTING.rst
+exclude notebook/experimental/clean_battle_20240814_public.json
+
+prune docs
+prune archive
+prune benchmark
+prune notebooks
+prune tests
+prune .git
+prune .github
