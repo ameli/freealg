@@ -15,6 +15,7 @@
 import sys
 import time
 import freeform
+import numpy
 
 
 # =============

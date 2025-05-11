@@ -3,15 +3,13 @@
 API Reference
 *************
 
-Ranking Models
+Main Functions
 --------------
-
-Classes to define statistical ranking models to train on data.
 
 .. autosummary::
     :toctree: generated
-    :caption: Models
+    :caption: Model
     :recursive:
     :template: autosummary/class.rst
 
-    freeform
+    freeform.FreeForm

@@ -8,3 +8,5 @@
 from .freeform import FreeForm
 
 __all__ = ['FreeForm']
+
+from .__version__ import __version__                          # noqa: F401 E402
