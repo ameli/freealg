@@ -14,7 +14,7 @@
 import numpy
 from scipy.interpolate import interp1d
 from .._plot_util import plot_density, plot_hilbert, plot_stieltjes, \
-    plot_stieltjes_on_disk
+    plot_stieltjes_on_disk, plot_samples
 
 try:
     from scipy.integrate import cumtrapz
@@ -77,9 +77,7 @@ class MarchenkoPastur(object):
 
     .. [1] Marcenko, V. A., Pastur, L. A. (1967). Distribution of eigenvalues
            for some sets of random matrices. Mathematics of the USSR-Sbornik,
-           1(4), 457 (`DOI<
-           https://iopscience.iop.org/article/10.1070/SM1967v001n04ABEH001994
-           >`__)
+           1(4), 457
 
     Examples
     --------
@@ -149,6 +147,10 @@ class MarchenkoPastur(object):
             >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
             >>> rho = mp.density(plot=True)
+
+        .. image:: ../_static/images/plots/mp_density.png
+            :align: center
+            :class: custom-dark
         """
 
         # Create x if not given
@@ -167,8 +169,7 @@ class MarchenkoPastur(object):
             numpy.sqrt((self.lam_p - x[mask]) * (x[mask] - self.lam_m))
 
         if plot:
-            plot_density(x, rho, support=self.support, label='', latex=latex,
-                         save=save)
+            plot_density(x, rho, label='', latex=latex, save=save)
 
         return rho
 
@@ -189,7 +190,7 @@ class MarchenkoPastur(object):
             spectral density is used.
 
         plot : bool, default=False
-            If `True`, density is plotted.
+            If `True`, Hilbert transform is plotted.
 
         latex : bool, default=False
             If `True`, the plot is rendered using LaTeX. This option is
@@ -214,6 +215,10 @@ class MarchenkoPastur(object):
             >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
             >>> hilb = mp.hilbert(plot=True)
+
+        .. image:: ../_static/images/plots/mp_hilbert.png
+            :align: center
+            :class: custom-dark
         """
 
         # Create x if not given
@@ -225,9 +230,18 @@ class MarchenkoPastur(object):
             x_max = numpy.ceil(center + radius * scale)
             x = numpy.linspace(x_min, x_max, 500)
 
-        hilb = numpy.zeros_like(x)
-        mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
-        hilb[mask] = (x[mask] - 1 - self.lam) / (self.lam * x[mask])
+        def _P(x):
+            return x - 1 + self.lam
+
+        def _Q(x):
+            return self.lam * x
+
+        P = _P(x)
+        Q = _Q(x)
+        Delta2 = P**2 - 4.0 * Q
+        Delta = numpy.sqrt(numpy.maximum(Delta2, 0))
+        sign = numpy.sign(P)
+        hilb = (P - sign * Delta) / (2.0 * Q)
 
         # using negative sign convention
         hilb = -hilb
@@ -319,7 +333,7 @@ class MarchenkoPastur(object):
             If `None`, a grid on the interval ``[-1, 1]`` is used.
 
         plot : bool, default=False
-            If `True`, density is plotted.
+            If `True`, Stieltjes transform is plotted.
 
         on_disk : bool, default=False
             If `True`, the Stieltjes transform is mapped on unit disk. This
@@ -346,12 +360,25 @@ class MarchenkoPastur(object):
         Examples
         --------
 
-        .. code-block::python
+        .. code-block:: python
 
             >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
             >>> m1, m2 = mp.stieltjes(plot=True)
 
+        .. image:: ../_static/images/plots/mp_stieltjes.png
+            :align: center
+            :class: custom-dark
+
+        Plot on unit disk using Cayley transform:
+
+        .. code-block:: python
+
+            >>> m1, m2 = mp.stieltjes(plot=True, on_disk=True)
+
+        .. image:: ../_static/images/plots/mp_stieltjes_disk.png
+            :align: center
+            :class: custom-dark
         """
 
         if (plot is True) and (on_disk is True):
@@ -407,7 +434,8 @@ class MarchenkoPastur(object):
     # sample
     # ======
 
-    def sample(self, size, x_min=None, x_max=None):
+    def sample(self, size, x_min=None, x_max=None, plot=False, latex=False,
+               save=False):
         """
         Sample from distribution.
 
@@ -424,6 +452,18 @@ class MarchenkoPastur(object):
         x_max : float, default=None
             Maximum of sample values. If `None`, the right edge of the support
             is used.
+
+        plot : bool, default=False
+            If `True`, samples histogram is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
 
         Returns
         -------
@@ -443,7 +483,11 @@ class MarchenkoPastur(object):
 
             >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
-            >>> s = mp.sample(2000)
+
+         >>> s = mp.sample(2000)
+        .. image:: ../_static/images/plots/mp_samples.png
+            :align: center
+            :class: custom-dark
         """
 
         if x_min is None:
@@ -466,7 +510,19 @@ class MarchenkoPastur(object):
 
         # Sample and map
         u = numpy.random.rand(size)
-        return inv_cdf(u)
+        samples = inv_cdf(u)
+
+        if plot:
+            radius = 0.5 * (self.lam_p - self.lam_m)
+            center = 0.5 * (self.lam_p + self.lam_m)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 500)
+            rho = self.density(x)
+            plot_samples(x, rho, x_min, x_max, samples, latex=latex, save=save)
+
+        return samples
 
     # ======
     # matrix

@@ -625,7 +625,7 @@ class FreeForm(object):
         --------
 
         density
-        stiletjes
+        stieltjes
 
         Notes
         -----

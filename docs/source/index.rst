@@ -48,10 +48,74 @@ Alternatively, clone the source code and install with
 Quick Usage
 ===========
 
+Generate a matrix with its spectral density following Marcheno-Pastur law
+using :class:`freealg.distributions.MarchenkoPastur`:
 
 .. code-block:: python
 
     >>> from freealg import FreeForm
+    >>> from freealg.distributions import MarchenkoPastur
+    >>> import numpy
+    >>> mp = MarchenkoPastur(1/50)
+    >>> A = mp.matrix(3000)
+    >>> eig = numpy.linalg.eigvalsh(A)
+
+Create a :class:`freealg.FreeForm` object
+
+.. code-block:: python
+
+    >>> from freealg import FreeForm
+    >>> ff = FreeForm(eig, support=(mp.lam_m, mp.lam_p))
+
+
+Fit its density using Chebyshev method using :func:`freealg.FreeForm.fit`.
+Alternative method is Jacobi polynomial.
+
+.. code-block:: python
+
+    >>> psi = ff.fit(method='chebyshev', K=10, alpha=2, beta=2, reg=0,
+    ...              damp='jackson', force=True, plot=True)
+
+.. image:: _static/images/plots/qs_fit.png
+    :align: center
+    :class: custom-dark
+    :width: 80%
+
+Estimate density using :class:`freealg.FreeForm.density`:
+
+.. code-block:: python
+
+    >>> x = numpy.linspace(lam_m-2, lam_p+2, 300)
+    >>> rho = ff.density(x, plot=True)
+
+.. image:: _static/images/plots/qs_density.png
+    :align: center
+    :class: custom-dark
+    :width: 80%
+
+Estimate Hilbert transform using :class:`freealg.FreeForm.hilbert`:
+
+.. code-block:: python
+
+    >>> hilb = ff.hilbert(x, rho, plot=True)
+
+.. image:: _static/images/plots/qs_hilbert.png
+    :align: center
+    :class: custom-dark
+    :width: 80%
+
+Estimate Stieltjes transform with :class:`freealg.FreeForm.stieltjes`:
+
+.. code-block:: python
+
+    >>> x = numpy.linspace(lam_m-1.5, lam_p+1.5, 300)
+    >>> y = numpy.linspace(-1.5, 1.5, 200)
+    >>> mp, mm = ff.stieltjes(x, y, p=2, q=2, plot=True)
+
+.. image:: _static/images/plots/qs_stieltjes.png
+    :align: center
+    :class: custom-dark
+    :width: 100%
 
 API Reference
 =============

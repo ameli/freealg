@@ -54,7 +54,7 @@ def plot_coeff(psi, latex=False, save=False):
                 save_filename = 'energy.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=200,
+                                  transparent_background=True, dpi=400,
                                   show_and_save=save_status, verbose=True)
 
 
@@ -76,6 +76,8 @@ def plot_density(x, rho, eig=None, support=None, label='',
             bins = numpy.linspace(lam_m, lam_p, 250)
             _ = ax.hist(eig, bins, density=True, color='silver',
                         edgecolor='none', label='Histogram')
+        else:
+            plt.fill_between(x, y1=rho, y2=0, color='silver', zorder=-1)
 
         ax.plot(x, rho, color='black', label=label, zorder=3)
         ax.set_xlabel(r'$\lambda$')
@@ -99,7 +101,7 @@ def plot_density(x, rho, eig=None, support=None, label='',
                 save_filename = 'density.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=200,
+                                  transparent_background=True, dpi=400,
                                   show_and_save=save_status, verbose=True)
 
 
@@ -149,7 +151,7 @@ def plot_hilbert(x, hilb, support=None, latex=False, save=False):
                 save_filename = 'hilbert.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=200,
+                                  transparent_background=True, dpi=400,
                                   show_and_save=save_status, verbose=True)
 
 
@@ -327,7 +329,7 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
                 save_filename = 'stieltjes.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=200,
+                                  transparent_background=True, dpi=400,
                                   show_and_save=save_status, verbose=True)
 
 
@@ -456,7 +458,7 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False):
                 save_filename = 'stieltjes_disk.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=200,
+                                  transparent_background=True, dpi=400,
                                   show_and_save=save_status, verbose=True)
 
 
@@ -495,5 +497,44 @@ def plot_glue_fit(x_supp, g_supp, g_supp_approx, support, latex=False,
                 save_filename = 'glue_fit.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=200,
+                                  transparent_background=True, dpi=400,
+                                  show_and_save=save_status, verbose=True)
+
+
+# ============
+# plot samples
+# ============
+
+def plot_samples(x, rho, x_min, x_max, samples, latex=False, save=False):
+    """
+    """
+
+    with texplot.theme(use_latex=latex):
+
+        fig, ax = plt.subplots(figsize=(6, 3))
+
+        bins = numpy.linspace(x_min, x_max, samples.size // 10)
+        _ = ax.hist(samples, bins, density=True, color='silver',
+                    label='Samples histogram')
+        ax.plot(x, rho, color='black', label='Exact density')
+        ax.legend(fontsize='small')
+        ax.set_ylim(bottom=0)
+        ax.set_xlim([x[0], x[-1]])
+        ax.set_xlabel(r'$\lambda$')
+        ax.set_ylabel(r'$\rho(\lambda)$''')
+        ax.set_title('Histogram of Samples from Distribution')
+
+        # Save
+        if save is False:
+            save_status = False
+            save_filename = ''
+        else:
+            save_status = True
+            if isinstance(save, str):
+                save_filename = save
+            else:
+                save_filename = 'samples.pdf'
+
+        texplot.show_or_save_plot(plt, default_filename=save_filename,
+                                  transparent_background=True, dpi=400,
                                   show_and_save=save_status, verbose=True)
