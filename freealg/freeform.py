@@ -139,7 +139,7 @@ class FreeForm(object):
         Parameters
         ----------
 
-        method : {``'jacobi'``, ``'chebyshev'``}, default=``'jacobi'``
+        method : {``'jacobi'``, ``'chebyshev'``}, default= ``'jacobi'``
             Method of approximation, either by Jacobi polynomials or Chebyshev
             polynomials of the second kind.
 

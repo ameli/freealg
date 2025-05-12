@@ -6,7 +6,7 @@
 .. grid:: 4
 
     .. grid-item-card:: GitHub
-        :link: https://github.com/sameli/freealg
+        :link: https://github.com/ameli/freealg
         :text-align: center
         :class-card: custom-card-link
 
