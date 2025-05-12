@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.MarchenkoPastur.hilbert
+=============================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: MarchenkoPastur.hilbert

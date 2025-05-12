@@ -1,0 +1,429 @@
+
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<meta property="og:title" content="Contributing Guidelines" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://ameli.github.io/contribute.html" />
+<meta property="og:site_name" content="FreeAlg" />
+<meta property="og:description" content="Thank you for contributing to this project! We follow strict coding standards to ensure code quality and maintainability. Please follow these guidelines when submitting code: Coding Standards: PEP8 Compliance- All code must follow PEP8 standards., Use linters (such as flake8 or ruff) to check you..." />
+<meta property="og:image" content="https://raw.githubusercontent.com/sameli/freealg/main/docs/source/_static/images/icons/logo-freealg-light.svg" />
+<meta property="og:image:alt" content="FreeAlg" />
+<meta name="description" content="Thank you for contributing to this project! We follow strict coding standards to ensure code quality and maintainability. Please follow these guidelines when submitting code: Coding Standards: PEP8 Compliance- All code must follow PEP8 standards., Use linters (such as flake8 or ruff) to check you..." />
+<meta property="og:title" content="freealg">
+<meta property="og:description" content="FreeAlg is a python package for applying free probability on large matrices.">
+
+    <title>Contributing Guidelines &#8212; freealg Manual</title>
+<script>
+  document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+  document.documentElement.dataset.theme = localStorage.getItem("theme") || "light"
+</script>
+
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=92025949c220c2e29695" rel="stylesheet">
+<link href="_static/styles/pydata-sphinx-theme.css?digest=92025949c220c2e29695" rel="stylesheet">
+
+
+  <link rel="stylesheet"
+    href="_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom-pydata.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.5ea377869091fd0449014c60fc090103.min.css" />
+
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=92025949c220c2e29695">
+
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/toggleprompt.js"></script>
+    <script src="_static/clipboard.min.js"></script>
+    <script src="_static/copybutton.js"></script>
+    <script src="_static/js/custom-pydata.js"></script>
+    <script src="_static/design-tabs.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/custom-pydata.css"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RCTBMM27GH"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-RCTBMM27GH');
+    </script>
+
+    <script defer data-domain="docs.scipy.org" src="https://views.scientific-python.org/js/script.js"></script>
+
+    <!-- My custom JS -->
+    <script type="text/javascript" src="../_static/js/custom-pydata.js"></script>
+
+    <!-- Syntax highlighting for BibTex code blocks -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/themes/prism-solarizedlight.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs-bibtex@2.0.1/prism-bibtex.min.js"></script>
+
+    
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="docsearch:language" content="en">
+
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="auto">
+    <div class="bd-header-announcement container-fluid" id="banner">
+      
+
+    </div>
+
+    
+    <nav class="bd-header navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="bd-header__inner container-xl">
+
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+    <img src="_static/images/icons/logo-freealg-light.png" class="logo__image only-light" alt="Logo image">
+    <img src="_static/images/icons/logo-freealg-dark.png" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="fas fa-bars"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="api.html">
+  API Reference
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <span id="theme-switch" class="btn btn-sm btn-outline-primary navbar-btn rounded-circle">
+    <a class="theme-switch" data-mode="light"><i class="fas fa-sun"></i></a>
+    <a class="theme-switch" data-mode="dark"><i class="far fa-moon"></i></a>
+    <a class="theme-switch" data-mode="auto"><i class="fas fa-adjust"></i></a>
+</span>
+      </div>
+      
+      <div class="navbar-end-item">
+        <form class="bd-search d-flex align-items-center" action="search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/suquark/arenaranking" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="https://pypi.org/project/freealg/" rel="noopener" target="_blank" title="PyPI"><span><i class="fab fa-python"></i></span>
+            <label class="sr-only">PyPI</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="bd-container container-xl">
+      <div class="bd-container__inner row">
+          
+
+<!-- Only show if we have sidebars configured, else just a small margin  -->
+<div class="bd-sidebar-primary col-12 col-md-3 bd-sidebar">
+  <div class="sidebar-start-items"><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+    
+    
+  </div>
+</nav>
+  </div>
+  <div class="sidebar-end-items">
+  </div>
+</div>
+
+
+          
+
+
+<div class="bd-sidebar-secondary d-none d-xl-block col-xl-2 bd-toc">
+  
+    
+    <div class="toc-item">
+      
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#coding-standards">
+   Coding Standards
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#documentation">
+   Documentation
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#tests">
+   Tests
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#package-structure">
+   Package Structure
+  </a>
+ </li>
+</ul>
+
+</nav>
+    </div>
+    
+    <div class="toc-item">
+      
+
+<div class="tocsection editthispage">
+    <a href="https://github.com/sameli/freealg/edit/main/docs/source/contribute.rst">
+        <i class="fas fa-pencil-alt"></i> Edit this page
+    </a>
+</div>
+
+    </div>
+    
+  
+</div>
+
+
+          
+          
+          <div class="bd-content col-12 col-md-9 col-xl-7">
+              
+              <article class="bd-article" role="main">
+                
+  <section id="contributing-guidelines">
+<span id="contribute"></span><h1>Contributing Guidelines<a class="headerlink" href="#contributing-guidelines" title="Permalink to this heading">#</a></h1>
+<p>Thank you for contributing to this project! We follow strict coding standards
+to ensure code quality and maintainability. Please follow these guidelines when
+submitting code:</p>
+<section id="coding-standards">
+<h2>Coding Standards<a class="headerlink" href="#coding-standards" title="Permalink to this heading">#</a></h2>
+<ol class="arabic">
+<li><p><strong>PEP8 Compliance</strong></p>
+<ul class="simple">
+<li><p>All code must follow <a class="reference external" href="https://peps.python.org/pep-0008/">PEP8</a>
+standards.</p></li>
+<li><p>Use linters (such as <a class="reference external" href="https://flake8.pycqa.org/">flake8</a> or
+<a class="reference external" href="https://docs.astral.sh/ruff/">ruff</a>) to check your code before
+submitting.</p></li>
+</ul>
+</li>
+<li><p><strong>Line Length</strong></p>
+<p>The maximum line length is <strong>80 characters</strong>.</p>
+</li>
+<li><p><strong>Naming Conventions</strong></p>
+<p>Follow standard naming conventions:</p>
+<ul class="simple">
+<li><p>Variables: <code class="docutils literal notranslate"><span class="pre">snake_case</span></code></p></li>
+<li><p>Classes: <code class="docutils literal notranslate"><span class="pre">CamelCase</span></code></p></li>
+<li><p>Constants: <code class="docutils literal notranslate"><span class="pre">ALL_CAPS</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>Type Hints</strong></p>
+<ul class="simple">
+<li><p>All functions should have
+<a class="reference external" href="https://docs.python.org/3/library/typing.html">type hints</a> for their
+<em>input</em> parameters.</p></li>
+<li><p>Type hints for <em>return</em> values are not required (optional).</p></li>
+</ul>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Interface Functions</strong>:</p>
+<ul class="simple">
+<li><p>Functions <strong>without an underscore</strong> at the beginning of their name (e.g.,
+<code class="docutils literal notranslate"><span class="pre">loss</span></code>) are considered <strong>interface functions</strong>. These are the
+public-facing functions that users will import and interact with.</p></li>
+<li><p>These functions should have clear, concise docstrings, using the
+<strong>numpydoc</strong> format (see Documentation section below).</p></li>
+</ul>
+</li>
+<li><p><strong>Non-Interface Functions</strong></p>
+<ul class="simple">
+<li><p>Functions that start with an underscore (e.g., <code class="docutils literal notranslate"><span class="pre">_sample_loss</span></code>) are
+considered non-interface or internal functions. These are not meant to be
+directly accessed by the user.</p></li>
+<li><p>These functions still require proper type hints and concise commenting for
+internal logic, but a comprehensive docstrings is not required.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this heading">#</a></h2>
+<ol class="arabic">
+<li><p>Use <a class="reference external" href="https://docutils.sourceforge.io/rst.html">reStructuredText</a> (<code class="docutils literal notranslate"><span class="pre">.rst</span></code>
+files) for documentation and README files.</p></li>
+<li><p><strong>Docstrings</strong></p>
+<ul>
+<li><p>Interface functions and classes must include docstrings.</p></li>
+<li><p>Non-interface functions are not required to have docstring.</p></li>
+<li><p>Use the <a class="reference external" href="https://numpydoc.readthedocs.io/">numpydoc format</a> for all
+docstrings.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add two integers.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    x : int</span>
+<span class="sd">        First number to add.</span>
+
+<span class="sd">    y : int</span>
+<span class="sd">        Second number to add.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    z : int</span>
+<span class="sd">        The sum of `x` and `y`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p><strong>Build Sphinx Documentation</strong></p>
+<ul>
+<li><p>Upon adding new class/module, include the corresponding class/module name
+to the documentation in <code class="docutils literal notranslate"><span class="pre">/docs/source/api.rst</span></code>.</p></li>
+<li><p>Build the Sphinx documentation with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/docs
+make<span class="w"> </span>clean<span class="w"> </span>html
+</pre></div>
+</div>
+<p>You can view the documentation at <code class="docutils literal notranslate"><span class="pre">/docs/build/html/index.html</span></code>.</p>
+</li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="tests">
+<h2>Tests<a class="headerlink" href="#tests" title="Permalink to this heading">#</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Test Scripts</strong></p>
+<ul class="simple">
+<li><p>Upon adding new class/module, include a test script for it in <code class="docutils literal notranslate"><span class="pre">/tests</span></code>
+directory.</p></li>
+<li><p>Test the package with <a class="reference external" href="https://tox.wiki/">tox</a> or
+<a class="reference external" href="https://docs.pytest.org/">pytest</a>.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="package-structure">
+<h2>Package Structure<a class="headerlink" href="#package-structure" title="Permalink to this heading">#</a></h2>
+<ol class="arabic">
+<li><p><strong>Adding a New Model</strong></p>
+<p>To add a new model, such as as a model named <code class="docutils literal notranslate"><span class="pre">foo_bar</span></code>:</p>
+<ol class="arabic simple">
+<li><p>Create a new file in <code class="docutils literal notranslate"><span class="pre">/freealg</span></code>.</p></li>
+<li><p>Define a class therein called <code class="docutils literal notranslate"><span class="pre">FooBar</span></code> that is inherited from
+<code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> base class.</p></li>
+<li><p>In <code class="docutils literal notranslate"><span class="pre">/freealg/__init__.py</span></code> import your new class and add
+its name to <code class="docutils literal notranslate"><span class="pre">__all__</span></code> variable.</p></li>
+</ol>
+</li>
+</ol>
+</section>
+</section>
+
+
+              </article>
+              
+
+              
+              <footer class="bd-footer-article">
+                  <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+</div>
+              </footer>
+              
+          </div>
+          
+      </div>
+    </div>
+
+  
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/pydata-sphinx-theme.js?digest=92025949c220c2e29695"></script>
+
+
+    <!-- Adobe Embed API -->
+    
+    <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+
+
+  </body>
+</html>

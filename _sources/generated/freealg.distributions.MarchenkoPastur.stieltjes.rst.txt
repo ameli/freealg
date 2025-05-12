@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.MarchenkoPastur.stieltjes
+===============================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: MarchenkoPastur.stieltjes
