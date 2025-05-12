@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2022, Siavash Ameli <sameli@berkeley.edu>
+# SPDX-FileCopyrightText: Copyright 2025, Siavash Ameli <sameli@berkeley.edu>
 # SPDX-License-Identifier: BSD-3-Clause
 # SPDX-FileType: SOURCE
 #
@@ -13,7 +13,7 @@
 
 import numpy
 import scipy
-from scipy.optimize import minimize, LinearConstraint
+from scipy.optimize import minimize
 
 __all__ = ['compute_eig', 'force_density']
 
@@ -36,37 +36,17 @@ def compute_eig(A, lower=False):
 # force density
 # =============
 
-def force_density(psi0, support, alpha, beta, pos_grid, edge_tol=0):
+def force_density(psi0, support, approx, grid, alpha=0.0, beta=0.0):
     """
     Starting from psi0 (raw projection), solve
       min  0.5 ||psi - psi0||^2
-      s.t. F_pos psi >= 0           (positivity on pos_grid)
+      s.t. F_pos psi >= 0           (positivity on grid)
            psi[0] = psi0[0]         (mass)
            f(lam_m)·psi = 0         (zero at left edge)
            f(lam_p)·psi = 0         (zero at right edge)
     """
 
     lam_m, lam_p = support
-    span = lam_p - lam_m
-    K = len(psi0) - 1
-
-    # Build positivity matrix F_pos: F_pos[i,k] = f_k(x_i)
-    eps = 1e-8
-    xg = numpy.linspace(lam_m + eps, lam_p - eps, 300)
-    tg = (2 * xg - (lam_m + lam_p)) / span
-    wg = (1 - tg)**alpha * (1 + tg)**beta
-    Pg = numpy.vstack([eval_jacobi(k, alpha, beta, tg) for k in range(K+1)]).T
-    F_pos = (2.0 / span) * (wg[:, None] * Pg)    # shape (M, K+1)
-
-    # build edge rows f(lambda)
-    def f_row(x0):
-        t0 = (2*x0 - (lam_m + lam_p)) / span
-        w0 = (1 - t0)**alpha * (1 + t0)**beta
-        P0 = numpy.array([eval_jacobi(k, alpha, beta, t0) for k in range(K+1)])
-        return (2.0/span) * w0 * P0
-
-    row_m = f_row(lam_m)
-    row_p = f_row(lam_p)
 
     # Objective and gradient
     def fun(psi):
@@ -78,30 +58,35 @@ def force_density(psi0, support, alpha, beta, pos_grid, edge_tol=0):
     # Constraints:
     constraints = []
 
-    # Enforce positivity: F_pos psi >= 0
-    constraints.append(LinearConstraint(F_pos, lb=0.0, ub=numpy.inf))
+    # Enforce positivity
+    constraints.append({'type': 'ineq',
+                        'fun': lambda psi: approx(grid, psi)})
 
-    # Enforce unit mass: psi[0] = psi0[0]
-    constraints.append({'type': 'eq',
-                        'fun': lambda psi: psi[0] - psi0[0],
-                        'jac': lambda psi:
-                            numpy.concatenate(([1.0], numpy.zeros(K)))})
+    # Enforce unit mass
+    constraints.append({
+        'type': 'eq',
+        'fun': lambda psi: numpy.trapz(approx(grid, psi), grid) - 1.0
+    })
 
     # Enforce zero at left edge
     if beta <= 0.0 and beta > -0.5:
-        constraints.append({'type': 'eq',
-                            'fun': lambda psi: numpy.dot(row_m, psi),
-                            'jac': lambda psi: row_m})
+        constraints.append({
+            'type': 'eq',
+            'fun': lambda psi: approx(numpy.array([lam_m], psi))[0]
+        })
 
     # Enforce zero at right edge
     if alpha <= 0.0 and alpha > -0.5:
-        constraints.append({'type': 'eq',
-                            'fun': lambda psi: numpy.dot(row_p, psi),
-                            'jac': lambda psi: row_p})
+        constraints.append({
+            'type': 'eq',
+            'fun': lambda psi: approx(numpy.array([lam_p], psi))[0]
+        })
 
     # Solve a small quadratic programming
     res = minimize(fun, psi0, jac=grad,
                    constraints=constraints,
+                   # method='trust-constr',
                    method='SLSQP',
-                   options={'maxiter': 200, })
+                   options={'maxiter': 1000, 'ftol': 1e-9, 'eps': 1e-8})
+
     return res.x

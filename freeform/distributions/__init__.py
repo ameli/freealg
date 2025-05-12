@@ -6,8 +6,11 @@
 # under the terms of the license found in the LICENSE.txt file in the root
 # directory of this source tree.
 
-from .freeform import FreeForm
+from .marchenko_pastur import MarchenkoPastur
+# from .wigner import Wigner
+# from .kesten_mckay import KestenMcKay
+# from .wachter import Wachter
+# from .meixner import meixner
 
-__all__ = ['FreeForm']
-
-from .__version__ import __version__                          # noqa: F401 E402
+# __all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter', 'Meixner']
+__all__ = ['MarchenkoPastur']

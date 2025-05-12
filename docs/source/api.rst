@@ -13,3 +13,14 @@ Main Functions
     :template: autosummary/class.rst
 
     freeform.FreeForm
+
+Distributions
+--------------
+
+.. autosummary::
+    :toctree: generated
+    :caption: Distributions
+    :recursive:
+    :template: autosummary/class.rst
+
+    freeform.distributions.MarchenkoPastur

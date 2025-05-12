@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2022, Siavash Ameli <sameli@berkeley.edu>
+# SPDX-FileCopyrightText: Copyright 2025, Siavash Ameli <sameli@berkeley.edu>
 # SPDX-License-Identifier: BSD-3-Clause
 # SPDX-FileType: SOURCE
 #
@@ -12,12 +12,15 @@
 # =======
 
 import numpy
+from functools import partial
 from ._util import compute_eig, force_density
 from ._jacobi import jacobi_proj, jacobi_approx, jacobi_stieltjes
-from ._chebysev import chebyshev_proj, chebyshev_prrox, chebyshev_stieltjes
+from ._chebyshev import chebyshev_proj, chebyshev_approx, chebyshev_stieltjes
 from ._damp import jackson_damping, lanczos_damping, fejer_damping, \
     exponential_damping, parzen_damping
-from ._plot_util import plot_coeff, plot_density, plot_hilbert, plot_stieltjes
+from ._plot_util import plot_coeff, plot_density, plot_hilbert, \
+    plot_stieltjes, plot_glue_fit
+from ._pade import fit_pade, eval_pade
 
 __all__ = ['FreeForm']
 
@@ -58,7 +61,7 @@ class FreeForm(object):
     eig : numpy.array
         Eigenvalues of the matrix
 
-    psi : np.array
+    psi : numpy.array
         Jacobi coefficients.
 
     Methods
@@ -75,6 +78,9 @@ class FreeForm(object):
 
     stieltjes
         Compute Stieltjes transform of the spectral density
+
+    decompress
+        Free decompression of spectral density
 
     Examples
     --------
@@ -125,8 +131,8 @@ class FreeForm(object):
     # fit
     # ===
 
-    def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0, damp=None,
-            force=False, plot=False, latex=False, save=False):
+    def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0.0,
+            damp=None, force=False, plot=False, latex=False, save=False):
         """
         Fit model to eigenvalues.
 
@@ -150,8 +156,8 @@ class FreeForm(object):
             fitting model on the left side of interval. This should be greater
             then -1. This option is only applicable when ``method='jacobi'``.
 
-        reg : float, default=0
-            Regularization coefficient.
+        reg : float, default=0.0
+            Tikhonov regularization coefficient.
 
         damp : {``'jackson'``, ``'lanczos'``, ``'fejer``, ``'exponential'``,\
                 ``'parzen'``}, default=None
@@ -178,6 +184,13 @@ class FreeForm(object):
 
         psi : (K+1, ) numpy.ndarray
             Coefficients of fitting Jacobi polynomials
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> from freeform import FreeForm
         """
 
         if alpha <= -1:
@@ -187,11 +200,11 @@ class FreeForm(object):
             raise ValueError('"beta" should be greater then "-1".')
 
         # Project eigenvalues to Jacobi polynomials basis
-        if method  == 'jacobi':
+        if method == 'jacobi':
             psi = jacobi_proj(self.eig, support=self.support, K=K, alpha=alpha,
                               beta=beta, reg=reg)
         elif method == 'chebyshev':
-            psi = chebyshev_proj(self.eig, support=self.support, K=K)
+            psi = chebyshev_proj(self.eig, support=self.support, K=K, reg=reg)
         else:
             raise ValueError('"method" is invalid.')
 
@@ -208,16 +221,25 @@ class FreeForm(object):
             elif damp == 'parzen':
                 g = parzen_damping(K+1)
 
-            self.psi *= g
+            psi = psi * g
 
         if force:
-            # A positivity grid
-            pos_grid = numpy.linspace(self.lam_m, self.lam_p, 300)
+            # A grid to check and enforce positivity and unit mass on it
+            grid = numpy.linspace(self.lam_m, self.lam_p, 500)
+
+            if method == 'jacobi':
+                approx = partial(jacobi_approx, support=self.support,
+                                 alpha=alpha, beta=beta)
+            elif method == 'chebyshev':
+                approx = partial(chebyshev_approx, support=self.support)
+            else:
+                raise RuntimeError('"method" is invalid.')
 
             # Enforce positivity, unit mass, and zero at edges
-            psi = force_density(psi, support=self.support, alpha=alpha,
-                                beta=beta, pos_grid=pos_grid)
+            psi = force_density(psi, support=self.support, approx=approx,
+                                grid=grid, alpha=alpha, beta=beta)
 
+        # Update attributes
         self.method = method
         self.psi = psi
         self.alpha = alpha
@@ -265,6 +287,13 @@ class FreeForm(object):
         --------
         hilbert
         stieltjes
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> from freeform import FreeForm
         """
 
         if self.psi is None:
@@ -284,24 +313,34 @@ class FreeForm(object):
 
         # Compute density only inside support
         mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
-        rho[mask] = jacobi_approx(x[mask], self.psi, self.support, self.alpha,
-                                  self.beta)
+
+        if self.method == 'jacobi':
+            rho[mask] = jacobi_approx(x[mask], self.psi, self.support,
+                                      self.alpha, self.beta)
+        elif self.method == 'chebyshev':
+            rho[mask] = chebyshev_approx(x[mask], self.psi, self.support)
+        else:
+            raise RuntimeError('"method" is invalid.')
 
         # Check density is unit mass
         mass = numpy.trapz(rho, x)
-        if not numpy.isclose(mass, 1.0):
-            raise RuntimeWarning(f'"rho" is not unit mass. mass: {mass}. ' +
-                                 r'Set "force=True".')
+        if not numpy.isclose(mass, 1.0, atol=1e-3):
+            # raise RuntimeWarning(f'"rho" is not unit mass. mass: {mass}. ' +
+            #                      r'Set "force=True".')
+            print(f'"rho" is not unit mass. mass: {mass}. Set "force=True".')
 
         # Check density is positive
         min_rho = numpy.min(rho)
-        if min_rho < 0.0:
-            raise RuntimeError(f'"rho" is not positive. min_rho: {min_rho}. ' +
-                                 r'Set "force=True".')
+        if min_rho < 0.0 - 1e-3:
+            # raise RuntimeWarning(
+            #         f'"rho" is not positive. min_rho: {min_rho}. Set ' +
+            #         r'"force=True".')
+            print(f'"rho" is not positive. min_rho: {min_rho}. Set ' +
+                  r'"force=True".')
 
         if plot:
-            plot_density(x, rho, self.eig, self.support, latex=latex,
-                         save=save)
+            plot_density(x, rho, eig=self.eig, support=self.support,
+                         label='Estimate', latex=latex, save=save)
 
         return rho
 
@@ -346,6 +385,13 @@ class FreeForm(object):
         --------
         density
         stieltjes
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> from freeform import FreeForm
         """
 
         if self.psi is None:
@@ -385,16 +431,52 @@ class FreeForm(object):
         # Namely, hilb[i] = int rho_s(t)/(t - x[i]) dt
         hilb = numpy.trapz(D, x_s, axis=1) / numpy.pi
 
+        # We use negative sign convention
+        hilb = -hilb
+
         if plot:
-            plot_hilbert(x, hilb, self.support, latex=latex, save=save)
+            plot_hilbert(x, hilb, support=self.support, latex=latex,
+                         save=save)
 
         return hilb
+
+    # ====
+    # glue
+    # ====
+
+    def _glue(self, z, p, q, plot_glue=False, latex=False, save=False):
+        """
+        """
+
+        # Holomorphic continuation for the lower half-plane
+        x_supp = numpy.linspace(self.lam_m, self.lam_p, 1000)
+        g_supp = 2.0 * numpy.pi * self.hilbert(x_supp)
+
+        # Fit a pade approximation
+        sol = fit_pade(x_supp, g_supp, self.lam_m, self.lam_p, p, q,
+                       delta=1e-8, B=numpy.inf, S=numpy.inf)
+
+        # Unpack optimized parameters
+        s = sol['s']
+        a = sol['a']
+        b = sol['b']
+
+        # Glue function
+        g = eval_pade(z, s, a, b)
+
+        if plot_glue:
+            g_supp_approx = eval_pade(x_supp[None, :], s, a, b)[0, :]
+            plot_glue_fit(x_supp, g_supp, g_supp_approx, support=self.support,
+                          latex=latex, save=save)
+
+        return g
 
     # =========
     # stieltjes
     # =========
 
-    def stieltjes(self, x, y, plot=False, latex=False, save=False):
+    def stieltjes(self, x, y, p=1, q=2, plot=False, plot_glue=False,
+                  latex=False, save=False):
         """
         Compute Stieltjes transform of the spectral density.
 
@@ -410,8 +492,18 @@ class FreeForm(object):
             The y axis of the grid where the Stieltjes transform is evaluated.
             If `None`, a grid on the interval ``[-1, 1]`` is used.
 
+        p : int, default=1
+            Degree of polynomial :math:`P(z)`. See notes below.
+
+        q : int, default=1
+            Degree of polynomial :math:`Q(z)`. See notes below.
+
         plot : bool, default=False
             If `True`, density is plotted.
+
+        plot_glue : bool, default=False
+            If `True`, the fit of glue function to Hilbert transform is
+            plotted.
 
         latex : bool, default=False
             If `True`, the plot is rendered using LaTeX. This option is
@@ -435,6 +527,23 @@ class FreeForm(object):
         --------
         density
         hilbert
+
+        Notes
+        -----
+
+        Notes.
+
+        References
+        ----------
+
+        .. [1] rbd
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> from freeform import FreeForm
         """
 
         if self.psi is None:
@@ -444,9 +553,9 @@ class FreeForm(object):
         if x is None:
             radius = 0.5 * (self.lam_p - self.lam_m)
             center = 0.5 * (self.lam_p + self.lam_m)
-            scale = 1.25
-            x_min = numpy.floor(center - radius * scale)
-            x_max = numpy.ceil(center + radius * scale)
+            scale = 2.0
+            x_min = numpy.floor(2.0 * (center - 2.0 * radius * scale)) / 2.0
+            x_max = numpy.ceil(2.0 * (center + 2.0 * radius * scale)) / 2.0
             x = numpy.linspace(x_min, x_max, 500)
 
         # Create y if not given
@@ -460,26 +569,80 @@ class FreeForm(object):
         mask_sup = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
         n_base = 2 * numpy.sum(mask_sup)
 
+        # Stieltjes function
+        if self.method == 'jacobi':
+            stieltjes = partial(jacobi_stieltjes, psi=self.psi,
+                                support=self.support, alpha=self.alpha,
+                                beta=self.beta, n_base=n_base)
+        elif self.method == 'chebyshev':
+            stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
+                                support=self.support)
+
         mask_p = y >= 0.0
-        mask_n = y < 0.0
+        mask_m = y < 0.0
 
         m1 = numpy.zeros_like(z)
         m2 = numpy.zeros_like(z)
 
         # Upper half-plane
-        m1[mask_p, :] = jacobi_stieltjes(z[mask_p, :], self.psi, self.support,
-                                         alpha=self.alpha, beta=self.beta,
-                                         n_base=n_base)
+        m1[mask_p, :] = stieltjes(z[mask_p, :])
 
-        # Lower half-plane, use Schwzrt reflection
-        m1[mask_n, :] = numpy.conjugate(jacobi_stieltjes(
-            numpy.conjugate(z[mask_n, :]), self.psi, self.support,
-            alpha=self.alpha, beta=self.beta, n_base=n_base))
+        # Lower half-plane, use Schwarz reflection
+        m1[mask_m, :] = numpy.conjugate(
+            stieltjes(numpy.conjugate(z[mask_m, :])))
 
         m2[mask_p, :] = m1[mask_p, :]
-        m2[mask_m, :] = m1[mask_m, :]  # TEST
+        m2[mask_m, :] = -m1[mask_m, :] + self._glue(
+                z[mask_m, :], p, q, plot_glue=plot_glue, latex=latex,
+                save=save)
 
         if plot:
             plot_stieltjes(x, y, m1, m2, self.support, latex=latex, save=save)
 
         return m1, m2
+
+    # ==========
+    # decompress
+    # ==========
+
+    def decompress(self, n):
+        """
+        Free decompression of spectral density.
+
+        Parameters
+        ----------
+
+        n : int
+            Size of the matrix.
+
+        Returns
+        -------
+
+        rho : numpy.array
+            Spenctral density
+
+        See Also
+        --------
+
+        density
+        stiletjes
+
+        Notes
+        -----
+
+        Not implemented.
+
+        References
+        ----------
+
+        .. [1] tbd
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> from freeform import FreeForm
+        """
+
+        pass

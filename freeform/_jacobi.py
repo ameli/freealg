@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2022, Siavash Ameli <sameli@berkeley.edu>
+# SPDX-FileCopyrightText: Copyright 2025, Siavash Ameli <sameli@berkeley.edu>
 # SPDX-License-Identifier: BSD-3-Clause
 # SPDX-FileType: SOURCE
 #
@@ -44,10 +44,10 @@ def jacobi_sq_norm(k, alpha, beta):
 
 
 # ===========
-# jacobi proj
+# jacobi pro
 # ===========
 
-def jacobi_proj(eig, support, K=10, alpha=0.0, beta=0.0, reg=0):
+def jacobi_proj(eig, support, K=10, alpha=0.0, beta=0.0, reg=0.0):
     """
     """
 
@@ -125,23 +125,33 @@ def jacobi_approx(x, psi, support, alpha=0.0, beta=0.0):
 def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40):
     """
     Compute m(z) = sum_k psi_k * m_k(z) where
-    m_k(z) = ∫ w^{(α,β)}(t) P_k^{(α,β)}(t) / (u(z)-t) dt
+
+    m_k(z) = \\int w^{(alpha, beta)}(t) P_k^{(alpha, beta)}(t) / (u(z)-t) dt
+
     Each m_k is evaluated *separately* with a Gauss–Jacobi rule sized
     for that k.  This follows the user's request: 1 quadrature rule per P_k.
 
     Parameters
     ----------
+
     z : complex or ndarray
+
     psi : (K+1,) array_like
+
     support : (lambda_minus, lambda_plus)
+
     alpha, beta : float
+
     n_base : int
         Minimum quadrature size.  For degree-k polynomial we use
         n_quad = max(n_base, k+1).
 
     Returns
     -------
-    m_z : ndarray  (same shape as z)
+
+    m1 : ndarray  (same shape as z)
+
+    m12 : ndarray  (same shape as z)
     """
 
     z = numpy.asarray(z, dtype=numpy.complex128)
@@ -155,24 +165,24 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40):
     for k, psi_k in enumerate(psi):
         # Select quadrature size tailored to this P_k
         n_quad = max(n_base, k + 1)
-        t_nodes, w_nodes = roots_jacobi(n_quad, alpha, beta)   # (n_quad,)
+        t_nodes, w_nodes = roots_jacobi(n_quad, alpha, beta)  # (n_quad,)
 
         # Evaluate P_k at the quadrature nodes
-        P_k_nodes = eval_jacobi(k, alpha, beta, t_nodes)       # (n_quad,)
+        P_k_nodes = eval_jacobi(k, alpha, beta, t_nodes)     # (n_quad,)
 
         # Integrand values at nodes: w_nodes already include the weight
-        integrand = w_nodes * P_k_nodes                        # (n_quad,)
+        integrand = w_nodes * P_k_nodes                      # (n_quad,)
 
         # Broadcast over z: shape (n_quad, ...) / ...
         # diff = u_z[None, ...] - t_nodes[:, None]           # (n_quad, ...)
-        diff = u_z[None, ...] - t_nodes[:, None, None]  # (n_quad, Ny, Nx)
-        # m_k  = (integrand[:, None] / diff).sum(axis=0)         # shape like z
+        diff = u_z[None, ...] - t_nodes[:, None, None]       # (n_quad, Ny, Nx)
+        # m_k  = (integrand[:, None] / diff).sum(axis=0)     # shape like z
         m_k = (integrand[:, None, None] / diff).sum(axis=0)
 
         # Accumulate with factor 2/span
         m_total += psi_k * (2.0 / span) * m_k
 
-    # We use a sing convention
+    # We use a negative sign convention
     m_total = -m_total
 
     return m_total
