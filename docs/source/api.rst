@@ -12,7 +12,7 @@ Main Functions
     :recursive:
     :template: autosummary/class.rst
 
-    freeform.FreeForm
+    freealg.FreeForm
 
 Distributions
 --------------
@@ -23,4 +23,4 @@ Distributions
     :recursive:
     :template: autosummary/class.rst
 
-    freeform.distributions.MarchenkoPastur
+    freealg.distributions.MarchenkoPastur

@@ -74,7 +74,7 @@ for build_subdirectory in build_subdirectories:
 
 # -- Project information -----------------------------------------------------
 
-project = 'freeform'
+project = 'freealg'
 copyright = f'{date.today().year}, BSD 3-clause'
 
 # -- Sphinx Settings ----------------------------------------------------------
@@ -105,7 +105,7 @@ rst_epilog = '''
 .. role:: synco
    :class: synco
 
-.. |project| replace:: :synco:`freeform`
+.. |project| replace:: :synco:`freealg`
 '''
 
 # Figure, Tables, etc numbering
@@ -121,7 +121,7 @@ rst_epilog = '''
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    # 'custom_domain',  # Gives error: no module names freeform
+    # 'custom_domain',  # Gives error: no module names freealg
     'sphinx.ext.autodoc',
     # 'sphinx_math_dollar',
     'sphinx.ext.mathjax',
@@ -222,7 +222,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "PyPI",
-            "url": "https://pypi.org/project/freeform/",
+            "url": "https://pypi.org/project/freealg/",
             "icon": "fab fa-python",
             "type": "fontawesome",
         },
@@ -230,8 +230,8 @@ html_theme_options = {
     "pygment_light_style": "tango",
     "pygment_dark_style": "native",
     "logo": {
-        "image_light": "images/icons/logo-freeform-light.png",
-        "image_dark": "images/icons/logo-freeform-dark.png",
+        "image_light": "images/icons/logo-freealg-light.png",
+        "image_dark": "images/icons/logo-freealg-dark.png",
         "max_width": "50px",
     },
 }
@@ -240,7 +240,7 @@ html_context = {
     "default_mode": "auto",
     "github_url": "https://github.com",
     "github_user": "sameli",
-    "github_repo": "freeform",
+    "github_repo": "freealg",
     "github_version": "main",
     "doc_path": "docs/source",
 }
@@ -292,16 +292,16 @@ html_js_files = ["js/custom-pydata.css"]
 html_favicon = '_static/images/icons/favicon.ico'
 
 # Open Graph cards for sharing the documentation on social media
-ogp_site_url = 'https://ameli.github.io/freeform'
-ogp_image = 'https://raw.githubusercontent.com/sameli/freeform/main/' + \
-        'docs/source/_static/images/icons/logo-freeform-light.svg'
-ogp_site_name = 'FreeForm'
+ogp_site_url = 'https://ameli.github.io/freealg'
+ogp_image = 'https://raw.githubusercontent.com/sameli/freealg/main/' + \
+        'docs/source/_static/images/icons/logo-freealg-light.svg'
+ogp_site_name = 'FreeAlg'
 ogp_description_length = 300
 ogp_type = "website"
 ogp_enable_meta_description = True
 ogp_custom_meta_tags = [
-    '<meta property="og:title" content="freeform">',
-    '<meta property="og:description" content="FreeForm is a python ' +
+    '<meta property="og:title" content="freealg">',
+    '<meta property="og:description" content="FreeAlg is a python ' +
     'package for applying free probability on large matrices.">',
 ]
 

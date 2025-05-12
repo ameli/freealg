@@ -127,8 +127,8 @@ Package Structure
 
    To add a new model, such as as a model named ``foo_bar``:
 
-   1. Create a new file in ``/freeform``.
+   1. Create a new file in ``/freealg``.
    2. Define a class therein called ``FooBar`` that is inherited from
       ``BaseModel`` base class.
-   3. In ``/freeform/__init__.py`` import your new class and add
+   3. In ``/freealg/__init__.py`` import your new class and add
       its name to ``__all__`` variable.

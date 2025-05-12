@@ -1,9 +1,9 @@
-.. image:: https://raw.githubusercontent.com/ameli/freeform/refs/heads/main/docs/source/_static/images/icons/logo-freeform-light.png
+.. image:: https://raw.githubusercontent.com/ameli/freealg/refs/heads/main/docs/source/_static/images/icons/logo-freealg-light.png
     :align: left
     :width: 240
     :class: custom-dark
 
-*freeform* is a python package that employs **free** probability for large matrix **form**\ s.
+*freealg* is a python package that employs **free** probability for large matrix **form**\ s.
 
 Install
 =======
@@ -12,7 +12,7 @@ Install with ``pip``:
 
 .. code-block::
 
-    pip install freeform
+    pip install freealg
 
 Alternatively, clone the source code and install with
 
@@ -24,7 +24,7 @@ Alternatively, clone the source code and install with
 Documentation
 =============
 
-Documentation is available at `ameli.github.io/freeform <https://ameli.github.io/freeform>`__.
+Documentation is available at `ameli.github.io/freealg <https://ameli.github.io/freealg>`__.
 
 Quick Usage
 ===========
@@ -34,7 +34,7 @@ Create and Train a Model
 
 .. code-block:: python
 
-    >>> import freeform as ff
+    >>> import freealg as fa
 
 Test
 ====
@@ -77,5 +77,5 @@ License
 
 |license|
 
-.. |license| image:: https://img.shields.io/github/license/ameli/freeform
+.. |license| image:: https://img.shields.io/github/license/ameli/freealg
    :target: https://opensource.org/licenses/BSD-3-Clause

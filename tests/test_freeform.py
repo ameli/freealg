@@ -15,7 +15,7 @@
 
 import sys
 import time
-import freeform
+import freealg
 import numpy
 
 

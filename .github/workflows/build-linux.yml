@@ -36,7 +36,7 @@ jobs:
                   python -m pip install --upgrade pytest
                   python -m pip install --upgrade pytest-cov
                   python -m pip install cython
-                  mv freeform freeform-DoNotImport
+                  mv freealg freealg-DoNotImport
                   pytest
 
             - name: Coverage

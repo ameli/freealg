@@ -149,7 +149,7 @@ const pdfData = [
     {
         id: ["showSlide01",],
         url: "https://www.dropbox.com/scl/fi/i3dil2qk3hqwkfrtsf2iy/A-Statistical-Framework-for-Ranking-LLM-Based-Chatbots.pdf?rlkey=a7z039wcukswk1pdcfhm4qlh6&st=qualuwyb&dl=0",
-        // url: "https://ameli.github.io/freeform/slides.pdf",
+        // url: "https://ameli.github.io/freealg/slides.pdf",
         slide: true,
         allowTextSelection: false,
     },

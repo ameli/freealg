@@ -87,7 +87,7 @@ class FreeForm(object):
 
     .. code-block:: python
 
-        >>> from freeform import FreeForm
+        >>> from freealg import FreeForm
     """
 
     # ====
@@ -190,7 +190,7 @@ class FreeForm(object):
 
         .. code-block:: python
 
-            >>> from freeform import FreeForm
+            >>> from freealg import FreeForm
         """
 
         if alpha <= -1:
@@ -293,7 +293,7 @@ class FreeForm(object):
 
         .. code-block:: python
 
-            >>> from freeform import FreeForm
+            >>> from freealg import FreeForm
         """
 
         if self.psi is None:
@@ -391,7 +391,7 @@ class FreeForm(object):
 
         .. code-block:: python
 
-            >>> from freeform import FreeForm
+            >>> from freealg import FreeForm
         """
 
         if self.psi is None:
@@ -543,7 +543,7 @@ class FreeForm(object):
 
         .. code-block:: python
 
-            >>> from freeform import FreeForm
+            >>> from freealg import FreeForm
         """
 
         if self.psi is None:
@@ -642,7 +642,7 @@ class FreeForm(object):
 
         .. code-block:: python
 
-            >>> from freeform import FreeForm
+            >>> from freealg import FreeForm
         """
 
         pass

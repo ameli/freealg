@@ -3,8 +3,8 @@ global-exclude *.so *.dll *.dylib
 global-exclude *.o
 global-exclude *.swp
 
-recursive-include freeform *.rst
-recursive-include freeform/data *.json
+recursive-include freealg *.rst
+recursive-include freealg/data *.json
 
 include CHANGELOG.rst
 include README.rst

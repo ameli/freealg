@@ -1,7 +1,7 @@
 # .coveragerc to control coverage
 [run]
 plugins = Cython.Coverage
-source = freeform
+source = freealg
 omit = 
     tests
     setup.py

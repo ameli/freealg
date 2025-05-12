@@ -86,7 +86,7 @@ class MarchenkoPastur(object):
 
     .. code-block:: python
 
-        >>> from freeform.distributions import MarchenkoPastur
+        >>> from freealg.distributions import MarchenkoPastur
         >>> mp = MarchenkoPastur()
     """
 
@@ -146,7 +146,7 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freeform.distributions import MarchenkoPastur
+            >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
             >>> rho = mp.density(plot=True)
         """
@@ -211,7 +211,7 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freeform.distributions import MarchenkoPastur
+            >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
             >>> hilb = mp.hilbert(plot=True)
         """
@@ -348,7 +348,7 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freeform.distributions import MarchenkoPastur
+            >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
             >>> m1, m2 = mp.stieltjes(plot=True)
 
@@ -441,7 +441,7 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freeform.distributions import MarchenkoPastur
+            >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
             >>> s = mp.sample(2000)
         """
@@ -493,7 +493,7 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freeform.distributions import MarchenkoPastur
+            >>> from freealg.distributions import MarchenkoPastur
             >>> mp = MarchenkoPastur(1/50)
             >>> A = mp.matrix(2000)
         """

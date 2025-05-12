@@ -1,4 +1,4 @@
-.. module:: freeform
+.. module:: freealg
 
 |project| Documentation
 ***********************
@@ -6,12 +6,12 @@
 .. grid:: 4
 
     .. grid-item-card:: GitHub
-        :link: https://github.com/sameli/freeform
+        :link: https://github.com/sameli/freealg
         :text-align: center
         :class-card: custom-card-link
 
     .. grid-item-card:: PyPI
-        :link: https://pypi.org/project/freeform
+        :link: https://pypi.org/project/freealg
         :text-align: center
         :class-card: custom-card-link
 
@@ -34,7 +34,7 @@ Install with ``pip``:
 
 .. prompt:: bash
     
-    pip install freeform
+    pip install freealg
 
 Alternatively, clone the source code and install with
 
@@ -51,7 +51,7 @@ Quick Usage
 
 .. code-block:: python
 
-    >>> from freeform import FreeForm
+    >>> from freealg import FreeForm
 
 API Reference
 =============
@@ -97,12 +97,12 @@ License
 
 |license|
 
-.. |license| image:: https://img.shields.io/github/license/ameli/freeform
+.. |license| image:: https://img.shields.io/github/license/ameli/freealg
    :target: https://opensource.org/licenses/BSD-3-Clause
-.. |pypi| image:: https://img.shields.io/pypi/v/freeform
-.. |traceflows-light| image:: _static/images/icons/logo-freeform-light.svg
+.. |pypi| image:: https://img.shields.io/pypi/v/freealg
+.. |traceflows-light| image:: _static/images/icons/logo-freealg-light.svg
    :height: 23
    :class: only-light
-.. |traceflows-dark| image:: _static/images/icons/logo-freeform-dark.svg
+.. |traceflows-dark| image:: _static/images/icons/logo-freealg-dark.svg
    :height: 23
    :class: only-dark

@@ -135,7 +135,7 @@ def get_requirements(directory, subdirectory="", filename='requirements',
 def main(argv):
 
     directory = os.path.dirname(os.path.realpath(__file__))
-    package_name = "freeform"
+    package_name = "freealg"
 
     # Version
     version_dummy = {}
