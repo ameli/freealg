@@ -217,8 +217,8 @@ class FreeForm(object):
             Degree of polynomial :math:`Q(z)`. See notes below.
 
         plot : bool, default=False
-            If `True`, the approximation coefficients and pade approximaton to
-            the Hilbert traosnform are plotted.
+            If `True`, the approximation coefficients and pade approximation to
+            the Hilbert transform are plotted.
 
         latex : bool, default=False
             If `True`, the plot is rendered using LaTeX. This option is
@@ -634,7 +634,7 @@ class FreeForm(object):
         m1[mask_m, :] = numpy.conjugate(
             stieltjes(numpy.conjugate(z[mask_m, :])))
 
-        # Second Reimann sheet
+        # Second Riemann sheet
         m2[mask_p, :] = m1[mask_p, :]
         m2[mask_m, :] = -m1[mask_m, :] + self._glue(z[mask_m, :])
 
@@ -722,7 +722,7 @@ class FreeForm(object):
         m1[mask_m] = numpy.conjugate(
             stieltjes(numpy.conjugate(z[mask_m].reshape(-1, 1)))).reshape(-1)
 
-        # Second Reimann sheet
+        # Second Riemann sheet
         m2[mask_p] = m1[mask_p]
         m2[mask_m] = -m1[mask_m] + self._glue(
             z[mask_m].reshape(-1, 1)).reshape(-1)

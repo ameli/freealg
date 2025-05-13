@@ -23,34 +23,6 @@ __all__ = ['plot_fit', 'plot_density', 'plot_hilbert', 'plot_stieltjes',
            'plot_stieltjes_on_disk']
 
 
-# ==============
-# plot coeff fit
-# ==============
-
-def plot_coeff_fit(psi, latex=False, save=False):
-    """
-    """
-
-    with texplot.theme(use_latex=latex):
-
-        fig, ax = plt.subplots(figsize=(6, 2.7))
-
-        # Save
-        if save is False:
-            save_status = False
-            save_filename = ''
-        else:
-            save_status = True
-            if isinstance(save, str):
-                save_filename = save
-            else:
-                save_filename = 'energy.pdf'
-
-        texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=400,
-                                  show_and_save=save_status, verbose=True)
-
-
 # ========
 # plot fit
 # ========
