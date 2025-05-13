@@ -304,7 +304,7 @@
 <h1>freealg.FreeForm.decompress<a class="headerlink" href="#freealg-freeform-decompress" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.FreeForm.decompress">
-<span class="sig-prename descclassname"><span class="pre">FreeForm.</span></span><span class="sig-name descname"><span class="pre">decompress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm.decompress" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">FreeForm.</span></span><span class="sig-name descname"><span class="pre">decompress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm.decompress" title="Permalink to this definition">#</a></dt>
 <dd><p>Free decompression of spectral density.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -313,15 +313,6 @@
 </dd>
 <dt><strong>x</strong><span class="classifier">numpy.array, default=None</span></dt><dd><p>Positions where density to be evaluated at. If <cite>None</cite>, an interval
 slightly larger than the support interval will be used.</p>
-</dd>
-<dt><strong>plot</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, density is plotted.</p>
-</dd>
-<dt><strong>latex</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, the plot is rendered using LaTeX. This option is
-relevant only if <code class="docutils literal notranslate"><span class="pre">plot=True</span></code>.</p>
-</dd>
-<dt><strong>save</strong><span class="classifier">bool, default=False</span></dt><dd><p>If not <cite>False</cite>, the plot is saved. If a string is given, it is
-assumed to the save filename (with the file extension). This option
-is relevant only if <code class="docutils literal notranslate"><span class="pre">plot=True</span></code>.</p>
 </dd>
 <dt><strong>delta: float, default=1e-4</strong></dt><dd><p>Size of the perturbation into the upper half plane for Plemelj’s
 formula.</p>
@@ -332,6 +323,15 @@ formula.</p>
 </dd>
 <dt><strong>tolerance: float, default=1e-4</strong></dt><dd><p>Tolerance for the solution obtained by the Newton solver. Also
 used for the finite difference approximation to the derivative.</p>
+</dd>
+<dt><strong>plot</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, density is plotted.</p>
+</dd>
+<dt><strong>latex</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, the plot is rendered using LaTeX. This option is
+relevant only if <code class="docutils literal notranslate"><span class="pre">plot=True</span></code>.</p>
+</dd>
+<dt><strong>save</strong><span class="classifier">bool, default=False</span></dt><dd><p>If not <cite>False</cite>, the plot is saved. If a string is given, it is
+assumed to the save filename (with the file extension). This option
+is relevant only if <code class="docutils literal notranslate"><span class="pre">plot=True</span></code>.</p>
 </dd>
 </dl>
 </dd>

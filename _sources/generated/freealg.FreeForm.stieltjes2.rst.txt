@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.FreeForm.stieltjes2
-===========================
-
-.. currentmodule:: freealg
-
-.. automethod:: FreeForm.stieltjes2
