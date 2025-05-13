@@ -7,10 +7,10 @@
 # directory of this source tree.
 
 from .marchenko_pastur import MarchenkoPastur
-# from .wigner import Wigner
-# from .kesten_mckay import KestenMcKay
-# from .wachter import Wachter
+from .wigner import Wigner
+from .kesten_mckay import KestenMcKay
+from .wachter import Wachter
 # from .meixner import meixner
 
 # __all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter', 'Meixner']
-__all__ = ['MarchenkoPastur']
+__all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter']

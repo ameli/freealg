@@ -400,6 +400,12 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False):
     lam_m_z = (lam_m - 1j) / (lam_m + 1j)
     theta_p = numpy.angle(lam_p_z)
     theta_n = numpy.angle(lam_m_z)
+
+    if theta_n < 0:
+        theta_n += 2.0 * numpy.pi
+    if theta_p < 0:
+        theta_p += 2.0 * numpy.pi
+
     theta_branch = numpy.linspace(theta_n, theta_p, 100)
     theta_alt_branch = numpy.linspace(theta_p, theta_n + 2*numpy.pi, 100)
     r_branch = numpy.ones_like(theta_branch)

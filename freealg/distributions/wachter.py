@@ -21,22 +21,25 @@ try:
 except ImportError:
     from scipy.integrate import cumulative_trapezoid as cumtrapz
 
-__all__ = ['MarchenkoPastur']
+__all__ = ['Wachter']
 
 
-# ================
-# Marchenko Pastur
-# ================
+# =======
+# Wachter
+# =======
 
-class MarchenkoPastur(object):
+class Wachter(object):
     """
-    Marchenko-Pastur distribution.
+    Wachter distribution.
 
     Parameters
     ----------
 
-    lam : float
-        Parameter :math:`\\lambda` of the distribution. See Notes.
+    a : float
+        Parameter :math:`a` of the distribution. See Notes.
+
+    b : float
+        Parameter :math:`b` of the distribution. See Notes.
 
     Methods
     -------
@@ -63,44 +66,48 @@ class MarchenkoPastur(object):
 
     .. math::
 
-        \\mathrm{d} \\rho(x) = \\frac{1}{2 \\pi}
-        \\frac{\\sqrt{(\\lambda_{+} - x) (x - \\lambda_{-})}}{\\lambda x}
+        \\mathrm{d} \\rho(x) =
+        \\frac{(a + b) )
+        \\sqrt{(\\lambda_{+} - x) (x - \\lambda_{-})}}{2 \\pi x (1 - x)}
         \\mathbf{1}_{x \\in [\\lambda_{-}, \\lambda_{+}]} \\mathrm{d}{x}
 
-    where
+    where :math:`a, b` are the shape parameters of the distributon. The edges
+    of the support are
 
-    * :math:`\\lambda_{\\pm} = (1 \\pm \\sqrt{\\lambda})^2` are the edges of
-      the support.
-    * :math:`\\lambda > 0` is the shape parameter of the density.
+    .. math::
+
+        \\lambda_{\\pm} = \\left( \\frac{\\sqrt{b} \\pm \\sqrt{a (a+b-1)}}
+        {a+b} \\right)^2.
 
     References
     ----------
 
-    .. [1] Marcenko, V. A., Pastur, L. A. (1967). Distribution of eigenvalues
-           for some sets of random matrices. Mathematics of the USSR-Sbornik,
-           1(4), 457
+    .. [1] Wachter, K. W. (1978). The strong limits of random matrix spectra
+           for sample matrices of independent elements. The Annals of
+           Probability, 6(1), 1-18
 
     Examples
     --------
 
     .. code-block:: python
 
-        >>> from freealg.distributions import MarchenkoPastur
-        >>> mp = MarchenkoPastur()
+        >>> from freealg.distributions import Wachter
+        >>> wa = Wachter(2, 3)
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, lam):
+    def __init__(self, a, b):
         """
         Initialization.
         """
 
-        self.lam = lam
-        self.lam_p = (1 + numpy.sqrt(self.lam))**2
-        self.lam_m = (1 - numpy.sqrt(self.lam))**2
+        self.a = a
+        self.b = b
+        self.lam_p = ((numpy.sqrt(b) + numpy.sqrt(a * (a+b-1))) / (a + b))**2
+        self.lam_m = ((numpy.sqrt(b) - numpy.sqrt(a * (a+b-1))) / (a + b))**2
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -145,11 +152,11 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> rho = mp.density(plot=True)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> rho = wa.density(plot=True)
 
-        .. image:: ../_static/images/plots/mp_density.png
+        .. image:: ../_static/images/plots/wa_density.png
             :align: center
             :class: custom-dark
         """
@@ -164,9 +171,10 @@ class MarchenkoPastur(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         rho = numpy.zeros_like(x)
-        mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
+        mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
 
-        rho[mask] = (1.0 / (2.0 * numpy.pi * x[mask] * self.lam)) * \
+        rho[mask] = ((self.a + self.b) /
+                     (2.0 * numpy.pi * x[mask] * (1.0 - x[mask]))) * \
             numpy.sqrt((self.lam_p - x[mask]) * (x[mask] - self.lam_m))
 
         if plot:
@@ -213,11 +221,11 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> hilb = mp.hilbert(plot=True)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> hilb = wa.hilbert(plot=True)
 
-        .. image:: ../_static/images/plots/mp_hilbert.png
+        .. image:: ../_static/images/plots/wa_hilbert.png
             :align: center
             :class: custom-dark
         """
@@ -232,10 +240,10 @@ class MarchenkoPastur(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            return x - 1 + self.lam
+            return 1.0 - self.a + (self.a + self.b - 2.0) * x
 
         def _Q(x):
-            return self.lam * x
+            return x * (1.0 - x)
 
         P = _P(x)
         Q = _Q(x)
@@ -262,33 +270,22 @@ class MarchenkoPastur(object):
         for Marchenko–Pastur distribution on upper half-plane.
         """
 
-        sigma = 1.0
-        m = numpy.empty_like(z, dtype=complex)
+        sign = -1 if alt_branch else 1
+        A = z * (1.0 - z)
+        B = 1.0 - self.a + (self.a + self.b - 2.0) * z
+        D = B**2 - 4 * A
+        sqrtD = numpy.sqrt(D)
+        m1 = (-B + sqrtD) / (2 * A)
+        m2 = (-B - sqrtD) / (2 * A)
 
-        # When z is too small, do not use quadratic form.
-        mask = numpy.abs(z) < tol
-        m[mask] = 1 / (sigma**2 * (1 - self.lam))
-
-        # Use quadratic form
-        not_mask = ~mask
-        if numpy.any(not_mask):
-
-            sign = -1 if alt_branch else 1
-            A = self.lam * sigma**2 * z
-            B = z - sigma**2 * (1 - self.lam)
-            D = B**2 - 4 * A
-            sqrtD = numpy.sqrt(D)
-            m1 = (-B + sqrtD) / (2 * A)
-            m2 = (-B - sqrtD) / (2 * A)
-
-            # pick correct branch only for non‑masked entries
-            upper = z[not_mask].imag >= 0
-            branch = numpy.empty_like(m1)
-            branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
-                                        m2[upper])
-            branch[~upper] = numpy.where(sign*m1[~upper].imag < 0, m1[~upper],
-                                         m2[~upper])
-            m[not_mask] = branch
+        # pick correct branch only for non‑masked entries
+        upper = z.imag >= 0
+        branch = numpy.empty_like(m1)
+        branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
+                                    m2[upper])
+        branch[~upper] = numpy.where(sign*m1[~upper].imag < 0, m1[~upper],
+                                     m2[~upper])
+        m = branch
 
         return m
 
@@ -363,11 +360,11 @@ class MarchenkoPastur(object):
 
         .. code-block:: python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> m1, m2 = mp.stieltjes(plot=True)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> m1, m2 = wa.stieltjes(plot=True)
 
-        .. image:: ../_static/images/plots/mp_stieltjes.png
+        .. image:: ../_static/images/plots/wa_stieltjes.png
             :align: center
             :class: custom-dark
 
@@ -377,7 +374,7 @@ class MarchenkoPastur(object):
 
             >>> m1, m2 = mp.stieltjes(plot=True, on_disk=True)
 
-        .. image:: ../_static/images/plots/mp_stieltjes_disk.png
+        .. image:: ../_static/images/plots/wa_stieltjes_disk.png
             :align: center
             :class: custom-dark
         """
@@ -482,11 +479,11 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> s = mp.sample(2000)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> s = wa.sample(2000)
 
-        .. image:: ../_static/images/plots/mp_samples.png
+        .. image:: ../_static/images/plots/wa_samples.png
             :align: center
             :class: custom-dark
         """
@@ -542,7 +539,10 @@ class MarchenkoPastur(object):
         Returns
         -------
 
-        A : numpy.ndarray
+        Sx : numpy.ndarray
+            A matrix of the size :math:`n \\times n`.
+
+        Sy : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
         Examples
@@ -550,20 +550,19 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> A = mp.matrix(2000)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> A = wa.matrix(2000)
         """
 
-        numpy.random.seed(0)
+        n = size
+        m1 = int(self.a * n)
+        m2 = int(self.b * n)
 
-        # Parameters
-        m = int(size / self.lam)
+        X = numpy.random.randn(n, m1)
+        Y = numpy.random.randn(n, m2)
 
-        # Generate random matrix X (n x m) with i.i.d. standard normal entries.
-        X = numpy.random.randn(size, m)
+        Sx = X @ X.T
+        Sy = Y @ Y.T
 
-        # Form the sample covariance matrix A = (1/m)*XX^T.
-        A = X @ X.T / m
-
-        return A
+        return Sx, Sy

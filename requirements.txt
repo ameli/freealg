@@ -3,3 +3,4 @@ scipy
 texplot
 matplotlib
 colorcet
+networkx

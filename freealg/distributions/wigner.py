@@ -12,6 +12,7 @@
 # =======
 
 import numpy
+import networkx as nx
 from scipy.interpolate import interp1d
 from .._plot_util import plot_density, plot_hilbert, plot_stieltjes, \
     plot_stieltjes_on_disk, plot_samples
@@ -21,22 +22,16 @@ try:
 except ImportError:
     from scipy.integrate import cumulative_trapezoid as cumtrapz
 
-__all__ = ['MarchenkoPastur']
+__all__ = ['Wigner']
 
 
-# ================
-# Marchenko Pastur
-# ================
+# ======
+# Wigner
+# ======
 
-class MarchenkoPastur(object):
+class Wigner(object):
     """
-    Marchenko-Pastur distribution.
-
-    Parameters
-    ----------
-
-    lam : float
-        Parameter :math:`\\lambda` of the distribution. See Notes.
+    Wigner semicircle distribution.
 
     Methods
     -------
@@ -64,43 +59,37 @@ class MarchenkoPastur(object):
     .. math::
 
         \\mathrm{d} \\rho(x) = \\frac{1}{2 \\pi}
-        \\frac{\\sqrt{(\\lambda_{+} - x) (x - \\lambda_{-})}}{\\lambda x}
+        \\sqrt{(4 - x^2}
         \\mathbf{1}_{x \\in [\\lambda_{-}, \\lambda_{+}]} \\mathrm{d}{x}
 
-    where
-
-    * :math:`\\lambda_{\\pm} = (1 \\pm \\sqrt{\\lambda})^2` are the edges of
-      the support.
-    * :math:`\\lambda > 0` is the shape parameter of the density.
+    with :math:`\\lambda_{\\pm} = \\pm 2` being the edges of the support
 
     References
     ----------
 
-    .. [1] Marcenko, V. A., Pastur, L. A. (1967). Distribution of eigenvalues
-           for some sets of random matrices. Mathematics of the USSR-Sbornik,
-           1(4), 457
+    .. [1] Wigner, E. P. (1955). Characteristic vectors of bordered matrices
+           with infinite dimensions. Annals of Mathematics, 62(3), 548-564.421
 
     Examples
     --------
 
     .. code-block:: python
 
-        >>> from freealg.distributions import MarchenkoPastur
-        >>> mp = MarchenkoPastur()
+        >>> from freealg.distributions import Wigner
+        >>> wg = Wigner()
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, lam):
+    def __init__(self):
         """
         Initialization.
         """
 
-        self.lam = lam
-        self.lam_p = (1 + numpy.sqrt(self.lam))**2
-        self.lam_m = (1 - numpy.sqrt(self.lam))**2
+        self.lam_p = 2.0
+        self.lam_m = -2.0
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -145,11 +134,11 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> rho = mp.density(plot=True)
+            >>> from freealg.distributions import Wigner
+            >>> wg = Wigner()
+            >>> rho = wg.density(plot=True)
 
-        .. image:: ../_static/images/plots/mp_density.png
+        .. image:: ../_static/images/plots/wg_density.png
             :align: center
             :class: custom-dark
         """
@@ -166,8 +155,8 @@ class MarchenkoPastur(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
 
-        rho[mask] = (1.0 / (2.0 * numpy.pi * x[mask] * self.lam)) * \
-            numpy.sqrt((self.lam_p - x[mask]) * (x[mask] - self.lam_m))
+        rho[mask] = (1.0 / (2.0 * numpy.pi)) * \
+            numpy.sqrt(4.0 - x[mask]**2)
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -213,11 +202,11 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> hilb = mp.hilbert(plot=True)
+            >>> from freealg.distributions import Wigner
+            >>> wg = Wigner()
+            >>> hilb = wg.hilbert(plot=True)
 
-        .. image:: ../_static/images/plots/mp_hilbert.png
+        .. image:: ../_static/images/plots/wg_hilbert.png
             :align: center
             :class: custom-dark
         """
@@ -232,10 +221,10 @@ class MarchenkoPastur(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            return x - 1 + self.lam
+            return x
 
         def _Q(x):
-            return self.lam * x
+            return 1.0
 
         P = _P(x)
         Q = _Q(x)
@@ -262,33 +251,25 @@ class MarchenkoPastur(object):
         for Marchenko–Pastur distribution on upper half-plane.
         """
 
-        sigma = 1.0
         m = numpy.empty_like(z, dtype=complex)
 
-        # When z is too small, do not use quadratic form.
-        mask = numpy.abs(z) < tol
-        m[mask] = 1 / (sigma**2 * (1 - self.lam))
-
         # Use quadratic form
-        not_mask = ~mask
-        if numpy.any(not_mask):
+        sign = -1 if alt_branch else 1
+        A = 1.0
+        B = z
+        D = B**2 - 4 * A
+        sqrtD = numpy.sqrt(D)
+        m1 = (-B + sqrtD) / (2 * A)
+        m2 = (-B - sqrtD) / (2 * A)
 
-            sign = -1 if alt_branch else 1
-            A = self.lam * sigma**2 * z
-            B = z - sigma**2 * (1 - self.lam)
-            D = B**2 - 4 * A
-            sqrtD = numpy.sqrt(D)
-            m1 = (-B + sqrtD) / (2 * A)
-            m2 = (-B - sqrtD) / (2 * A)
-
-            # pick correct branch only for non‑masked entries
-            upper = z[not_mask].imag >= 0
-            branch = numpy.empty_like(m1)
-            branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
-                                        m2[upper])
-            branch[~upper] = numpy.where(sign*m1[~upper].imag < 0, m1[~upper],
-                                         m2[~upper])
-            m[not_mask] = branch
+        # pick correct branch
+        upper = z.imag >= 0
+        branch = numpy.empty_like(m1)
+        branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
+                                    m2[upper])
+        branch[~upper] = numpy.where(sign*m1[~upper].imag < 0, m1[~upper],
+                                     m2[~upper])
+        m = branch
 
         return m
 
@@ -363,11 +344,11 @@ class MarchenkoPastur(object):
 
         .. code-block:: python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> m1, m2 = mp.stieltjes(plot=True)
+            >>> from freealg.distributions import Wigner
+            >>> wg = Wigner()
+            >>> m1, m2 = wg.stieltjes(plot=True)
 
-        .. image:: ../_static/images/plots/mp_stieltjes.png
+        .. image:: ../_static/images/plots/wg_stieltjes.png
             :align: center
             :class: custom-dark
 
@@ -377,7 +358,7 @@ class MarchenkoPastur(object):
 
             >>> m1, m2 = mp.stieltjes(plot=True, on_disk=True)
 
-        .. image:: ../_static/images/plots/mp_stieltjes_disk.png
+        .. image:: ../_static/images/plots/wg_stieltjes_disk.png
             :align: center
             :class: custom-dark
         """
@@ -482,11 +463,11 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> s = mp.sample(2000)
+            >>> from freealg.distributions import Wigner
+            >>> wg = Wigner()
+            >>> s = wg.sample(2000)
 
-        .. image:: ../_static/images/plots/mp_samples.png
+        .. image:: ../_static/images/plots/wg_samples.png
             :align: center
             :class: custom-dark
         """
@@ -550,20 +531,22 @@ class MarchenkoPastur(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> A = mp.matrix(2000)
+            >>> from freealg.distributions import Wigner
+            >>> wg = Wigner()
+            >>> A = wg.matrix(2000)
         """
 
-        numpy.random.seed(0)
-
         # Parameters
-        m = int(size / self.lam)
+        n = size
+        p = 1.0 / size
 
-        # Generate random matrix X (n x m) with i.i.d. standard normal entries.
-        X = numpy.random.randn(size, m)
+        # Random graph
+        G = nx.erdos_renyi_graph(n, p)
 
-        # Form the sample covariance matrix A = (1/m)*XX^T.
-        A = X @ X.T / m
+        # Adjancency
+        A = nx.to_numpy_array(G)  # shape (n,n), 0/1 entries
 
-        return A
+        # Center & scale to get the semicircle
+        A_c = (A - p) / numpy.sqrt(n * p * (1-p))
+
+        return A_c
