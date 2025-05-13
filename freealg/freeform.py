@@ -174,8 +174,8 @@ class FreeForm(object):
     # ===
 
     def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0.0,
-            damp=None, force=False, pade_p=1, pade_q=1, plot=False,
-            latex=False, save=False):
+            damp=None, force=False, pade_p=1, pade_q=1, optimizer='ls',
+            plot=False, latex=False, save=False):
         """
         Fit model to eigenvalues.
 
@@ -216,8 +216,14 @@ class FreeForm(object):
         pade_q : int, default=1
             Degree of polynomial :math:`Q(z)`. See notes below.
 
+        optimizer : {``'ls'``, ``'de'``}, default= ``'ls'``
+            Optimizer for Pade approximation, including:
+
+            * ``'ls'``: least square (local, fast)
+            * ``'de'``: differential evolution (global, slow)
+
         plot : bool, default=False
-            If `True`, the approximation coefficients and pade approximation to
+            If `True`, the approximation coefficients and Pade approximation to
             the Hilbert transform are plotted.
 
         latex : bool, default=False
@@ -300,17 +306,16 @@ class FreeForm(object):
         g_supp = 2.0 * numpy.pi * self.hilbert(x_supp)
 
         # Fit a pade approximation
-        self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m,
-                                  self.lam_p, pade_p, pade_q, delta=1e-8,
-                                  B=numpy.inf, S=numpy.inf)
+        # self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m,
+        #                           self.lam_p, pade_p, pade_q, delta=1e-8,
+        #                           B=numpy.inf, S=numpy.inf)
+        self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m, self.lam_p,
+                                  q=pade_q, safety=1.0, max_outer=40,
+                                  xtol=1e-12, ftol=1e-12, optimizer=optimizer,
+                                  verbose=0)
 
         if plot:
-            # Unpack optimized parameters
-            s = self._pade_sol['s']
-            a = self._pade_sol['a']
-            b = self._pade_sol['b']
-
-            g_supp_approx = eval_pade(x_supp[None, :], s, a, b)[0, :]
+            g_supp_approx = eval_pade(x_supp[None, :], self._pade_sol)[0, :]
             plot_fit(psi, x_supp, g_supp, g_supp_approx, support=self.support,
                      latex=latex, save=save)
 
@@ -514,13 +519,8 @@ class FreeForm(object):
         """
         """
 
-        # Unpack optimized parameters
-        s = self._pade_sol['s']
-        a = self._pade_sol['a']
-        b = self._pade_sol['b']
-
         # Glue function
-        g = eval_pade(z, s, a, b)
+        g = eval_pade(z, self._pade_sol)
 
         return g
 

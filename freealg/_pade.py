@@ -12,18 +12,235 @@
 # =======
 
 import numpy
+from numpy.linalg import lstsq
 from itertools import product
 from scipy.optimize import least_squares, differential_evolution
 
 __all__ = ['fit_pade', 'eval_pade']
 
 
+# =============
+# default poles
+# =============
+
+def _default_poles(q, lam_m, lam_p, safety=1.0):
+    """
+    Generate q real poles outside [lam_m, lam_p].
+
+    • even q  : q/2 on each side (Chebyshev-like layout)
+    • odd  q  : (q+1)/2 on the *left*,  (q–1)/2 on the right
+                so q=1 => single pole left of the interval.
+
+    safety >= 1: 1, then poles start half an interval away; >1 pushes them
+    farther.
+    """
+
+    if q == 0:
+        return numpy.empty(0)
+
+    Delta = 0.5 * (lam_p - lam_m)
+    m_L = (q + 1) // 2            # how many on the left
+    m_R = q // 2                  # how many on the right
+
+    # Chebyshev-extrema offsets  (all positive)
+    kL = numpy.arange(m_L)
+    tL = (2 * kL + 1) * numpy.pi / (2 * m_L)
+    offsL = safety * Delta * (1 + numpy.cos(tL))
+
+    kR = numpy.arange(m_R)
+    tR = (2 * kR + 1) * numpy.pi / (2 * m_R + (m_R == 0))
+    offsR = safety * Delta * (1 + numpy.cos(tR))
+
+    left = lam_m - offsL
+    right = lam_p + offsR
+    return numpy.sort(numpy.concatenate([left, right]))
+
+
+# ============
+# encode poles
+# ============
+
+def _encode_poles(a, lam_m, lam_p):
+    """
+    Map real pole a_j → unconstrained s_j,
+    so that the default left-of-interval pole stays left.
+    """
+
+    # half-width of the interval
+    d = 0.5 * (lam_p - lam_m)
+    # if a < lam_m, we want s ≥ 0; if a > lam_p, s < 0
+    return numpy.where(
+        a < lam_m,
+        numpy.log((lam_m - a) / d),   # zero at a = lam_m - d
+        -numpy.log((a - lam_p) / d)   # zero at a = lam_p + d
+    )
+
+
+# ============
+# decode poles
+# ============
+
+def _decode_poles(s, lam_m, lam_p):
+    """
+    Inverse map s_j → real pole a_j outside the interval.
+    """
+
+    d = 0.5 * (lam_p - lam_m)
+    return numpy.where(
+        s >= 0,
+        lam_m - d * numpy.exp(s),     # maps s=0 → a=lam_m−d (left)
+        lam_p + d * numpy.exp(-s)     # maps s=0 → a=lam_p+d (right)
+    )
+
+
+# ========
+# inner ls
+# ========
+
+def _inner_ls(x, f, poles):
+    """
+    This is the inner least square (blazing fast).
+    """
+
+    if poles.size == 0:                      # q = 0
+        A = numpy.column_stack((numpy.ones_like(x), x))
+        theta, *_ = lstsq(A, f, rcond=None)
+        c, D = theta
+        resid = numpy.empty(0)
+    else:
+        phi = 1.0 / (x[:, None] - poles[None, :])
+        A = numpy.column_stack((numpy.ones_like(x), x, phi))
+        theta, *_ = lstsq(A, f, rcond=None)
+        c, D, resid = theta[0], theta[1], theta[2:]
+    return c, D, resid
+
+
+# =============
+# eval rational
+# =============
+
+def _eval_rational(z, c, D, poles, resid):
+    """
+    """
+
+    z = z[:, None]
+    if poles.size == 0:
+        term = 0.0
+    else:
+        term = numpy.sum(resid / (z - poles), axis=1)
+
+    return c + D * z.ravel() + term
+
+
 # ========
 # fit pade
 # ========
 
-def fit_pade(x, f, lam_m, lam_p, p, q, delta=1e-8, B=numpy.inf, S=numpy.inf,
-             B_default=10.0, S_factor=2.0, maxiter_de=200):
+def fit_pade(x, f, lam_m, lam_p, q=2, safety=1.0, max_outer=40, xtol=1e-12,
+             ftol=1e-12, optimizer='ls', verbose=0):
+    """
+    This is the outer optimiser.
+
+    Fit  G(x) = c + D x + sum r_j /(x - a_j)
+    """
+
+    x = numpy.asarray(x, float)
+    f = numpy.asarray(f, float)
+
+    poles0 = _default_poles(q, lam_m, lam_p, safety=safety)
+    if q == 0:                               # nothing to optimise
+        c, D, resid = _inner_ls(x, f, poles0)
+        pade_sol = {
+            'c': c, 'D': D, 'poles': poles0, 'resid': resid,
+            'outer_iters': 0
+        }
+
+        return pade_sol
+
+    s0 = _encode_poles(poles0, lam_m, lam_p)
+
+    # --------
+    # residual
+    # --------
+
+    def residual(s):
+        poles = _decode_poles(s, lam_m, lam_p)
+        c, D, resid = _inner_ls(x, f, poles)
+        return _eval_rational(x, c, D, poles, resid) - f
+
+    # ----------------
+
+    # Optimizer
+    if optimizer == 'ls':
+        # scale = numpy.maximum(1.0, numpy.abs(s0))
+        res = least_squares(residual, s0,
+                            method='trf',
+                            # method='lm',
+                            # x_scale=scale,
+                            max_nfev=max_outer, xtol=xtol, ftol=ftol,
+                            verbose=verbose)
+
+    elif optimizer == 'de':
+        span = lam_p - lam_m
+        B = 3.0  # multiples of span
+        L = numpy.log(B * span)
+        bounds = [(-L, L)] * len(s0)
+
+        # Global stage
+        glob = differential_evolution(lambda s: numpy.sum(residual(s)**2),
+                                      bounds, maxiter=50, popsize=10,
+                                      polish=False)
+
+        # local polish
+        res = least_squares(
+                residual, glob.x,
+                method='lm',
+                max_nfev=max_outer, xtol=xtol, ftol=ftol,
+                verbose=verbose)
+
+    else:
+        raise RuntimeError('"optimizer" is invalid.')
+
+    poles = _decode_poles(res.x, lam_m, lam_p)
+    c, D, resid = _inner_ls(x, f, poles)
+
+    pade_sol = {
+        'c': c, 'D': D, 'poles': poles, 'resid': resid,
+        'outer_iters': res.nfev
+    }
+
+    return pade_sol
+
+
+# =========
+# eval pade
+# =========
+
+def eval_pade(z, pade_sol):
+    """
+    """
+
+    z_arr = numpy.asanyarray(z)                   # shape=(M,N)
+    flat = z_arr.ravel()                          # shape=(M·N,)
+    c, D = pade_sol['c'], pade_sol['D']
+    poles = pade_sol['poles']
+    resid = pade_sol['resid']
+
+    # _eval_rational takes a 1-D array of z's and returns 1-D outputs
+    flat_out = _eval_rational(flat, c, D, poles, resid)
+
+    # restore the original shape
+    out = flat_out.reshape(z_arr.shape)         # shape=(M,N)
+
+    return out
+
+
+# ============
+# fit pade old
+# ============
+
+def fit_pade_old(x, f, lam_m, lam_p, p, q, delta=1e-8, B=numpy.inf,
+                 S=numpy.inf, B_default=10.0, S_factor=2.0, maxiter_de=200):
     """
     Fit a [p/q] rational P/Q of the form:
       P(x) = s * prod_{i=0..p-1}(x - a_i)
@@ -125,11 +342,11 @@ def fit_pade(x, f, lam_m, lam_p, p, q, delta=1e-8, B=numpy.inf, S=numpy.inf,
     }
 
 
-# =========
-# eval pade
-# =========
+# =============
+# eval pade old
+# =============
 
-def eval_pade(z, s, a, b):
+def eval_pade_old(z, s, a, b):
     """
     """
 

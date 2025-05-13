@@ -17,9 +17,9 @@ from scipy.stats import qmc
 __all__ = ['qmc_sample']
 
 
-# ==========
-# qmc_sample
-# ==========
+# =============
+# quantile func
+# =============
 
 def _quantile_func(x, rho):
     """
@@ -30,6 +30,10 @@ def _quantile_func(x, rho):
     cdf /= cdf[-1]
     return interp1d(cdf, x, bounds_error=False, assume_sorted=True)
 
+
+# ==========
+# qmc sample
+# ==========
 
 def qmc_sample(x, rho, num_pts):
     """
@@ -64,14 +68,14 @@ def qmc_sample(x, rho, num_pts):
     --------
     .. code-block:: python
 
-        >>> import numpy as np
+        >>> import numpy
         >>> from your_module import qmc_sample
-        >>> x = np.linspace(0, 1, 200)
+        >>> x = numpy.linspace(0, 1, 200)
         >>> rho = 3 * x**2                    # density of Beta(3,1) on [0,1]
         >>> samples = qmc_sample(x, rho, num_pts=1000)
         >>> assert samples.shape == (1000,)
         >>> # Empirical mean should be close to 3/4
-        >>> np.allclose(samples.mean(), 0.75, atol=0.02)
+        >>> numpy.allclose(samples.mean(), 0.75, atol=0.02)
     """
 
     quantile = _quantile_func(x, rho)
