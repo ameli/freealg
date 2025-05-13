@@ -18,6 +18,7 @@
          FreeForm.fit
          FreeForm.hilbert
          FreeForm.stieltjes
+         FreeForm.stieltjes2
       
   
 

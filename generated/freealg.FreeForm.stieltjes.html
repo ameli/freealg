@@ -56,8 +56,6 @@
     <script src="../_static/js/custom-pydata.js"></script>
     <script src="../_static/design-tabs.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>window.MathJax = {"tex2jax": {"inlineMath": [["\\(", "\\)"]], "displayMath": [["\\[", "\\]"]]}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/custom-pydata.css"></script>
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -306,33 +304,13 @@
 <h1>freealg.FreeForm.stieltjes<a class="headerlink" href="#freealg-freeform-stieltjes" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.FreeForm.stieltjes">
-<span class="sig-prename descclassname"><span class="pre">FreeForm.</span></span><span class="sig-name descname"><span class="pre">stieltjes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_glue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm.stieltjes" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">FreeForm.</span></span><span class="sig-name descname"><span class="pre">stieltjes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm.stieltjes" title="Permalink to this definition">#</a></dt>
 <dd><p>Compute Stieltjes transform of the spectral density.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>x</strong><span class="classifier">numpy.array, default=None</span></dt><dd><p>The x axis of the grid where the Stieltjes transform is evaluated.
-If <cite>None</cite>, an interval slightly larger than the support interval of
-the spectral density is used.</p>
-</dd>
-<dt><strong>y</strong><span class="classifier">numpy.array, default=None</span></dt><dd><p>The y axis of the grid where the Stieltjes transform is evaluated.
-If <cite>None</cite>, a grid on the interval <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code> is used.</p>
-</dd>
-<dt><strong>p</strong><span class="classifier">int, default=1</span></dt><dd><p>Degree of polynomial <span class="math notranslate nohighlight">\(P(z)\)</span>. See notes below.</p>
-</dd>
-<dt><strong>q</strong><span class="classifier">int, default=1</span></dt><dd><p>Degree of polynomial <span class="math notranslate nohighlight">\(Q(z)\)</span>. See notes below.</p>
-</dd>
-<dt><strong>plot</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, density is plotted.</p>
-</dd>
-<dt><strong>plot_glue</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, the fit of glue function to Hilbert transform is
-plotted.</p>
-</dd>
-<dt><strong>latex</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, the plot is rendered using LaTeX. This option is
-relevant only if <code class="docutils literal notranslate"><span class="pre">plot=True</span></code>.</p>
-</dd>
-<dt><strong>save</strong><span class="classifier">bool, default=False</span></dt><dd><p>If not <cite>False</cite>, the plot is saved. If a string is given, it is
-assumed to the save filename (with the file extension). This option
-is relevant only if <code class="docutils literal notranslate"><span class="pre">plot=True</span></code>.</p>
+<dt><strong>z</strong><span class="classifier">numpy.array</span></dt><dd><p>The z values in the complex plan where the Stieltjes transform is 
+evaluated.</p>
 </dd>
 </dl>
 </dd>
