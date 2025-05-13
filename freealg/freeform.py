@@ -512,6 +512,8 @@ class FreeForm(object):
         g = eval_pade(z, s, a, b)
 
         if plot_glue:
+            x_supp = numpy.linspace(self.lam_m, self.lam_p, 1000)
+            g_supp = 2.0 * numpy.pi * self.hilbert(x_supp)
             g_supp_approx = eval_pade(x_supp[None, :], s, a, b)[0, :]
             plot_glue_fit(x_supp, g_supp, g_supp_approx, support=self.support,
                           latex=latex, save=save)
