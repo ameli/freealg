@@ -24,3 +24,6 @@ Distributions
     :template: autosummary/class.rst
 
     freealg.distributions.MarchenkoPastur
+    freealg.distributions.Wigner
+    freealg.distributions.KestenMcKay
+    freealg.distributions.Wachter
