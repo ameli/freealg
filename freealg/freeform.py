@@ -21,6 +21,7 @@ from ._damp import jackson_damping, lanczos_damping, fejer_damping, \
 from ._plot_util import plot_coeff, plot_density, plot_hilbert, \
     plot_stieltjes, plot_glue_fit
 from ._pade import fit_pade, eval_pade
+from ._decompress import decompress
 
 __all__ = ['FreeForm']
 
@@ -605,14 +606,14 @@ class FreeForm(object):
     # decompress
     # ==========
 
-    def decompress(self, n):
+    def decompress(self, size):
         """
         Free decompression of spectral density.
 
         Parameters
         ----------
 
-        n : int
+        size : int
             Size of the matrix.
 
         Returns
@@ -645,4 +646,4 @@ class FreeForm(object):
             >>> from freealg import FreeForm
         """
 
-        pass
+        decompress(size)
