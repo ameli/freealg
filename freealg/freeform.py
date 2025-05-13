@@ -22,6 +22,7 @@ from ._damp import jackson_damping, lanczos_damping, fejer_damping, \
 from ._plot_util import plot_fit, plot_density, plot_hilbert, plot_stieltjes
 from ._pade import fit_pade, eval_pade
 from ._decompress import decompress
+from ._sample import qmc_sample
 
 __all__ = ['FreeForm']
 
@@ -734,7 +735,7 @@ class FreeForm(object):
     # decompress
     # ==========
 
-    def decompress(self, size, x=None, delta=1e-4, iterations=500,
+    def decompress(self, size, x=None, delta=1e-6, iterations=500,
                    step_size=0.1, tolerance=1e-4, plot=False, latex=False,
                    save=False):
         """
@@ -782,11 +783,16 @@ class FreeForm(object):
         rho : numpy.array
             Spectral density
 
+        eigs : numpy.array
+            Estimated eigenvalues as low-discrepancy samples of the estimated
+            spectral density.
+
         See Also
         --------
 
         density
         stieltjes
+        qmc_sample
 
         Notes
         -----
@@ -809,9 +815,12 @@ class FreeForm(object):
         rho, x, (lb, ub) = decompress(self, size, x=x, delta=delta,
                                       iterations=iterations,
                                       step_size=step_size, tolerance=tolerance)
+        x, rho = x.ravel(), rho.ravel()
 
         if plot:
-            plot_density(x.reshape(-1), rho.reshape(-1), support=(lb, ub),
+            plot_density(x, rho, support=(lb, ub),
                          label='Decompression', latex=latex, save=save)
+            
+        eigs = numpy.sort(qmc_sample(x, rho, size))
 
-        return rho
+        return rho, eigs
