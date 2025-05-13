@@ -19,8 +19,8 @@ __all__ = ['decompress']
 # decompress
 # ==========
 
-def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1, 
-                    tolerance=1e-4):
+def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
+               tolerance=1e-4):
     """
     Free decompression of spectral density.
 
@@ -82,7 +82,7 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
     """
 
     alpha = size / matrix.n
-    m = matrix.stieltjes2
+    m = matrix._eval_stieltjes
     # Lower and upper bound on new support
     hilb_lb = (1 / m(matrix.lam_m + delta * 1j)[1]).real
     hilb_ub = (1 / m(matrix.lam_p + delta * 1j)[1]).real
@@ -100,14 +100,14 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
 
     def _char_z(z):
         return z + (1 / m(z)[1]) * (1 - alpha)
-    
+
     # Ensure that input is an array
     x = numpy.asarray(x)
 
     target = x + delta * 1j
 
-    z = numpy.full(target.shape, numpy.mean(matrix.support) - .1j, 
-                    dtype=numpy.complex128)
+    z = numpy.full(target.shape, numpy.mean(matrix.support) - .1j,
+                   dtype=numpy.complex128)
 
     # Broken Newton steps can produce a lot of warnings. Removing them
     # for now.
@@ -120,7 +120,7 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
             z_m = z[mask]
 
             # Perform finite difference approximation
-            dfdz  = _char_z(z_m+tolerance) - _char_z(z_m-tolerance)
+            dfdz = _char_z(z_m+tolerance) - _char_z(z_m-tolerance)
             dfdz /= 2*tolerance
             dfdz[dfdz == 0] = 1.0
 
@@ -134,5 +134,3 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
     rho = rho.reshape(*x.shape)
 
     return rho, x, (lb, ub)
-
-

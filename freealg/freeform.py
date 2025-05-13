@@ -19,8 +19,7 @@ from ._jacobi import jacobi_proj, jacobi_approx, jacobi_stieltjes
 from ._chebyshev import chebyshev_proj, chebyshev_approx, chebyshev_stieltjes
 from ._damp import jackson_damping, lanczos_damping, fejer_damping, \
     exponential_damping, parzen_damping
-from ._plot_util import plot_coeff, plot_density, plot_hilbert, \
-    plot_stieltjes, plot_glue_fit
+from ._plot_util import plot_fit, plot_density, plot_hilbert, plot_stieltjes
 from ._pade import fit_pade, eval_pade
 from ._decompress import decompress
 
@@ -74,7 +73,8 @@ class FreeForm(object):
         Jacobi coefficients.
 
     n   : int
-        Initial array size (assuming a square matrix when :math:`\\mathbf{A}` is 2D)
+        Initial array size (assuming a square matrix when :math:`\\mathbf{A}`
+        is 2D)
 
     Methods
     -------
@@ -118,13 +118,14 @@ class FreeForm(object):
         if A.ndim == 1:
             # When A is a 1D array, it is assumed A is the eigenvalue array.
             self.eig = A
-            self.n   = len(A)
+            self.n = len(A)
         elif A.ndim == 2:
             # When A is a 2D array, it is assumed A is the actual array,
             # and its eigenvalues will be computed.
             self.A = A
             self.n = A.shape[0]
-            assert A.shape[0] == A.shape[1], "Only square matrices are permitted."
+            assert A.shape[0] == A.shape[1], \
+                'Only square matrices are permitted.'
             self.eig = compute_eig(A)
 
         # Support
@@ -141,6 +142,7 @@ class FreeForm(object):
         self.psi = None
         self.alpha = None
         self.beta = None
+        self._pade_sol = None
 
     # ==============
     # detect support
@@ -171,8 +173,8 @@ class FreeForm(object):
     # ===
 
     def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0.0,
-            damp=None, force=False, plot=False, latex=False, save=False,
-            pade_p=1, pade_q=1):
+            damp=None, force=False, pade_p=1, pade_q=1, plot=False,
+            latex=False, save=False):
         """
         Fit model to eigenvalues.
 
@@ -207,8 +209,15 @@ class FreeForm(object):
             If `True`, it forces the density to have unit mass and to be
             strictly positive.
 
+        pade_p : int, default=1
+            Degree of polynomial :math:`P(z)`. See notes below.
+
+        pade_q : int, default=1
+            Degree of polynomial :math:`Q(z)`. See notes below.
+
         plot : bool, default=False
-            If `True`, density is plotted.
+            If `True`, the approximation coefficients and pade approximaton to
+            the Hilbert traosnform are plotted.
 
         latex : bool, default=False
             If `True`, the plot is rendered using LaTeX. This option is
@@ -218,12 +227,6 @@ class FreeForm(object):
             If not `False`, the plot is saved. If a string is given, it is
             assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
-
-        pade_p : int, default=1
-            Degree of polynomial :math:`P(z)`. See notes below.
-
-        pade_q : int, default=1
-            Degree of polynomial :math:`Q(z)`. See notes below.
 
         Returns
         -------
@@ -296,12 +299,19 @@ class FreeForm(object):
         g_supp = 2.0 * numpy.pi * self.hilbert(x_supp)
 
         # Fit a pade approximation
-        self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m, 
-                                  self.lam_p, pade_p, pade_q, delta=1e-8, 
+        self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m,
+                                  self.lam_p, pade_p, pade_q, delta=1e-8,
                                   B=numpy.inf, S=numpy.inf)
 
         if plot:
-            plot_coeff(psi, latex=latex, save=save)
+            # Unpack optimized parameters
+            s = self._pade_sol['s']
+            a = self._pade_sol['a']
+            b = self._pade_sol['b']
+
+            g_supp_approx = eval_pade(x_supp[None, :], s, a, b)[0, :]
+            plot_fit(psi, x_supp, g_supp, g_supp_approx, support=self.support,
+                     latex=latex, save=save)
 
         return self.psi
 
@@ -499,7 +509,7 @@ class FreeForm(object):
     # glue
     # ====
 
-    def _glue(self, z, p=2, q=2, plot_glue=False, latex=False, save=False):
+    def _glue(self, z):
         """
         """
 
@@ -511,103 +521,13 @@ class FreeForm(object):
         # Glue function
         g = eval_pade(z, s, a, b)
 
-        if plot_glue:
-            x_supp = numpy.linspace(self.lam_m, self.lam_p, 1000)
-            g_supp = 2.0 * numpy.pi * self.hilbert(x_supp)
-            g_supp_approx = eval_pade(x_supp[None, :], s, a, b)[0, :]
-            plot_glue_fit(x_supp, g_supp, g_supp_approx, support=self.support,
-                          latex=latex, save=save)
-
         return g
 
     # =========
     # stieltjes
     # =========
 
-    def stieltjes2(self, z):
-        """
-        Compute Stieltjes transform of the spectral density.
-
-        Parameters
-        ----------
-
-        z : numpy.array
-            The z values in the complex plan where the Stieltjes transform is 
-            evaluated.
-
-
-        Returns
-        -------
-
-        m_p : numpy.ndarray
-            The Stieltjes transform on the principal branch.
-
-        m_m : numpy.ndarray
-            The Stieltjes transform continued to the secondary branch.
-
-        See Also
-        --------
-        density
-        hilbert
-
-        Notes
-        -----
-
-        Notes.
-
-        References
-        ----------
-
-        .. [1] rbd
-
-        Examples
-        --------
-
-        .. code-block:: python
-
-            >>> from freealg import FreeForm
-        """
-
-        if self.psi is None:
-            raise RuntimeError('"fit" the model first.')
-
-        z = numpy.asarray(z)
-        shape = z.shape
-        if len(shape) == 0: shape = (1,)
-        z = z.reshape(-1, 1)
-
-        # Stieltjes function
-        if self.method == 'jacobi':
-            stieltjes = partial(jacobi_stieltjes, psi=self.psi,
-                                support=self.support, alpha=self.alpha,
-                                beta=self.beta)
-        elif self.method == 'chebyshev':
-            stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
-                                support=self.support)
-
-        mask_p = z.imag >= 0.0
-        mask_m = z.imag < 0.0
-
-        m1 = numpy.zeros_like(z)
-        m2 = numpy.zeros_like(z)
-
-        # Upper half-plane
-        m1[mask_p] = stieltjes(z[mask_p].reshape(-1,1)).reshape(-1)
-
-        # Lower half-plane, use Schwarz reflection
-        m1[mask_m] = numpy.conjugate(
-            stieltjes(numpy.conjugate(z[mask_m].reshape(-1,1)))).reshape(-1)
-
-        m2[mask_p] = m1[mask_p]
-        m2[mask_m] = -m1[mask_m] + self._glue(
-                z[mask_m].reshape(-1,1), plot_glue=False, latex=False, save=False).reshape(-1)
-
-        m1, m2 = m1.reshape(*shape), m2.reshape(*shape)
-
-        return m1, m2
-
-    def stieltjes(self, x, y, p=2, q=2, plot=False, plot_glue=False,
-                  latex=False, save=False):
+    def stieltjes(self, x, y, plot=False, latex=False, save=False):
         """
         Compute Stieltjes transform of the spectral density over a 2D Cartesian
         grid on the complex plane.
@@ -626,10 +546,6 @@ class FreeForm(object):
 
         plot : bool, default=False
             If `True`, density is plotted.
-
-        plot_glue : bool, default=False
-            If `True`, the fit of glue function to Hilbert transform is
-            plotted.
 
         latex : bool, default=False
             If `True`, the plot is rendered using LaTeX. This option is
@@ -662,7 +578,7 @@ class FreeForm(object):
         References
         ----------
 
-        .. [1] rbd
+        .. [1] tbd
 
         Examples
         --------
@@ -717,13 +633,100 @@ class FreeForm(object):
         m1[mask_m, :] = numpy.conjugate(
             stieltjes(numpy.conjugate(z[mask_m, :])))
 
+        # Second Reimann sheet
         m2[mask_p, :] = m1[mask_p, :]
-        m2[mask_m, :] = -m1[mask_m, :] + self._glue(
-                z[mask_m, :], plot_glue=plot_glue, latex=latex,
-                save=save)
+        m2[mask_m, :] = -m1[mask_m, :] + self._glue(z[mask_m, :])
 
         if plot:
             plot_stieltjes(x, y, m1, m2, self.support, latex=latex, save=save)
+
+        return m1, m2
+
+    # ==============
+    # eval stieltjes
+    # ==============
+
+    def _eval_stieltjes(self, z):
+        """
+        Compute Stieltjes transform of the spectral density.
+
+        Parameters
+        ----------
+
+        z : numpy.array
+            The z values in the complex plan where the Stieltjes transform is
+            evaluated.
+
+
+        Returns
+        -------
+
+        m_p : numpy.ndarray
+            The Stieltjes transform on the principal branch.
+
+        m_m : numpy.ndarray
+            The Stieltjes transform continued to the secondary branch.
+
+        See Also
+        --------
+        density
+        hilbert
+
+        Notes
+        -----
+
+        Notes.
+
+        References
+        ----------
+
+        .. [1] tbd
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> from freealg import FreeForm
+        """
+
+        if self.psi is None:
+            raise RuntimeError('"fit" the model first.')
+
+        z = numpy.asarray(z)
+        shape = z.shape
+        if len(shape) == 0:
+            shape = (1,)
+        z = z.reshape(-1, 1)
+
+        # Stieltjes function
+        if self.method == 'jacobi':
+            stieltjes = partial(jacobi_stieltjes, psi=self.psi,
+                                support=self.support, alpha=self.alpha,
+                                beta=self.beta)
+        elif self.method == 'chebyshev':
+            stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
+                                support=self.support)
+
+        mask_p = z.imag >= 0.0
+        mask_m = z.imag < 0.0
+
+        m1 = numpy.zeros_like(z)
+        m2 = numpy.zeros_like(z)
+
+        # Upper half-plane
+        m1[mask_p] = stieltjes(z[mask_p].reshape(-1, 1)).reshape(-1)
+
+        # Lower half-plane, use Schwarz reflection
+        m1[mask_m] = numpy.conjugate(
+            stieltjes(numpy.conjugate(z[mask_m].reshape(-1, 1)))).reshape(-1)
+
+        # Second Reimann sheet
+        m2[mask_p] = m1[mask_p]
+        m2[mask_m] = -m1[mask_m] + self._glue(
+            z[mask_m].reshape(-1, 1)).reshape(-1)
+
+        m1, m2 = m1.reshape(*shape), m2.reshape(*shape)
 
         return m1, m2
 
@@ -731,8 +734,9 @@ class FreeForm(object):
     # decompress
     # ==========
 
-    def decompress(self, size, x=None, plot=False, latex=False, save=False, delta=1e-4,
-                    iterations=500, step_size=0.1, tolerance=1e-4):
+    def decompress(self, size, x=None, delta=1e-4, iterations=500,
+                   step_size=0.1, tolerance=1e-4, plot=False, latex=False,
+                   save=False):
         """
         Free decompression of spectral density.
 
@@ -745,18 +749,6 @@ class FreeForm(object):
         x : numpy.array, default=None
             Positions where density to be evaluated at. If `None`, an interval
             slightly larger than the support interval will be used.
-
-        plot : bool, default=False
-            If `True`, density is plotted.
-
-        latex : bool, default=False
-            If `True`, the plot is rendered using LaTeX. This option is
-            relevant only if ``plot=True``.
-
-        save : bool, default=False
-            If not `False`, the plot is saved. If a string is given, it is
-            assumed to the save filename (with the file extension). This option
-            is relevant only if ``plot=True``.
 
         delta: float, default=1e-4
             Size of the perturbation into the upper half plane for Plemelj's
@@ -771,6 +763,18 @@ class FreeForm(object):
         tolerance: float, default=1e-4
             Tolerance for the solution obtained by the Newton solver. Also
             used for the finite difference approximation to the derivative.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
 
         Returns
         -------
@@ -802,12 +806,12 @@ class FreeForm(object):
             >>> from freealg import FreeForm
         """
 
-        rho, x, (lb, ub) = decompress(self, size, x=x, delta=delta, iterations=iterations, 
-                        step_size=step_size, tolerance=tolerance)
+        rho, x, (lb, ub) = decompress(self, size, x=x, delta=delta,
+                                      iterations=iterations,
+                                      step_size=step_size, tolerance=tolerance)
 
         if plot:
             plot_density(x.reshape(-1), rho.reshape(-1), support=(lb, ub),
                          label='Decompression', latex=latex, save=save)
 
         return rho
-

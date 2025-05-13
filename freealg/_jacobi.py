@@ -174,9 +174,7 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40):
         integrand = w_nodes * P_k_nodes                      # (n_quad,)
 
         # Broadcast over z: shape (n_quad, ...) / ...
-        # diff = u_z[None, ...] - t_nodes[:, None]           # (n_quad, ...)
         diff = u_z[None, ...] - t_nodes[:, None, None]       # (n_quad, Ny, Nx)
-        # m_k  = (integrand[:, None] / diff).sum(axis=0)     # shape like z
         m_k = (integrand[:, None, None] / diff).sum(axis=0)
 
         # Accumulate with factor 2/span

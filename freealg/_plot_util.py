@@ -19,28 +19,21 @@ import colorsys
 import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
 
-__all__ = ['plot_coeff', 'plot_density', 'plot_hilbert', 'plot_stieltjes',
-           'plot_stieltjes_on_disk', 'plot_glue_fit']
+__all__ = ['plot_fit', 'plot_density', 'plot_hilbert', 'plot_stieltjes',
+           'plot_stieltjes_on_disk']
 
 
-# ==========
-# plot coeff
-# ==========
+# ==============
+# plot coeff fit
+# ==============
 
-def plot_coeff(psi, latex=False, save=False):
+def plot_coeff_fit(psi, latex=False, save=False):
     """
     """
 
     with texplot.theme(use_latex=latex):
 
         fig, ax = plt.subplots(figsize=(6, 2.7))
-        n = numpy.arange(1, 1+psi.size)
-        ax.plot(n, psi**2, '-o', markersize=3, color='black')
-        ax.set_xlim([n[0]-1e-3, n[-1]+1e-3])
-        ax.set_xlabel(r'$k$')
-        ax.set_ylabel(r'$\vert \psi_k \vert^2$')
-        ax.set_title('Spectral Energy per Mode')
-        ax.set_yscale('log')
 
         # Save
         if save is False:
@@ -52,6 +45,64 @@ def plot_coeff(psi, latex=False, save=False):
                 save_filename = save
             else:
                 save_filename = 'energy.pdf'
+
+        texplot.show_or_save_plot(plt, default_filename=save_filename,
+                                  transparent_background=True, dpi=400,
+                                  show_and_save=save_status, verbose=True)
+
+
+# ========
+# plot fit
+# ========
+
+def plot_fit(psi, x_supp, g_supp, g_supp_approx, support, latex=False,
+             save=False):
+    """
+    """
+
+    with texplot.theme(use_latex=latex):
+
+        fig, ax = plt.subplots(figsize=(9, 3), ncols=2)
+
+        # Plot psi
+        n = numpy.arange(1, 1+psi.size)
+        ax[0].plot(n, psi**2, '-o', markersize=3, color='black')
+        ax[0].set_xlim([n[0]-1e-3, n[-1]+1e-3])
+        ax[0].set_xlabel(r'$k$')
+        ax[0].set_ylabel(r'$\vert \psi_k \vert^2$')
+        ax[0].set_title('Spectral Energy per Mode')
+        ax[0].set_yscale('log')
+
+        # Plot pade
+        lam_m, lam_p = support
+        g_supp_min = numpy.min(g_supp)
+        g_supp_max = numpy.max(g_supp)
+        g_supp_dif = g_supp_max - g_supp_min
+        g_min = g_supp_min - g_supp_dif * 1.1
+        g_max = g_supp_max + g_supp_dif * 1.1
+
+        ax[1].plot(x_supp, g_supp, color='firebrick',
+                   label=r'$2 \pi \times $ Hilbert Transform')
+        ax[1].plot(x_supp, g_supp_approx, color='black', label='Pade estimate')
+        ax[1].legend(fontsize='small')
+        ax[1].set_xlim([lam_m, lam_p])
+        ax[1].set_ylim([g_min, g_max])
+        ax[1].set_title('Approximation of Glue Function')
+        ax[1].set_xlabel(r'$x$')
+        ax[1].set_ylabel(r'$G(x)$')
+
+        plt.tight_layout()
+
+        # Save
+        if save is False:
+            save_status = False
+            save_filename = ''
+        else:
+            save_status = True
+            if isinstance(save, str):
+                save_filename = save
+            else:
+                save_filename = 'fit.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=400,
@@ -456,45 +507,6 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False):
                 save_filename = save
             else:
                 save_filename = 'stieltjes_disk.pdf'
-
-        texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=400,
-                                  show_and_save=save_status, verbose=True)
-
-
-# =============
-# plot glue fit
-# =============
-
-def plot_glue_fit(x_supp, g_supp, g_supp_approx, support, latex=False,
-                  save=False):
-    """
-    """
-
-    with texplot.theme(use_latex=latex):
-
-        fig, ax = plt.subplots(figsize=(6, 3))
-
-        lam_m, lam_p = support
-        ax.plot(x_supp, g_supp, color='black', label='Glue target')
-        ax.plot(x_supp, g_supp_approx, color='firebrick',
-                label='Glue estimate')
-        ax.legend(fontsize='small')
-        ax.set_xlim([lam_m, lam_p])
-        ax.set_title('Approximation of Glue function on real axis')
-        ax.set_xlabel(r'$x$')
-        ax.set_ylabel(r'$G(x)$')
-
-        # Save
-        if save is False:
-            save_status = False
-            save_filename = ''
-        else:
-            save_status = True
-            if isinstance(save, str):
-                save_filename = save
-            else:
-                save_filename = 'glue_fit.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=400,

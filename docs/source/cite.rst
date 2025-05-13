@@ -1,40 +1,42 @@
 How to Cite
 ===========
 
-.. [1] Siavash Ameli, Siyuan Zhuang, Ion Stoica, and Michael W. Mahoney. `A Statistical Framework for Ranking LLM-Based Chatbots <https://openreview.net/pdf?id=rAoEub6Nw2>`__. *The Thirteenth International Conference on Learning Representations*, 2025. |ameli-rnk| |btn-bib-1| |btn-view-pdf-1|
+.. [1] Siavash Ameli, Chris van der Heide, Liam Hodgkinson, Fred Roosta, Michael W. Mahoney (2025). *Determinant Estimation under Memory Constraints and Neural Scaling Laws* (under review) |btn-free-doi| |ameli-free| |btn-bib-free| |btn-view-pdf-free|
 
    .. raw:: html
 
         <div class="highlight-BibTeX notranslate collapse" id="collapse-bib1">
         <div class="highlight">
         <pre class="language-bib">
-        <code class="language-bib">@inproceedings{
-            ameli2025a,
-            title={A Statistical Framework for Ranking {LLM}-based Chatbots},
-            author={Siavash Ameli and Siyuan Zhuang and Ion Stoica and Michael W. Mahoney},
-            booktitle={The Thirteenth International Conference on Learning Representations},
-            year={2025},
-            url={https://openreview.net/forum?id=rAoEub6Nw2}
+        <code class="language-bib">@article{ameli-2025,
+            title = {Determinant Estimation under Memory Constraints and Neural Scaling Laws},
+            journal = {},
+            volume = {},
+            pages = {},
+            year = {},
+            issn = {},
+            doi = {},
+            author = {Siavash Ameli, Chris van der Heide, Liam Hodgkinson, Fred Roosta, Michael W. Mahoney},
         }</code></pre>
         </div>
         </div>
 
-.. |btn-rnk-doi| raw:: html
+.. |btn-free-doi| raw:: html
 
-    <a href="https://doi.org/10.48550/arXiv.2412.18407" class="btn btn-outline-info btn-sm btn-extra-sm" role="button">DOI</a>
+    <a href="https://doi.org/10.1016/j.amc.2023.128032" class="btn btn-outline-info btn-sm btn-extra-sm" role="button">DOI</a>
 
-.. |btn-bib-1| raw:: html
+.. |btn-bib-free| raw:: html
 
     <button class="btn btn-outline-info btn-sm btn-extra-sm" type="button" data-toggle="collapse" data-target="#collapse-bib1">
         BibTeX
     </button>
+    
+.. |btn-view-pdf-free| raw:: html
 
-.. |btn-view-pdf-1| raw:: html
-
-    <button class="btn btn-outline-info btn-sm btn-extra-sm" type="button" id="showPaper01">
+    <button class="btn btn-outline-info btn-sm btn-extra-sm" type="button" id="showPDF01">
         PDF
     </button>
-    
-.. |ameli-rnk| image:: https://img.shields.io/badge/arXiv-2412.18407-b31b1b.svg
-   :target: https://doi.org/10.48550/arXiv.2412.18407
-   :alt: arXiv 2412.18407
+
+.. |ameli-free| image:: https://img.shields.io/badge/arXiv-2207.08038-b31b1b.svg
+   :target: https://doi.org/10.48550/arXiv.2207.08038
+   :alt: arXiv 2207.08038

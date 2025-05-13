@@ -74,12 +74,12 @@ Alternative method is Jacobi polynomial.
 .. code-block:: python
 
     >>> psi = ff.fit(method='chebyshev', K=10, alpha=2, beta=2, reg=0,
-    ...              damp='jackson', force=True, plot=True)
+    ...              damp='jackson', force=True, pade_p=1, pade_q=1, plot=True)
 
 .. image:: _static/images/plots/qs_fit.png
     :align: center
     :class: custom-dark
-    :width: 80%
+    :width: 100%
 
 Estimate density using :class:`freealg.FreeForm.density`:
 
@@ -116,6 +116,19 @@ Estimate Stieltjes transform with :class:`freealg.FreeForm.stieltjes`:
     :align: center
     :class: custom-dark
     :width: 100%
+
+Decompress spectral density to a larger matrix with
+:func:`freealg.FreeForm.decompress`:
+
+.. code-block:: python
+
+    >>> rho = ff.decompress(100000, plot=True)
+
+.. image:: _static/images/plots/qs_decompress.png
+    :align: center
+    :class: custom-dark
+    :width: 80%
+
 
 API Reference
 =============
