@@ -30,9 +30,11 @@ def _quantile_func(x, rho):
     cdf /= cdf[-1]
     return interp1d(cdf, x, bounds_error=False, assume_sorted=True)
 
+
 def qmc_sample(x, rho, num_pts):
     """
-    Low-discrepancy sampling from a univariate density estimate using Quasi-Monte Carlo.
+    Low-discrepancy sampling from a univariate density estimate using
+    Quasi-Monte Carlo.
 
     Parameters
     ----------
@@ -55,7 +57,8 @@ def qmc_sample(x, rho, num_pts):
     See Also
     --------
     scipy.stats.qmc.Halton
-        Underlying Quasi-Monte Carlo engine used for generating low-discrepancy points.
+        Underlying Quasi-Monte Carlo engine used for generating low-discrepancy
+        points.
 
     Examples
     --------

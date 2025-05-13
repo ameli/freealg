@@ -820,7 +820,7 @@ class FreeForm(object):
         if plot:
             plot_density(x, rho, support=(lb, ub),
                          label='Decompression', latex=latex, save=save)
-            
+
         eigs = numpy.sort(qmc_sample(x, rho, size))
 
         return rho, eigs
