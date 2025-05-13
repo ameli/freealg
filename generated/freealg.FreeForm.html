@@ -306,7 +306,7 @@
 <h1>freealg.FreeForm<a class="headerlink" href="#freealg-freeform" title="Permalink to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="freealg.FreeForm">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">FreeForm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">FreeForm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm" title="Permalink to this definition">#</a></dt>
 <dd><p>Free probability for large matrices.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -317,6 +317,12 @@ assumed to be the eigenvalues of <span class="math notranslate nohighlight">\(\m
 </dd>
 <dt><strong>support</strong><span class="classifier">tuple, default=None</span></dt><dd><p>The support of the density of <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>. If <cite>None</cite>, it is
 estimated from the minimum and maximum of the eigenvalues.</p>
+</dd>
+<dt><strong>p</strong><span class="classifier">float, default=0.001</span></dt><dd><p>The edges of the support of the distribution is detected by the
+<span class="math notranslate nohighlight">\(p\)</span>-quantile on the left and <span class="math notranslate nohighlight">\((1-p)\)</span>-quantile on the right.
+If the argument <code class="docutils literal notranslate"><span class="pre">support</span></code> is directly provided, this option is
+ignored. This value should be between 0 and 1, ideally a small
+number close to zero.</p>
 </dd>
 </dl>
 </dd>
@@ -359,7 +365,7 @@ estimated from the minimum and maximum of the eigenvalues.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="freealg.FreeForm.stieltjes.html#freealg.FreeForm.stieltjes" title="freealg.FreeForm.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a>(x, y[, p, q, plot, plot_glue, ...])</p></td>
 <td><p>Compute Stieltjes transform of the spectral density.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="freealg.FreeForm.decompress.html#freealg.FreeForm.decompress" title="freealg.FreeForm.decompress"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decompress</span></code></a>(n)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.FreeForm.decompress.html#freealg.FreeForm.decompress" title="freealg.FreeForm.decompress"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decompress</span></code></a>(size)</p></td>
 <td><p>Free decompression of spectral density.</p></td>
 </tr>
 </tbody>
