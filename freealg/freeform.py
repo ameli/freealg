@@ -499,7 +499,7 @@ class FreeForm(object):
     # glue
     # ====
 
-    def _glue(self, z, plot_glue=False, latex=False, save=False):
+    def _glue(self, z, p=2, q=2, plot_glue=False, latex=False, save=False):
         """
         """
 
@@ -524,7 +524,7 @@ class FreeForm(object):
     # stieltjes
     # =========
 
-    def stieltjes(self, z):
+    def stieltjes2(self, z):
         """
         Compute Stieltjes transform of the spectral density.
 
@@ -606,7 +606,7 @@ class FreeForm(object):
 
         return m1, m2
 
-    def stieltjes2(self, x, y, plot=False, plot_glue=False,
+    def stieltjes(self, x, y, p=2, q=2, plot=False, plot_glue=False,
                   latex=False, save=False):
         """
         Compute Stieltjes transform of the spectral density over a 2D Cartesian

@@ -82,9 +82,10 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
     """
 
     alpha = size / matrix.n
+    m = matrix.stieltjes2
     # Lower and upper bound on new support
-    hilb_lb = (1 / matrix.stieltjes(matrix.lam_m + delta * 1j)[1]).real
-    hilb_ub = (1 / matrix.stieltjes(matrix.lam_p + delta * 1j)[1]).real
+    hilb_lb = (1 / m(matrix.lam_m + delta * 1j)[1]).real
+    hilb_ub = (1 / m(matrix.lam_p + delta * 1j)[1]).real
     lb = matrix.lam_m - (alpha - 1) * hilb_lb
     ub = matrix.lam_p - (alpha - 1) * hilb_ub
 
@@ -98,7 +99,7 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
         x = numpy.linspace(x_min, x_max, 500)
 
     def _char_z(z):
-        return z + (1 / matrix.stieltjes(z)[1]) * (1 - alpha)
+        return z + (1 / m(z)[1]) * (1 - alpha)
     
     # Ensure that input is an array
     x = numpy.asarray(x)
@@ -127,7 +128,7 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
             z[mask] = z_m - step_size * objective[mask] / dfdz
 
     # Plemelj's formula
-    char_s = matrix.stieltjes(z)[1] / alpha
+    char_s = m(z)[1] / alpha
     rho = numpy.maximum(0, char_s.imag / numpy.pi)
     rho[numpy.isnan(rho) | numpy.isinf(rho)] = 0
     rho = rho.reshape(*x.shape)
