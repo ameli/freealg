@@ -12,6 +12,7 @@
 # =======
 
 import numpy
+from scipy.stats import gaussian_kde
 from functools import partial
 from ._util import compute_eig, force_density
 from ._jacobi import jacobi_proj, jacobi_approx, jacobi_stieltjes
@@ -45,6 +46,13 @@ class FreeForm(object):
     support : tuple, default=None
         The support of the density of :math:`\\mathbf{A}`. If `None`, it is
         estimated from the minimum and maximum of the eigenvalues.
+
+    p : float, default=0.001
+        The edges of the support of the distribution is detected by the
+        :math:`p`-quantile on the left and :math:`(1-p)`-quantile on the right.
+        If the argument ``support`` is directly provided, this option is
+        ignored. This value should be between 0 and 1, ideally a small
+        number close to zero.
 
     Notes
     -----
@@ -95,7 +103,7 @@ class FreeForm(object):
     # init
     # ====
 
-    def __init__(self, A, support=None):
+    def __init__(self, A, support=None, p=0.001):
         """
         Initialization.
         """
@@ -115,8 +123,8 @@ class FreeForm(object):
 
         # Support
         if support is None:
-            self.lam_m = self.eig.min()
-            self.lam_p = self.eig.max()
+            self.lam_m, self.lam_p = self._detect_support(self.eig, p,
+                                                          smoothen=True)
         else:
             self.lam_m = support[0]
             self.lam_p = support[1]
@@ -127,6 +135,30 @@ class FreeForm(object):
         self.psi = None
         self.alpha = None
         self.beta = None
+
+    # ==============
+    # detect support
+    # ==============
+
+    def _detect_support(self, eig, p, smoothen=True):
+        """
+        """
+
+        # Using quantile directly.
+        if smoothen:
+            kde = gaussian_kde(eig)
+            xs = numpy.linspace(eig.min(), eig.max(), 1000)
+            fs = kde(xs)
+
+            cdf = numpy.cumsum(fs)
+            cdf /= cdf[-1]
+
+            lam_m = numpy.interp(p, cdf, xs)
+            lam_p = numpy.interp(1-p, cdf, xs)
+        else:
+            lam_m, lam_p = numpy.quantile(eig, [p, 1-p])
+
+        return lam_m, lam_p
 
     # ===
     # fit

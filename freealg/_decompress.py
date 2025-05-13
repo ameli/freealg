@@ -19,7 +19,7 @@ __all__ = ['decompress']
 # decompress
 # ==========
 
-def decompres(size):
+def decompress(size):
     """
     Free decompression.
 
