@@ -108,8 +108,7 @@ def _decode_poles(s, lam_m, lam_p):
 # inner ls
 # ========
 
-# def _inner_ls(x, f, poles):  # TEST
-def _inner_ls(x, f, poles, p=1):
+def _inner_ls(x, f, poles, p=1, pade_reg=0.0):
     """
     This is the inner least square (blazing fast).
     """
@@ -169,7 +168,35 @@ def _inner_ls(x, f, poles, p=1):
         cols.append(phi)
 
         A = numpy.column_stack(cols)
-        theta, *_ = lstsq(A, f, rcond=None)
+
+        # theta, *_ = lstsq(A, f, rcond=None) # TEST
+        if pade_reg > 0:
+            ATA = A.T.dot(A)
+
+            # # add pade_reg * I
+            # ATA.flat[:: ATA.shape[1]+1] += pade_reg
+            # ATf = A.T.dot(f)
+            # theta = numpy.linalg.solve(ATA, ATf)
+
+            # figure out how many elements to skip
+            if p == 1:
+                skip = 2     # skip c and D
+            elif p == 0:
+                skip = 1     # skip c only
+            else:
+                skip = 0     # all entries are residues
+
+            # add λ only for the residue positions
+            n = ATA.shape[0]
+            for i in range(skip, n):
+                ATA[i, i] += pade_reg
+
+            # then solve
+            ATf = A.T.dot(f)
+            theta = numpy.linalg.solve(ATA, ATf)
+
+        else:
+            theta, *_ = lstsq(A, f, rcond=None)
 
         if p == -1:
             c, D, resid = 0.0, 0.0, theta
@@ -213,12 +240,11 @@ def _eval_rational(z, c, D, poles, resid):
 # fit pade
 # ========
 
-def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', safety=1.0,
-             max_outer=40, xtol=1e-12, ftol=1e-12, optimizer='ls', verbose=0):
+def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', pade_reg=0.0,
+             safety=1.0, max_outer=40, xtol=1e-12, ftol=1e-12, optimizer='ls',
+             verbose=0):
     """
     This is the outer optimiser.
-
-    Fits  G(x) = (p>=1 ? c : 0) + (p==1 ? D x : 0) + sum r_j/(x - a_j) # TEST
     """
 
     # Checks
@@ -232,10 +258,9 @@ def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', safety=1.0,
     f = numpy.asarray(f, float)
 
     poles0 = _default_poles(q, lam_m, lam_p, safety=safety, odd_side=odd_side)
-    # if q == 0:                               # nothing to optimise
     if q == 0 and p <= 0:
-        # c, D, resid = _inner_ls(x, f, poles0)  # TEST
-        c, D, resid = _inner_ls(x, f, poles0, p)
+        # c, D, resid = _inner_ls(x, f, poles0, pade_reg=pade_reg)  # TEST
+        c, D, resid = _inner_ls(x, f, poles0, p, pade_reg=pade_reg)
         pade_sol = {
             'c': c, 'D': D, 'poles': poles0, 'resid': resid,
             'outer_iters': 0
@@ -249,11 +274,10 @@ def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', safety=1.0,
     # residual
     # --------
 
-    # def residual(s): # TEST
     def residual(s, p=p):
         poles = _decode_poles(s, lam_m, lam_p)
-        # c, D, resid = _inner_ls(x, f, poles) # TEST
-        c, D, resid = _inner_ls(x, f, poles, p)
+        # c, D, resid = _inner_ls(x, f, poles, pade_reg=pade_reg) # TEST
+        c, D, resid = _inner_ls(x, f, poles, p, pade_reg=pade_reg)
         return _eval_rational(x, c, D, poles, resid) - f
 
     # ----------------
@@ -299,8 +323,8 @@ def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', safety=1.0,
         raise RuntimeError('"optimizer" is invalid.')
 
     poles = _decode_poles(res.x, lam_m, lam_p)
-    # c, D, resid = _inner_ls(x, f, poles) # TEST
-    c, D, resid = _inner_ls(x, f, poles, p)
+    # c, D, resid = _inner_ls(x, f, poles, pade_reg=pade_reg) # TEST
+    c, D, resid = _inner_ls(x, f, poles, p, pade_reg=pade_reg)
 
     pade_sol = {
         'c': c, 'D': D, 'poles': poles, 'resid': resid,
@@ -354,8 +378,8 @@ def fit_pade_old(x, f, lam_m, lam_p, p, q, delta=1e-8, B=numpy.inf,
       Q(x) = prod_{j=0..q-1}(x - b_j)
 
     Constraints:
-      a_i ∈ [lam_m, lam_p]
-      b_j ∈ (-infty, lam_m - delta] cup [lam_p + delta, infty)
+      a_i in [lam_m, lam_p]
+      b_j in (-infty, lam_m - delta] cup [lam_p + delta, infty)
 
     Approach:
       - Brute‐force all 2^q left/right assignments for denominator roots

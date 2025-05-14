@@ -14,14 +14,15 @@
 import numpy
 from scipy.special import eval_chebyu
 
-__all__ = ['chebyshev_proj', 'chebyshev_approx', 'chebyshev_stieltjes']
+__all__ = ['chebyshev_sample_proj', 'chebyshev_kernel_proj',
+           'chebyshev_approx', 'chebyshev_stieltjes']
 
 
-# ==============
-# chebyshev proj
-# ==============
+# =====================
+# chebyshev sample proj
+# =====================
 
-def chebyshev_proj(eig, support, K=10, reg=0.0):
+def chebyshev_sample_proj(eig, support, K=10, reg=0.0):
     """
     Estimate the coefficients \\psi_k in
 
@@ -77,6 +78,39 @@ def chebyshev_proj(eig, support, K=10, reg=0.0):
 
         # Add regularization on the diagonal
         psi[k] = M_k / (norm + penalty)
+
+    return psi
+
+
+# =====================
+# chebyshev kernel proj
+# =====================
+
+def chebyshev_kernel_proj(xs, pdf, support, K=10, reg=0.0):
+    """
+    Projection of a *continuous* density given on a grid (xs, pdf)
+    onto the Chebyshev-II basis.
+
+    xs  : 1-D numpy array (original x–axis, not the t-variable)
+    pdf : same shape as xs, integrates to 1 on xs
+    """
+
+    lam_m, lam_p = support
+    t = (2.0 * xs - (lam_m + lam_p)) / (lam_p - lam_m)   # map to [−1,1]
+
+    norm = numpy.pi / 2.0
+    psi = numpy.empty(K + 1)
+
+    for k in range(K + 1):
+        Pk = eval_chebyu(k, t)                       # U_k(t) on the grid
+        moment = numpy.trapz(Pk * pdf, xs)           # \int U_k(t) \rho(x) dx
+
+        if k == 0:
+            penalty = 0
+        else:
+            penalty = reg * (k / (K + 1))**2
+
+        psi[k] = moment / (norm + penalty)
 
     return psi
 

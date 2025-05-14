@@ -4,3 +4,4 @@ texplot
 matplotlib
 colorcet
 networkx
+statsmodels

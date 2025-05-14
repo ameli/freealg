@@ -13,10 +13,13 @@
 
 import numpy
 from scipy.stats import gaussian_kde
+# from statsmodels.nonparametric.kde import KDEUnivariate
 from functools import partial
 from ._util import compute_eig, force_density
-from ._jacobi import jacobi_proj, jacobi_approx, jacobi_stieltjes
-from ._chebyshev import chebyshev_proj, chebyshev_approx, chebyshev_stieltjes
+from ._jacobi import jacobi_sample_proj, jacobi_kernel_proj, jacobi_approx, \
+    jacobi_stieltjes
+from ._chebyshev import chebyshev_sample_proj, chebyshev_kernel_proj, \
+    chebyshev_approx, chebyshev_stieltjes
 from ._damp import jackson_damping, lanczos_damping, fejer_damping, \
     exponential_damping, parzen_damping
 from ._plot_util import plot_fit, plot_density, plot_hilbert, plot_stieltjes
@@ -174,8 +177,9 @@ class FreeForm(object):
     # ===
 
     def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0.0,
-            damp=None, force=False, pade_p=0, pade_q=1, odd_side='left',
-            optimizer='ls', plot=False, latex=False, save=False):
+            projection='kernel', kernel_bw=None, damp=None, force=False,
+            pade_p=0, pade_q=1, odd_side='left', pade_reg=0.0, optimizer='ls',
+            plot=False, latex=False, save=False):
         """
         Fit model to eigenvalues.
 
@@ -202,6 +206,19 @@ class FreeForm(object):
         reg : float, default=0.0
             Tikhonov regularization coefficient.
 
+        projection : {``'sample'``, ``'kernel'``}, default= ``'kernel'``
+            The method of Galerkin projection:
+
+            * ``'sample'``: directly project samples (eigenvalues) to the
+              orthogonal polynomials. This method is highly unstable as it
+              treats each sample as a delta Dirac function.
+            * ``'kernel'``: computes KDE from the samples and project a
+              smooth KDE to the orthogonal polynomials. This method is stable.
+
+        kernel_bw : float, default=None
+            Kernel band-wdth. See scipy.stats.gaussian_kde. This argument is
+            relevant if ``projection='kernel'`` is set.
+
         damp : {``'jackson'``, ``'lanczos'``, ``'fejer``, ``'exponential'``,\
                 ``'parzen'``}, default=None
             Damping method to eliminate Gibbs oscillation.
@@ -224,6 +241,9 @@ class FreeForm(object):
             that this is only for the initialization of the poles. The
             optimizer will decide best location by moving them to the left or
             right of the support.
+
+        pade_reg : float, default=0.0
+            Regularization for Pade approximation.
 
         optimizer : {``'ls'``, ``'de'``}, default= ``'ls'``
             Optimizer for Pade approximation, including:
@@ -278,12 +298,50 @@ class FreeForm(object):
         if beta <= -1:
             raise ValueError('"beta" should be greater then "-1".')
 
+        if not (method in ['jacobi', 'chebyshev']):
+            raise ValueError('"method" is invalid.')
+
+        if not (projection in ['sample', 'kernel']):
+            raise ValueError('"projection" is invalid.')
+
         # Project eigenvalues to Jacobi polynomials basis
         if method == 'jacobi':
-            psi = jacobi_proj(self.eig, support=self.support, K=K, alpha=alpha,
-                              beta=beta, reg=reg)
+
+            if projection == 'sample':
+                psi = jacobi_sample_proj(self.eig, support=self.support, K=K,
+                                         alpha=alpha, beta=beta, reg=reg)
+            else:
+                # smooth KDE on a fixed grid
+                xs = numpy.linspace(self.lam_m, self.lam_p, 2000)
+                pdf = gaussian_kde(self.eig, bw_method=kernel_bw)(xs)
+
+                # Adaptive KDE
+                # k = KDEUnivariate(self.eig)
+                # k.fit(bw="silverman", fft=False, weights=None, gridsize=1024,
+                #       adaptive=True)
+                # pdf = k.evaluate(xs)
+
+                psi = jacobi_kernel_proj(xs, pdf, support=self.support, K=K,
+                                         alpha=alpha, beta=beta, reg=reg)
+
         elif method == 'chebyshev':
-            psi = chebyshev_proj(self.eig, support=self.support, K=K, reg=reg)
+
+            if projection == 'sample':
+                psi = chebyshev_sample_proj(self.eig, support=self.support,
+                                            K=K, reg=reg)
+            else:
+                # smooth KDE on a fixed grid
+                xs = numpy.linspace(self.lam_m, self.lam_p, 2000)
+                pdf = gaussian_kde(self.eig, bw_method=kernel_bw)(xs)
+
+                # Adaptive KDE
+                # k = KDEUnivariate(self.eig)
+                # k.fit(bw="silverman", fft=False, weights=None, gridsize=1024,
+                #       adaptive=True)
+                # pdf = k.evaluate(xs)
+
+                psi = chebyshev_kernel_proj(xs, pdf, support=self.support,
+                                            K=K, reg=reg)
         else:
             raise ValueError('"method" is invalid.')
 
@@ -334,8 +392,9 @@ class FreeForm(object):
         #                           B=numpy.inf, S=numpy.inf)
         self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m, self.lam_p,
                                   p=pade_p, q=pade_q, odd_side=odd_side,
-                                  safety=1.0, max_outer=40, xtol=1e-12,
-                                  ftol=1e-12, optimizer=optimizer, verbose=0)
+                                  pade_reg=pade_reg, safety=1.0, max_outer=40,
+                                  xtol=1e-12, ftol=1e-12, optimizer=optimizer,
+                                  verbose=0)
 
         if plot:
             g_supp_approx = eval_pade(x_supp[None, :], self._pade_sol)[0, :]

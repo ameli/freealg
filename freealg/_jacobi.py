@@ -15,7 +15,8 @@ import numpy
 from scipy.special import eval_jacobi, roots_jacobi
 from scipy.special import gammaln, beta as Beta
 
-__all__ = ['jacobi_proj', 'jacobi_approx', 'jacobi_stieltjes']
+__all__ = ['jacobi_sample_proj', 'jacobi_kernel_proj', 'jacobi_approx',
+           'jacobi_stieltjes']
 
 
 # ==============
@@ -43,11 +44,11 @@ def jacobi_sq_norm(k, alpha, beta):
     return numpy.exp(lg_num - lg_den)
 
 
-# ===========
-# jacobi pro
-# ===========
+# ==================
+# jacobi sample proj
+# ==================
 
-def jacobi_proj(eig, support, K=10, alpha=0.0, beta=0.0, reg=0.0):
+def jacobi_sample_proj(eig, support, K=10, alpha=0.0, beta=0.0, reg=0.0):
     """
     """
 
@@ -71,6 +72,37 @@ def jacobi_proj(eig, support, K=10, alpha=0.0, beta=0.0, reg=0.0):
             penalty = reg * (k / (K + 1))**2
 
         # Add regularization on the diagonal
+        psi[k] = moment / (N_k + penalty)
+
+    return psi
+
+
+# ==================
+# jacobi kernel proj
+# ==================
+
+def jacobi_kernel_proj(xs, pdf, support, K=10, alpha=0.0, beta=0.0, reg=0.0):
+    """
+    Same moments as `jacobi_proj`, but the target is a *continuous* density
+    given on a grid (xs, pdf).
+    """
+
+    lam_m, lam_p = support
+    t = (2.0 * xs - (lam_p + lam_m)) / (lam_p - lam_m)      # map to [-1,1]
+    psi = numpy.empty(K + 1)
+
+    for k in range(K + 1):
+        Pk = eval_jacobi(k, alpha, beta, t)
+        N_k = jacobi_sq_norm(k, alpha, beta)
+
+        #  \int P_k(t) w(t) \rho(t) dt. w(t) cancels with pdf already being rho
+        moment = numpy.trapz(Pk * pdf, xs)
+
+        if k == 0:
+            penalty = 0
+        else:
+            penalty = reg * (k / (K + 1))**2
+
         psi[k] = moment / (N_k + penalty)
 
     return psi
