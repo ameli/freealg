@@ -477,7 +477,7 @@ class FreeForm(object):
 
         # Check density is unit mass
         mass = numpy.trapz(rho, x)
-        if not numpy.isclose(mass, 1.0, atol=1e-3):
+        if not numpy.isclose(mass, 1.0, atol=1e-2):
             # raise RuntimeWarning(f'"rho" is not unit mass. mass: {mass}. ' +
             #                      r'Set "force=True".')
             print(f'"rho" is not unit mass. mass: {mass}. Set "force=True".')

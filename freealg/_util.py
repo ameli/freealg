@@ -72,14 +72,14 @@ def force_density(psi0, support, approx, grid, alpha=0.0, beta=0.0):
     if beta <= 0.0 and beta > -0.5:
         constraints.append({
             'type': 'eq',
-            'fun': lambda psi: approx(numpy.array([lam_m], psi))[0]
+            'fun': lambda psi: approx(numpy.array([lam_m]), psi)[0]
         })
 
     # Enforce zero at right edge
     if alpha <= 0.0 and alpha > -0.5:
         constraints.append({
             'type': 'eq',
-            'fun': lambda psi: approx(numpy.array([lam_p], psi))[0]
+            'fun': lambda psi: approx(numpy.array([lam_p]), psi)[0]
         })
 
     # Solve a small quadratic programming
@@ -89,4 +89,12 @@ def force_density(psi0, support, approx, grid, alpha=0.0, beta=0.0):
                    method='SLSQP',
                    options={'maxiter': 1000, 'ftol': 1e-9, 'eps': 1e-8})
 
-    return res.x
+    psi = res.x
+
+    # Normalize first mode to unit mass
+    x = numpy.linspace(lam_m, lam_p, 1000)
+    rho = approx(x, psi)
+    mass = numpy.trapz(rho, x)
+    psi[0] = psi[0] / mass
+
+    return psi
