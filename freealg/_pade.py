@@ -23,13 +23,13 @@ __all__ = ['fit_pade', 'eval_pade']
 # default poles
 # =============
 
-def _default_poles(q, lam_m, lam_p, safety=1.0):
+def _default_poles(q, lam_m, lam_p, safety=1.0, odd_side='left'):
     """
     Generate q real poles outside [lam_m, lam_p].
 
     • even q  : q/2 on each side (Chebyshev-like layout)
     • odd  q  : (q+1)/2 on the *left*,  (q–1)/2 on the right
-                so q=1 => single pole left of the interval.
+                so q=1 => single pole on whichever side `odd_side` says.
 
     safety >= 1: 1, then poles start half an interval away; >1 pushes them
     farther.
@@ -39,8 +39,18 @@ def _default_poles(q, lam_m, lam_p, safety=1.0):
         return numpy.empty(0)
 
     Delta = 0.5 * (lam_p - lam_m)
-    m_L = (q + 1) // 2            # how many on the left
-    m_R = q // 2                  # how many on the right
+
+    # Decide how many poles on each side. m_L and m_R determine how many poles
+    # to be on the left and right of the support interval.
+    if q % 2 == 0:
+        m_L = m_R = q // 2
+    else:
+        if odd_side == 'left':
+            m_L = (q + 1) // 2
+            m_R = q // 2
+        else:
+            m_L = q // 2
+            m_R = (q + 1) // 2
 
     # Chebyshev-extrema offsets  (all positive)
     kL = numpy.arange(m_L)
@@ -53,6 +63,7 @@ def _default_poles(q, lam_m, lam_p, safety=1.0):
 
     left = lam_m - offsL
     right = lam_p + offsR
+
     return numpy.sort(numpy.concatenate([left, right]))
 
 
@@ -88,8 +99,8 @@ def _decode_poles(s, lam_m, lam_p):
     d = 0.5 * (lam_p - lam_m)
     return numpy.where(
         s >= 0,
-        lam_m - d * numpy.exp(s),     # maps s=0 → a=lam_m−d (left)
-        lam_p + d * numpy.exp(-s)     # maps s=0 → a=lam_p+d (right)
+        lam_m - d * numpy.exp(s),     # maps s=0 to a=lam_m−d (left)
+        lam_p + d * numpy.exp(-s)     # maps s=0 to a=lam_p+d (right)
     )
 
 
@@ -97,21 +108,76 @@ def _decode_poles(s, lam_m, lam_p):
 # inner ls
 # ========
 
-def _inner_ls(x, f, poles):
+# def _inner_ls(x, f, poles):  # TEST
+def _inner_ls(x, f, poles, p=1):
     """
     This is the inner least square (blazing fast).
     """
 
+    if poles.size == 0 and p == -1:
+        return 0.0, 0.0, numpy.empty(0)
+
     if poles.size == 0:                      # q = 0
-        A = numpy.column_stack((numpy.ones_like(x), x))
+        # A = numpy.column_stack((numpy.ones_like(x), x))
+        cols = [numpy.ones_like(x)] if p >= 0 else []
+        if p == 1:
+            cols.append(x)
+        A = numpy.column_stack(cols)
+        # ---
         theta, *_ = lstsq(A, f, rcond=None)
-        c, D = theta
-        resid = numpy.empty(0)
+        # c, D = theta  # TEST
+        if p == -1:
+            c = 0.0
+            D = 0.0
+            resid = numpy.empty(0)
+        elif p == 0:
+            c = theta[0]
+            D = 0.0
+            resid = numpy.empty(0)
+        else:  # p == 1
+            c, D = theta
+            resid = numpy.empty(0)
     else:
+        # phi = 1.0 / (x[:, None] - poles[None, :])
+        # # A = numpy.column_stack((numpy.ones_like(x), x, phi))  # TEST
+        # # theta, *_ = lstsq(A, f, rcond=None)
+        # # c, D, resid = theta[0], theta[1], theta[2:]
+        # phi = 1.0 / (x[:, None] - poles[None, :])
+        # cols = [numpy.ones_like(x)] if p >= 0 else []
+        # if p == 1:
+        #     cols.append(x)
+        #     cols.append(phi)
+        #     A = numpy.column_stack(cols)
+        #     theta, *_ = lstsq(A, f, rcond=None)
+        # if p == -1:
+        #     c = 0.0
+        #     D = 0.0
+        #     resid = theta
+        # elif p == 0:
+        #     c = theta[0]
+        #     D = 0.0
+        #     resid = theta[1:]
+        # else:  # p == 1
+        #     c = theta[0]
+        #     D = theta[1]
+        #     resid = theta[2:]
+
         phi = 1.0 / (x[:, None] - poles[None, :])
-        A = numpy.column_stack((numpy.ones_like(x), x, phi))
+        cols = [numpy.ones_like(x)] if p >= 0 else []
+        if p == 1:
+            cols.append(x)
+        cols.append(phi)
+
+        A = numpy.column_stack(cols)
         theta, *_ = lstsq(A, f, rcond=None)
-        c, D, resid = theta[0], theta[1], theta[2:]
+
+        if p == -1:
+            c, D, resid = 0.0, 0.0, theta
+        elif p == 0:
+            c, D, resid = theta[0], 0.0, theta[1:]
+        else:  # p == 1
+            c, D, resid = theta[0], theta[1], theta[2:]
+
     return c, D, resid
 
 
@@ -123,33 +189,53 @@ def _eval_rational(z, c, D, poles, resid):
     """
     """
 
-    z = z[:, None]
+    # z = z[:, None]
+    # if poles.size == 0:
+    #     term = 0.0
+    # else:
+    #     term = numpy.sum(resid / (z - poles), axis=1)
+    #
+    # return c + D * z.ravel() + term
+
+    # ensure z is a 1-D array
+    z = numpy.asarray(z)
+    z_col = z[:, None]
+
     if poles.size == 0:
         term = 0.0
     else:
-        term = numpy.sum(resid / (z - poles), axis=1)
+        term = numpy.sum(resid / (z_col - poles[None, :]), axis=1)
 
-    return c + D * z.ravel() + term
+    return c + D * z + term
 
 
 # ========
 # fit pade
 # ========
 
-def fit_pade(x, f, lam_m, lam_p, q=2, safety=1.0, max_outer=40, xtol=1e-12,
-             ftol=1e-12, optimizer='ls', verbose=0):
+def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', safety=1.0,
+             max_outer=40, xtol=1e-12, ftol=1e-12, optimizer='ls', verbose=0):
     """
     This is the outer optimiser.
 
-    Fit  G(x) = c + D x + sum r_j /(x - a_j)
+    Fits  G(x) = (p>=1 ? c : 0) + (p==1 ? D x : 0) + sum r_j/(x - a_j) # TEST
     """
+
+    # Checks
+    if not (odd_side in ['left', 'right']):
+        raise ValueError('"odd_side" can only be "left" or "right".')
+
+    if not (p in [-1, 0, 1]):
+        raise ValueError('"pade_p" can only be -1, 0, or 1.')
 
     x = numpy.asarray(x, float)
     f = numpy.asarray(f, float)
 
-    poles0 = _default_poles(q, lam_m, lam_p, safety=safety)
-    if q == 0:                               # nothing to optimise
-        c, D, resid = _inner_ls(x, f, poles0)
+    poles0 = _default_poles(q, lam_m, lam_p, safety=safety, odd_side=odd_side)
+    # if q == 0:                               # nothing to optimise
+    if q == 0 and p <= 0:
+        # c, D, resid = _inner_ls(x, f, poles0)  # TEST
+        c, D, resid = _inner_ls(x, f, poles0, p)
         pade_sol = {
             'c': c, 'D': D, 'poles': poles0, 'resid': resid,
             'outer_iters': 0
@@ -163,9 +249,11 @@ def fit_pade(x, f, lam_m, lam_p, q=2, safety=1.0, max_outer=40, xtol=1e-12,
     # residual
     # --------
 
-    def residual(s):
+    # def residual(s): # TEST
+    def residual(s, p=p):
         poles = _decode_poles(s, lam_m, lam_p)
-        c, D, resid = _inner_ls(x, f, poles)
+        # c, D, resid = _inner_ls(x, f, poles) # TEST
+        c, D, resid = _inner_ls(x, f, poles, p)
         return _eval_rational(x, c, D, poles, resid) - f
 
     # ----------------
@@ -181,9 +269,18 @@ def fit_pade(x, f, lam_m, lam_p, q=2, safety=1.0, max_outer=40, xtol=1e-12,
                             verbose=verbose)
 
     elif optimizer == 'de':
-        span = lam_p - lam_m
-        B = 3.0  # multiples of span
-        L = numpy.log(B * span)
+
+        # Bounds
+        # span = lam_p - lam_m
+        # B = 3.0  # multiples of span
+        # L = numpy.log(B * span)
+        # bounds = [(-L, L)] * len(s0)
+
+        d = 0.5*(lam_p - lam_m)
+        # the minimum factor so that lam_m - d*exp(s)=0 is exp(s)=lam_m/d
+        min_factor = lam_m/d
+        B = max(10.0, min_factor*10.0)
+        L = numpy.log(B)
         bounds = [(-L, L)] * len(s0)
 
         # Global stage
@@ -202,7 +299,8 @@ def fit_pade(x, f, lam_m, lam_p, q=2, safety=1.0, max_outer=40, xtol=1e-12,
         raise RuntimeError('"optimizer" is invalid.')
 
     poles = _decode_poles(res.x, lam_m, lam_p)
-    c, D, resid = _inner_ls(x, f, poles)
+    # c, D, resid = _inner_ls(x, f, poles) # TEST
+    c, D, resid = _inner_ls(x, f, poles, p)
 
     pade_sol = {
         'c': c, 'D': D, 'poles': poles, 'resid': resid,
@@ -220,18 +318,27 @@ def eval_pade(z, pade_sol):
     """
     """
 
-    z_arr = numpy.asanyarray(z)                   # shape=(M,N)
-    flat = z_arr.ravel()                          # shape=(M·N,)
+    # z_arr = numpy.asanyarray(z)                   # shape=(M,N)
+    # flat = z_arr.ravel()                          # shape=(M·N,)
+    # c, D = pade_sol['c'], pade_sol['D']
+    # poles = pade_sol['poles']
+    # resid = pade_sol['resid']
+    #
+    # # _eval_rational takes a 1-D array of z's and returns 1-D outputs
+    # flat_out = _eval_rational(flat, c, D, poles, resid)
+    #
+    # # restore the original shape
+    # out = flat_out.reshape(z_arr.shape)         # shape=(M,N)
+    #
+    # return out
+
+    z = numpy.asanyarray(z)      # complex or real, any shape
     c, D = pade_sol['c'], pade_sol['D']
-    poles = pade_sol['poles']
-    resid = pade_sol['resid']
+    poles, resid = pade_sol['poles'], pade_sol['resid']
 
-    # _eval_rational takes a 1-D array of z's and returns 1-D outputs
-    flat_out = _eval_rational(flat, c, D, poles, resid)
-
-    # restore the original shape
-    out = flat_out.reshape(z_arr.shape)         # shape=(M,N)
-
+    out = c + D*z
+    for bj, rj in zip(poles, resid):
+        out += rj/(z - bj)       # each is an (N,) op, no N×q temp
     return out
 
 

@@ -174,8 +174,8 @@ class FreeForm(object):
     # ===
 
     def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0.0,
-            damp=None, force=False, pade_p=1, pade_q=1, optimizer='ls',
-            plot=False, latex=False, save=False):
+            damp=None, force=False, pade_p=0, pade_q=1, odd_side='left',
+            optimizer='ls', plot=False, latex=False, save=False):
         """
         Fit model to eigenvalues.
 
@@ -210,11 +210,20 @@ class FreeForm(object):
             If `True`, it forces the density to have unit mass and to be
             strictly positive.
 
-        pade_p : int, default=1
-            Degree of polynomial :math:`P(z)`. See notes below.
+        pade_p : int, default=0
+            Degree of polynomial :math:`P(z)` is :math:`q+p` where :math:`p`
+            can only be ``-1``, ``0``, or ``1``. See notes below.
 
         pade_q : int, default=1
-            Degree of polynomial :math:`Q(z)`. See notes below.
+            Degree of polynomial :math:`Q(z)` is :math:`q`. See notes below.
+
+        odd_side : {``'left'``, ``'right'``}, default= ``'left'``
+            In case of odd number of poles (when :math:`q` is odd), the extra
+            pole is set to the left or right side of the support interval,
+            while all other poles are split in half to the left and right. Note
+            that this is only for the initialization of the poles. The
+            optimizer will decide best location by moving them to the left or
+            right of the support.
 
         optimizer : {``'ls'``, ``'de'``}, default= ``'ls'``
             Optimizer for Pade approximation, including:
@@ -240,6 +249,20 @@ class FreeForm(object):
 
         psi : (K+1, ) numpy.ndarray
             Coefficients of fitting Jacobi polynomials
+
+        Notes
+        -----
+
+        The Pade approximation for the glue function :math:`G(z)` is
+
+        .. math::
+
+            G(z) = \\frac{P(z)}{Q(z)},
+
+        where :math:`P(z)` and :math:`Q(z)` are polynomials of order
+        :math:`p+q` and :math:`q` respectively. Note that :math:`p` can only
+        be -1, 0, or 1, effectively making Pade approximation of order
+        :math:`q-1:q`, :math:`q:q`, or :math:`q-1:q`.
 
         Examples
         --------
@@ -310,9 +333,9 @@ class FreeForm(object):
         #                           self.lam_p, pade_p, pade_q, delta=1e-8,
         #                           B=numpy.inf, S=numpy.inf)
         self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m, self.lam_p,
-                                  q=pade_q, safety=1.0, max_outer=40,
-                                  xtol=1e-12, ftol=1e-12, optimizer=optimizer,
-                                  verbose=0)
+                                  p=pade_p, q=pade_q, odd_side=odd_side,
+                                  safety=1.0, max_outer=40, xtol=1e-12,
+                                  ftol=1e-12, optimizer=optimizer, verbose=0)
 
         if plot:
             g_supp_approx = eval_pade(x_supp[None, :], self._pade_sol)[0, :]
@@ -792,7 +815,6 @@ class FreeForm(object):
 
         density
         stieltjes
-        qmc_sample
 
         Notes
         -----
