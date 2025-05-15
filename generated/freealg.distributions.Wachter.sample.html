@@ -319,11 +319,11 @@
 <h1>freealg.distributions.Wachter.sample<a class="headerlink" href="#freealg-distributions-wachter-sample" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.distributions.Wachter.sample">
-<span class="sig-prename descclassname"><span class="pre">Wachter.</span></span><span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.Wachter.sample" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">Wachter.</span></span><span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'qmc'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.Wachter.sample" title="Permalink to this definition">#</a></dt>
 <dd><p>Sample from distribution.</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
+<dd class="field-odd"><dl>
 <dt><strong>size</strong><span class="classifier">int</span></dt><dd><p>Size of sample.</p>
 </dd>
 <dt><strong>x_min</strong><span class="classifier">float, default=None</span></dt><dd><p>Minimum of sample values. If <cite>None</cite>, the left edge of the support
@@ -331,6 +331,12 @@ is used.</p>
 </dd>
 <dt><strong>x_max</strong><span class="classifier">float, default=None</span></dt><dd><p>Maximum of sample values. If <cite>None</cite>, the right edge of the support
 is used.</p>
+</dd>
+<dt><strong>method</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'mc'</span></code>, <code class="docutils literal notranslate"><span class="pre">'qmc'</span></code>}, default= <code class="docutils literal notranslate"><span class="pre">'qmc'</span></code></span></dt><dd><p>Method of drawing samples from uniform distirbution:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'mc'</span></code>: Monte Carlo</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'qmc'</span></code>: Quasi Monte Carlo</p></li>
+</ul>
 </dd>
 <dt><strong>plot</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, samples histogram is plotted.</p>
 </dd>
