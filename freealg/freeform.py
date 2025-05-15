@@ -207,7 +207,7 @@ class FreeForm(object):
             Tikhonov regularization coefficient.
 
         projection : {``'sample'``, ``'gaussian'``, ``'beta'``}, \
-                default= ``'gaussian'``
+                default= ``'beta'``
             The method of Galerkin projection:
 
             * ``'sample'``: directly project samples (eigenvalues) to the
@@ -220,7 +220,7 @@ class FreeForm(object):
               project a smooth KDE to the orthogonal polynomials. This method
               is stable.
 
-        kernel_bw : float, default=None
+        kernel_bw : float, default=0.001
             Kernel band-wdth. See scipy.stats.gaussian_kde. This argument is
             relevant if ``projection='kernel'`` is set.
 
