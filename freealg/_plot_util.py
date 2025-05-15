@@ -275,8 +275,8 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
         ax0.plot([lam_m, lam_p], [eps, eps], '-', linewidth=1, color='black')
         ax0.set_xlabel(r'$\mathrm{Re}(z)$')
         ax0.set_ylabel(r'$\mathrm{Im}(z)$')
-        ax0.set_title(r'(a) Principal Branch on $\mathbb{H}$ and ' +
-                      r'$\mathbb{H}^{-}$')
+        ax0.set_title(r'(a) Principal Branch on $\mathbb{C}^{+}$ and ' +
+                      r'$\mathbb{C}^{-}$')
         ax0.set_yticks(numpy.arange(y_min, y_max+0.01, 0.5))
         ax0.set_xlim([x_min, x_max])
         ax0.set_ylim([y_min, y_max])
@@ -291,8 +291,8 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
         ax1.plot([lam_p, x_max], [eps, eps], '-', linewidth=1, color='black')
         ax1.set_xlabel(r'$\mathrm{Re}(z)$')
         ax1.set_ylabel(r'$\mathrm{Im}(z)$')
-        ax1.set_title(r'(b) Principal Branch on $\mathbb{H}$, Secondary ' +
-                      r'Branch on $\mathbb{H}^{-}$')
+        ax1.set_title(r'(b) Principal Branch on $\mathbb{C}^{+}$, Secondary ' +
+                      r'Branch on $\mathbb{C}^{-}$')
         ax1.set_yticks(numpy.arange(y_min, y_max+0.01, 0.5))
         ax1.set_xlim([x_min, x_max])
         ax1.set_ylim([y_min, y_max])
@@ -503,9 +503,9 @@ def plot_samples(x, rho, x_min, x_max, samples, latex=False, save=False):
 
         fig, ax = plt.subplots(figsize=(6, 3))
 
-        bins = numpy.linspace(x_min, x_max, samples.size // 10)
+        bins = numpy.linspace(x_min, x_max, samples.size // 15)
         _ = ax.hist(samples, bins, density=True, color='silver',
-                    label='Samples histogram')
+                    edgecolor='none', label='Samples histogram')
         ax.plot(x, rho, color='black', label='Exact density')
         ax.legend(fontsize='small')
         ax.set_ylim(bottom=0)

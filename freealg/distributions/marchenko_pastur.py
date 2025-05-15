@@ -20,6 +20,7 @@ try:
     from scipy.integrate import cumtrapz
 except ImportError:
     from scipy.integrate import cumulative_trapezoid as cumtrapz
+from scipy.stats import qmc
 
 __all__ = ['MarchenkoPastur']
 
@@ -435,8 +436,8 @@ class MarchenkoPastur(object):
     # sample
     # ======
 
-    def sample(self, size, x_min=None, x_max=None, plot=False, latex=False,
-               save=False):
+    def sample(self, size, x_min=None, x_max=None, method='qmc', plot=False,
+               latex=False, save=False):
         """
         Sample from distribution.
 
@@ -453,6 +454,12 @@ class MarchenkoPastur(object):
         x_max : float, default=None
             Maximum of sample values. If `None`, the right edge of the support
             is used.
+
+        method : {``'mc'``, ``'qmc'``}, default= ``'qmc'``
+            Method of drawing samples from uniform distirbution:
+
+            * ``'mc'``: Monte Carlo
+            * ``'qmc'``: Quasi Monte Carlo
 
         plot : bool, default=False
             If `True`, samples histogram is plotted.
@@ -509,9 +516,17 @@ class MarchenkoPastur(object):
         inv_cdf = interp1d(cdf, xs, bounds_error=False,
                            fill_value=(x_min, x_max))
 
-        # Sample and map
-        u = numpy.random.rand(size)
-        samples = inv_cdf(u)
+        # Draw from uniform distribution
+        if method == 'mc':
+            u = numpy.random.rand(size)
+        elif method == 'qmc':
+            engine = qmc.Halton(d=1)
+            u = engine.random(size)
+        else:
+            raise ValueError('"method" is invalid.')
+
+        # Draw from distribution by mapping from inverse CDF
+        samples = inv_cdf(u).ravel()
 
         if plot:
             radius = 0.5 * (self.lam_p - self.lam_m)
