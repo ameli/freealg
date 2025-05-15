@@ -341,7 +341,7 @@ then -1. This option is only applicable when <code class="docutils literal notra
 </dd>
 <dt><strong>reg</strong><span class="classifier">float, default=0.0</span></dt><dd><p>Tikhonov regularization coefficient.</p>
 </dd>
-<dt><strong>projection</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'sample'</span></code>, <code class="docutils literal notranslate"><span class="pre">'gaussian'</span></code>, <code class="docutils literal notranslate"><span class="pre">'beta'</span></code>},                 default= <code class="docutils literal notranslate"><span class="pre">'gaussian'</span></code></span></dt><dd><p>The method of Galerkin projection:</p>
+<dt><strong>projection</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'sample'</span></code>, <code class="docutils literal notranslate"><span class="pre">'gaussian'</span></code>, <code class="docutils literal notranslate"><span class="pre">'beta'</span></code>},                 default= <code class="docutils literal notranslate"><span class="pre">'beta'</span></code></span></dt><dd><p>The method of Galerkin projection:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">'sample'</span></code>: directly project samples (eigenvalues) to the
 orthogonal polynomials. This method is highly unstable as it
@@ -354,7 +354,7 @@ project a smooth KDE to the orthogonal polynomials. This method
 is stable.</p></li>
 </ul>
 </dd>
-<dt><strong>kernel_bw</strong><span class="classifier">float, default=None</span></dt><dd><p>Kernel band-wdth. See scipy.stats.gaussian_kde. This argument is
+<dt><strong>kernel_bw</strong><span class="classifier">float, default=0.001</span></dt><dd><p>Kernel band-wdth. See scipy.stats.gaussian_kde. This argument is
 relevant if <code class="docutils literal notranslate"><span class="pre">projection='kernel'</span></code> is set.</p>
 </dd>
 <dt><strong>damp</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'jackson'</span></code>, <code class="docutils literal notranslate"><span class="pre">'lanczos'</span></code>, <code class="docutils literal notranslate"><span class="pre">'fejer</span></code>, <code class="docutils literal notranslate"><span class="pre">'exponential'</span></code>,                <code class="docutils literal notranslate"><span class="pre">'parzen'</span></code>}, default=None</span></dt><dd><p>Damping method to eliminate Gibbs oscillation.</p>
