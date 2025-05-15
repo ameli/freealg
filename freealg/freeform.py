@@ -15,7 +15,7 @@ import numpy
 from scipy.stats import gaussian_kde
 # from statsmodels.nonparametric.kde import KDEUnivariate
 from functools import partial
-from ._util import compute_eig, force_density
+from ._util import compute_eig, beta_kde, force_density
 from ._jacobi import jacobi_sample_proj, jacobi_kernel_proj, jacobi_approx, \
     jacobi_stieltjes
 from ._chebyshev import chebyshev_sample_proj, chebyshev_kernel_proj, \
@@ -177,7 +177,7 @@ class FreeForm(object):
     # ===
 
     def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0.0,
-            projection='kernel', kernel_bw=None, damp=None, force=False,
+            projection='gaussian', kernel_bw=None, damp=None, force=False,
             pade_p=0, pade_q=1, odd_side='left', pade_reg=0.0, optimizer='ls',
             plot=False, latex=False, save=False):
         """
@@ -206,14 +206,19 @@ class FreeForm(object):
         reg : float, default=0.0
             Tikhonov regularization coefficient.
 
-        projection : {``'sample'``, ``'kernel'``}, default= ``'kernel'``
+        projection : {``'sample'``, ``'gaussian'``, ``'beta'``}, \
+                default= ``'gaussian'``
             The method of Galerkin projection:
 
             * ``'sample'``: directly project samples (eigenvalues) to the
               orthogonal polynomials. This method is highly unstable as it
               treats each sample as a delta Dirac function.
-            * ``'kernel'``: computes KDE from the samples and project a
-              smooth KDE to the orthogonal polynomials. This method is stable.
+            * ``'gaussian'``: computes Gaussian-Kernel KDE from the samples and
+              project a smooth KDE to the orthogonal polynomials. This method
+              is stable.
+            * ``'beta'``: computes Beta-Kernel KDE from the samples and
+              project a smooth KDE to the orthogonal polynomials. This method
+              is stable.
 
         kernel_bw : float, default=None
             Kernel band-wdth. See scipy.stats.gaussian_kde. This argument is
@@ -301,7 +306,7 @@ class FreeForm(object):
         if not (method in ['jacobi', 'chebyshev']):
             raise ValueError('"method" is invalid.')
 
-        if not (projection in ['sample', 'kernel']):
+        if not (projection in ['sample', 'gaussian', 'beta']):
             raise ValueError('"projection" is invalid.')
 
         # Project eigenvalues to Jacobi polynomials basis
@@ -313,13 +318,24 @@ class FreeForm(object):
             else:
                 # smooth KDE on a fixed grid
                 xs = numpy.linspace(self.lam_m, self.lam_p, 2000)
-                pdf = gaussian_kde(self.eig, bw_method=kernel_bw)(xs)
+
+                if projection == 'gaussian':
+                    pdf = gaussian_kde(self.eig, bw_method=kernel_bw)(xs)
+                else:
+                    pdf = beta_kde(self.eig, xs, self.lam_m, self.lam_p,
+                                   kernel_bw)
 
                 # Adaptive KDE
                 # k = KDEUnivariate(self.eig)
                 # k.fit(bw="silverman", fft=False, weights=None, gridsize=1024,
                 #       adaptive=True)
                 # pdf = k.evaluate(xs)
+
+                # TEST
+                # import matplotlib.pyplot as plt
+                # plt.plot(xs, pdf)
+                # plt.grid(True)
+                # plt.show()
 
                 psi = jacobi_kernel_proj(xs, pdf, support=self.support, K=K,
                                          alpha=alpha, beta=beta, reg=reg)
@@ -332,7 +348,12 @@ class FreeForm(object):
             else:
                 # smooth KDE on a fixed grid
                 xs = numpy.linspace(self.lam_m, self.lam_p, 2000)
-                pdf = gaussian_kde(self.eig, bw_method=kernel_bw)(xs)
+
+                if projection == 'gaussian':
+                    pdf = gaussian_kde(self.eig, bw_method=kernel_bw)(xs)
+                else:
+                    pdf = beta_kde(self.eig, xs, self.lam_m, self.lam_p,
+                                   kernel_bw)
 
                 # Adaptive KDE
                 # k = KDEUnivariate(self.eig)
@@ -892,6 +913,8 @@ class FreeForm(object):
 
             >>> from freealg import FreeForm
         """
+
+        size = int(size)
 
         rho, x, (lb, ub) = decompress(self, size, x=x, delta=delta,
                                       iterations=iterations,

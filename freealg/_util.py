@@ -13,9 +13,10 @@
 
 import numpy
 import scipy
+from scipy.stats import beta
 from scipy.optimize import minimize
 
-__all__ = ['compute_eig', 'force_density']
+__all__ = ['compute_eig', 'beta_kde', 'force_density']
 
 
 # ===========
@@ -30,6 +31,54 @@ def compute_eig(A, lower=False):
     eig = scipy.linalg.eigvalsh(A, lower=lower, driver='ev')
 
     return eig
+
+
+# ========
+# beta kde
+# ========
+
+def beta_kde(eig, xs, lam_m, lam_p, h):
+    """
+    Beta-kernel KDE with automatic guards against NaNs.
+
+    Parameters
+    ----------
+    eig    : (n,) 1-D array of samples
+    xs     : evaluation grid (must lie within [lam_m, lam_p])
+    lam_m, lam_p : float, support endpoints  (lam_m < lam_p)
+    h      : bandwidth in rescaled units (0 < h < 1)
+
+    Returns
+    -------
+    pdf    : ndarray  same length as xs
+    """
+
+    span = lam_p - lam_m
+    if span <= 0:
+        raise ValueError("lam_p must be larger than lam_m")
+
+    # map samples and grid to [0,1]
+    u = (eig - lam_m) / span
+    t = (xs - lam_m) / span
+
+    if u.min() < 0 or u.max() > 1:
+        mask = (u > 0) & (u < 1)
+        u = u[mask]
+
+    pdf = numpy.zeros_like(xs, dtype=float)
+    n = len(u)
+
+    # tiny positive number to keep shape parameters >0
+    eps = 1e-6
+    for ui in u:
+        a = max(ui / h + 1.0, eps)
+        b = max((1.0 - ui) / h + 1.0, eps)
+        pdf += beta.pdf(t, a, b)
+
+    pdf /= n * span                        # renormalise
+    pdf[(t < 0) | (t > 1)] = 0.0           # exact zeros outside
+
+    return pdf
 
 
 # =============
