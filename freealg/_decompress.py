@@ -11,8 +11,9 @@
 # =======
 
 import numpy
+from scipy.integrate import solve_ivp
 
-__all__ = ['decompress']
+__all__ = ['decompress','reverse_characteristics']
 
 
 # ==========
@@ -134,3 +135,40 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
     rho = rho.reshape(*x.shape)
 
     return rho, x, (lb, ub)
+
+def reverse_characteristics(matrix, z_inits, T, iterations=500, step_size=0.1,
+                                 tolerance=1e-8):
+    t_span = (0, T)
+    t_eval = numpy.linspace(t_span[0], t_span[1], 50)
+
+
+    m = matrix._eval_stieltjes
+
+    def _char_z(z, t):
+        return z + (1 / m(z)[1]) * (1 - numpy.exp(t))
+
+    target_z, target_t = numpy.meshgrid(z_inits, t_eval)
+
+    z = numpy.full(target_z.shape, numpy.mean(matrix.support) - .1j,
+                   dtype=numpy.complex128)
+
+    # Broken Newton steps can produce a lot of warnings. Removing them
+    # for now.
+    with numpy.errstate(all='ignore'):
+        for _ in range(iterations):
+            objective = _char_z(z, target_t) - target_z
+            mask = numpy.abs(objective) >= tolerance
+            if not numpy.any(mask):
+                break
+            z_m = z[mask]
+            t_m = target_t[mask]
+
+            # Perform finite difference approximation
+            dfdz = _char_z(z_m+tolerance, t_m) - _char_z(z_m-tolerance, t_m)
+            dfdz /= 2*tolerance
+            dfdz[dfdz == 0] = 1.0
+
+            # Perform Newton step
+            z[mask] = z_m - step_size * objective[mask] / dfdz
+
+    return z

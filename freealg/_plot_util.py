@@ -18,6 +18,7 @@ import matplotlib
 import colorsys
 import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
+from ._decompress import reverse_characteristics
 
 __all__ = ['plot_fit', 'plot_density', 'plot_hilbert', 'plot_stieltjes',
            'plot_stieltjes_on_disk']
@@ -247,7 +248,7 @@ def _value_formatter(v, pos):
 # plot stieltjes
 # ==============
 
-def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
+def plot_stieltjes(x, y, m1, m2, support, latex=False, char_curves=None, save=False):
     """
     """
 
@@ -296,6 +297,24 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
         ax1.set_yticks(numpy.arange(y_min, y_max+0.01, 0.5))
         ax1.set_xlim([x_min, x_max])
         ax1.set_ylim([y_min, y_max])
+        
+        if char_curves is not None:
+            curves = reverse_characteristics(char_curves['matrix'], char_curves['z'], 4)
+            lw = 2
+            for idx in range(curves.shape[1]):
+                creal, cimag = curves[:,idx].real, curves[:,idx].imag
+                ax1.plot(creal, cimag, ':', color='white', linewidth=lw, alpha=0.75)
+                ax1.annotate(
+                    '',                           # no text
+                    xy=(creal[-1], cimag[-1]),            # arrow tip at final point
+                    xytext=(creal[-2], cimag[-2]),        # tail at penultimate point
+                    arrowprops=dict(
+                        arrowstyle='-|>',         # simple arrow head
+                        mutation_scale=5,        # size of the head
+                        color='white',
+                        lw=lw, alpha=0.75                    # line width of the arrow shaft
+                    )
+                )
 
         pos = ax1.get_position()
         cbar_width = 0.013
