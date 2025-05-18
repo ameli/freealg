@@ -631,7 +631,8 @@ class FreeForm(object):
     # stieltjes
     # =========
 
-    def stieltjes(self, x, y, plot=False, latex=False, char_curves=None, save=False):
+    def stieltjes(self, x, y, plot=False, latex=False, char_curves=None,
+                  save=False):
         """
         Compute Stieltjes transform of the spectral density over a 2D Cartesian
         grid on the complex plane.
@@ -746,9 +747,8 @@ class FreeForm(object):
         m2[mask_m, :] = -m1[mask_m, :] + self._glue(z[mask_m, :])
 
         if plot:
-            plot_stieltjes(x, y, m1, m2, self.support, latex=latex, 
-                           char_curves={'matrix': self, 
-                                        'z': char_curves}, 
+            plot_stieltjes(x, y, m1, m2, self.support, latex=latex,
+                           char_curves={'matrix': self, 'z': char_curves},
                            save=save)
 
         return m1, m2

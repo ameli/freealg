@@ -244,11 +244,42 @@ def _value_formatter(v, pos):
         return f"{m_val:.1f}"
 
 
+# ================
+# plot char curves
+# ================
+def _plot_char_curves(ax, char_curves):
+    """
+    """
+
+    curves = reverse_characteristics(char_curves['matrix'],
+                                     char_curves['z'], 4)
+    lw = 2
+    for idx in range(curves.shape[1]):
+
+        creal, cimag = curves[:, idx].real, curves[:, idx].imag
+
+        ax.plot(creal, cimag, ':', color='white', linewidth=lw,
+                alpha=0.75)
+
+        ax.annotate(
+            '',                             # no text
+            xy=(creal[-1], cimag[-1]),      # arrow tip at final point
+            xytext=(creal[-2], cimag[-2]),  # tail at penultimate point
+            arrowprops=dict(
+                arrowstyle='-|>',           # simple arrow head
+                mutation_scale=5,           # size of the head
+                color='white',
+                lw=lw, alpha=0.75,          # arrow shaft line width
+            )
+        )
+
+
 # ==============
 # plot stieltjes
 # ==============
 
-def plot_stieltjes(x, y, m1, m2, support, latex=False, char_curves=None, save=False):
+def plot_stieltjes(x, y, m1, m2, support, latex=False, char_curves=None,
+                   save=False):
     """
     """
 
@@ -297,24 +328,10 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, char_curves=None, save=Fa
         ax1.set_yticks(numpy.arange(y_min, y_max+0.01, 0.5))
         ax1.set_xlim([x_min, x_max])
         ax1.set_ylim([y_min, y_max])
-        
+
+        # Plot characteristic curves
         if char_curves is not None:
-            curves = reverse_characteristics(char_curves['matrix'], char_curves['z'], 4)
-            lw = 2
-            for idx in range(curves.shape[1]):
-                creal, cimag = curves[:,idx].real, curves[:,idx].imag
-                ax1.plot(creal, cimag, ':', color='white', linewidth=lw, alpha=0.75)
-                ax1.annotate(
-                    '',                           # no text
-                    xy=(creal[-1], cimag[-1]),            # arrow tip at final point
-                    xytext=(creal[-2], cimag[-2]),        # tail at penultimate point
-                    arrowprops=dict(
-                        arrowstyle='-|>',         # simple arrow head
-                        mutation_scale=5,        # size of the head
-                        color='white',
-                        lw=lw, alpha=0.75                    # line width of the arrow shaft
-                    )
-                )
+            _plot_char_curves(ax1, char_curves)
 
         pos = ax1.get_position()
         cbar_width = 0.013
