@@ -631,8 +631,7 @@ class FreeForm(object):
     # stieltjes
     # =========
 
-    def stieltjes(self, x, y, plot=False, latex=False, char_curves=None,
-                  save=False):
+    def stieltjes(self, x, y, plot=False, latex=False, save=False):
         """
         Compute Stieltjes transform of the spectral density over a 2D Cartesian
         grid on the complex plane.
@@ -655,10 +654,6 @@ class FreeForm(object):
         latex : bool, default=False
             If `True`, the plot is rendered using LaTeX. This option is
             relevant only if ``plot=True``.
-
-        char_curves : numpy.array, default=None
-            If ``plot=True``, also plot characteristic curves starting from
-            these locations.
 
         save : bool, default=False
             If not `False`, the plot is saved. If a string is given, it is
@@ -747,9 +742,7 @@ class FreeForm(object):
         m2[mask_m, :] = -m1[mask_m, :] + self._glue(z[mask_m, :])
 
         if plot:
-            plot_stieltjes(x, y, m1, m2, self.support, latex=latex,
-                           char_curves={'matrix': self, 'z': char_curves},
-                           save=save)
+            plot_stieltjes(x, y, m1, m2, self.support, latex=latex, save=save)
 
         return m1, m2
 

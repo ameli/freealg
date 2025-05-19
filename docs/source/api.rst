@@ -27,3 +27,4 @@ Distributions
     freealg.distributions.Wigner
     freealg.distributions.KestenMcKay
     freealg.distributions.Wachter
+    freealg.distributions.Meixner

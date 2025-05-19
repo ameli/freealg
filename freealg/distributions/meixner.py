@@ -224,7 +224,7 @@ class Meixner(object):
             >>> mx = Meixner(2, 3)
             >>> hilb = mx.hilbert(plot=True)
 
-        .. image:: ../_static/images/plots/mw_hilbert.png
+        .. image:: ../_static/images/plots/mx_hilbert.png
             :align: center
             :class: custom-dark
         """
@@ -240,11 +240,11 @@ class Meixner(object):
 
         def _P(x):
             denom = 1.0 + self.b
-            return (1.0 + 2.0 * self.b) * (x - self.a) / denom
+            return ((1.0 + 2.0 * self.b) * x + self.a) / denom
 
         def _Q(x):
             denom = 1.0 + self.b
-            return (self.b * (x - self.a)**2 + 1.0) / denom
+            return (self.b * x**2 + self.a * x + 1.0) / denom
 
         P = _P(x)
         Q = _Q(x)
@@ -273,8 +273,8 @@ class Meixner(object):
 
         sign = -1 if alt_branch else 1
         denom = 1.0 + self.b
-        A = (self.b * (z - self.a)**2 + 1.0) / denom
-        B = (1.0 + 2.0 * self.b) * (z - self.a) / denom
+        A = (self.b * z**2 + self.a * z + 1.0) / denom
+        B = ((1.0 + 2.0 * self.b) * z + self.a) / denom
         D = B**2 - 4 * A
         sqrtD = numpy.sqrt(D)
         m1 = (-B + sqrtD) / (2 * A)
