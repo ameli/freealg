@@ -55,7 +55,7 @@ class Wigner(object):
     Notes
     -----
 
-    The Marchenko-Pastur distribution has the absolutely-continuous density
+    The Wigner distribution has the absolutely-continuous density
 
     .. math::
 
@@ -248,8 +248,8 @@ class Wigner(object):
 
     def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
         """
-        Stieltjes transform (principal or secondary branch)
-        for Marchenko–Pastur distribution on upper half-plane.
+        Stieltjes transform (principal or secondary branch) for Wigner
+        distribution on upper half-plane.
         """
 
         m = numpy.empty_like(z, dtype=complex)
@@ -357,7 +357,7 @@ class Wigner(object):
 
         .. code-block:: python
 
-            >>> m1, m2 = mp.stieltjes(plot=True, on_disk=True)
+            >>> m1, m2 = wg.stieltjes(plot=True, on_disk=True)
 
         .. image:: ../_static/images/plots/wg_stieltjes_disk.png
             :align: center

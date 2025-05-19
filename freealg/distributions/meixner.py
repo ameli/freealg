@@ -12,7 +12,6 @@
 # =======
 
 import numpy
-import networkx as nx
 from scipy.interpolate import interp1d
 from .._plot_util import plot_density, plot_hilbert, plot_stieltjes, \
     plot_stieltjes_on_disk, plot_samples
@@ -23,22 +22,25 @@ except ImportError:
     from scipy.integrate import cumulative_trapezoid as cumtrapz
 from scipy.stats import qmc
 
-__all__ = ['KestenMcKay']
+__all__ = ['Meixner']
 
 
-# ============
-# Kesten McKay
-# ============
+# =======
+# Meixner
+# =======
 
-class KestenMcKay(object):
+class Meixner(object):
     """
-    Kesten-McKay distribution.
+    Meixner distribution.
 
     Parameters
     ----------
 
-    d : float
-        Parameter :math:`d` of the distribution. See Notes.
+    a : float
+        Parameter :math:`a` of the distribution. See Notes.
+
+    b : float
+        Parameter :math:`b` of the distribution. See Notes.
 
     Methods
     -------
@@ -61,50 +63,50 @@ class KestenMcKay(object):
     Notes
     -----
 
-    The Kesten-McKay distribution has the absolutely-continuous density
+    The Meixner distribution has the absolutely-continuous density
 
     .. math::
 
         \\mathrm{d} \\rho(x) =
-        \\frac{\\sqrt{4(d-1) - x^2}}{2 \\pi (d^2 - x^2)}
+        \\frac{4(1+b) - (x-a)^2}{2 \\pi (b x^2 + a x + 1)}
         \\mathbf{1}_{x \\in [\\lambda_{-}, \\lambda_{+}]} \\mathrm{d}{x}
 
-    where
+    where :math:`a, b` are the shape parameters of the distributon. The edges
+    of the support are
 
-    * :math:`\\lambda_{\\pm} = \\pm 2 \\sqrt{d-1}` are the edges of
-      the support.
-    * :math:`d > 1` is the shape parameter of the density.
+    .. math::
+
+        \\lambda_{\\pm} = a \\pm 2 \\sqrt{1 + b}.
 
     References
     ----------
 
-    .. [1] Kesten, H. (1959). Symmetric random walks on groups. Transactions of
-           the American Mathematical Society, 92(2), 336–354.
-
-    .. [2] McKay, B. D. (1981). The expected eigenvalue distribution of a large
-           regular graph. Linear Algebra and its Applications, 40, 203-216
+    .. [1] Saitoh, N. & Yosnida, M. (2001). The infinite divisibility and
+           orthogonal polynomials with a constant recursion formula in free
+           probability theory. Probab. Math. Statist., 21, 159–170.
 
     Examples
     --------
 
     .. code-block:: python
 
-        >>> from freealg.distributions import KestenMcKay
-        >>> km = KestenMcKay()
+        >>> from freealg.distributions import Meixner
+        >>> mx = Meixner(2, 3)
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, d):
+    def __init__(self, a, b):
         """
         Initialization.
         """
 
-        self.d = d
-        self.lam_p = 2.0 * numpy.sqrt(d - 1.0)
-        self.lam_m = -2.0 * numpy.sqrt(d - 1.0)
+        self.a = a
+        self.b = b
+        self.lam_p = self.a + 2.0 * numpy.sqrt(1.0 + self.b)
+        self.lam_m = self.a - 2.0 * numpy.sqrt(1.0 + self.b)
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -149,11 +151,11 @@ class KestenMcKay(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> rho = km.density(plot=True)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> rho = mx.density(plot=True)
 
-        .. image:: ../_static/images/plots/km_density.png
+        .. image:: ../_static/images/plots/mx_density.png
             :align: center
             :class: custom-dark
         """
@@ -170,8 +172,9 @@ class KestenMcKay(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
 
-        rho[mask] = (self.d / (2.0 * numpy.pi * (self.d**2 - x[mask]**2))) * \
-            numpy.sqrt(4.0 * (self.d - 1.0) - x[mask]**2)
+        rho[mask] = \
+            numpy.sqrt(4.0 * (1.0 + self.b) - (x[mask] - self.a)**2) / \
+            (2.0 * numpy.pi * (self.b * x[mask]**2 + self.a * x[mask] + 1))
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -217,11 +220,11 @@ class KestenMcKay(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> hilb = km.hilbert(plot=True)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> hilb = mx.hilbert(plot=True)
 
-        .. image:: ../_static/images/plots/km_hilbert.png
+        .. image:: ../_static/images/plots/mw_hilbert.png
             :align: center
             :class: custom-dark
         """
@@ -236,10 +239,12 @@ class KestenMcKay(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            return (self.d - 2.0) * x / (self.d - 1.0)
+            denom = 1.0 + self.b
+            return (1.0 + 2.0 * self.b) * (x - self.a) / denom
 
         def _Q(x):
-            return (self.d**2 - x**2) / (self.d - 1.0)
+            denom = 1.0 + self.b
+            return (self.b * (x - self.a)**2 + 1.0) / denom
 
         P = _P(x)
         Q = _Q(x)
@@ -262,21 +267,20 @@ class KestenMcKay(object):
 
     def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
         """
-        Stieltjes transform (principal or secondary branch) for Kesten-McKay
+        Stieltjes transform (principal or secondary branch) for Meixner
         distribution on upper half-plane.
         """
 
-        m = numpy.empty_like(z, dtype=complex)
-
         sign = -1 if alt_branch else 1
-        A = (self.d**2 - z**2) / (self.d - 1.0)
-        B = ((self.d - 2.0) * z) / (self.d - 1.0)
+        denom = 1.0 + self.b
+        A = (self.b * (z - self.a)**2 + 1.0) / denom
+        B = (1.0 + 2.0 * self.b) * (z - self.a) / denom
         D = B**2 - 4 * A
         sqrtD = numpy.sqrt(D)
         m1 = (-B + sqrtD) / (2 * A)
         m2 = (-B - sqrtD) / (2 * A)
 
-        # pick correct branch
+        # pick correct branch only for non‑masked entries
         upper = z.imag >= 0
         branch = numpy.empty_like(m1)
         branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
@@ -358,11 +362,11 @@ class KestenMcKay(object):
 
         .. code-block:: python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> m1, m2 = km.stieltjes(plot=True)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> m1, m2 = mx.stieltjes(plot=True)
 
-        .. image:: ../_static/images/plots/km_stieltjes.png
+        .. image:: ../_static/images/plots/mx_stieltjes.png
             :align: center
             :class: custom-dark
 
@@ -370,9 +374,9 @@ class KestenMcKay(object):
 
         .. code-block:: python
 
-            >>> m1, m2 = km.stieltjes(plot=True, on_disk=True)
+            >>> m1, m2 = mx.stieltjes(plot=True, on_disk=True)
 
-        .. image:: ../_static/images/plots/km_stieltjes_disk.png
+        .. image:: ../_static/images/plots/mx_stieltjes_disk.png
             :align: center
             :class: custom-dark
         """
@@ -483,11 +487,11 @@ class KestenMcKay(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> s = km.sample(2000)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> s = mx.sample(2000)
 
-        .. image:: ../_static/images/plots/km_samples.png
+        .. image:: ../_static/images/plots/mx_samples.png
             :align: center
             :class: custom-dark
         """
@@ -551,7 +555,10 @@ class KestenMcKay(object):
         Returns
         -------
 
-        A : numpy.ndarray
+        Sx : numpy.ndarray
+            A matrix of the size :math:`n \\times n`.
+
+        Sy : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
         Examples
@@ -559,16 +566,19 @@ class KestenMcKay(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> A = km.matrix(2000)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> A = mx.matrix(2000)
         """
 
         n = size
-        G = nx.random_regular_graph(self.d, n)
-        A = nx.to_numpy_array(G, dtype=float)  # shape (n,n)
+        m1 = int(self.a * n)
+        m2 = int(self.b * n)
 
-        mu = self.d / n
-        A_c = A - mu * numpy.ones((n, n))
+        X = numpy.random.randn(n, m1)
+        Y = numpy.random.randn(n, m2)
 
-        return A_c
+        Sx = X @ X.T
+        Sy = Y @ Y.T
+
+        return Sx, Sy

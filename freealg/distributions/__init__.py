@@ -10,7 +10,6 @@ from .marchenko_pastur import MarchenkoPastur
 from .wigner import Wigner
 from .kesten_mckay import KestenMcKay
 from .wachter import Wachter
-# from .meixner import meixner
+from .meixner import Meixner
 
-# __all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter', 'Meixner']
-__all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter']
+__all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter', 'Meixner']

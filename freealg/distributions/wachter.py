@@ -63,7 +63,7 @@ class Wachter(object):
     Notes
     -----
 
-    The Marchenko-Pastur distribution has the absolutely-continuous density
+    The Wachter distribution has the absolutely-continuous density
 
     .. math::
 
@@ -241,10 +241,12 @@ class Wachter(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            return 1.0 - self.a + (self.a + self.b - 2.0) * x
+            denom = self.a + self.b - 1.0
+            return (1.0 - self.a + (self.a + self.b - 2.0) * x) / denom
 
         def _Q(x):
-            return x * (1.0 - x)
+            denom = self.a + self.b - 1.0
+            return x * (1.0 - x) / denom
 
         P = _P(x)
         Q = _Q(x)
@@ -267,13 +269,14 @@ class Wachter(object):
 
     def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
         """
-        Stieltjes transform (principal or secondary branch)
-        for Marchenko–Pastur distribution on upper half-plane.
+        Stieltjes transform (principal or secondary branch) for Wachter
+        distribution on upper half-plane.
         """
 
         sign = -1 if alt_branch else 1
-        A = z * (1.0 - z)
-        B = 1.0 - self.a + (self.a + self.b - 2.0) * z
+        denom = self.a + self.b - 1.0
+        A = (z * (1.0 - z)) / denom
+        B = (1.0 - self.a + (self.a + self.b - 2.0) * z) / denom
         D = B**2 - 4 * A
         sqrtD = numpy.sqrt(D)
         m1 = (-B + sqrtD) / (2 * A)
@@ -373,7 +376,7 @@ class Wachter(object):
 
         .. code-block:: python
 
-            >>> m1, m2 = mp.stieltjes(plot=True, on_disk=True)
+            >>> m1, m2 = wa.stieltjes(plot=True, on_disk=True)
 
         .. image:: ../_static/images/plots/wa_stieltjes_disk.png
             :align: center
