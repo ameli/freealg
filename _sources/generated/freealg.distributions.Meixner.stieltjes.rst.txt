@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Meixner.stieltjes
+=======================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Meixner.stieltjes
