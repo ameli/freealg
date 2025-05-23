@@ -84,13 +84,13 @@ class Wigner(object):
     # init
     # ====
 
-    def __init__(self):
+    def __init__(self, size):
         """
         Initialization.
         """
-
-        self.lam_p = 2.0
-        self.lam_m = -2.0
+        self.size = size
+        self.lam_p = size**0.5
+        self.lam_m = -size**0.5
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -156,8 +156,8 @@ class Wigner(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
 
-        rho[mask] = (1.0 / (2.0 * numpy.pi)) * \
-            numpy.sqrt(4.0 - x[mask]**2)
+        rho[mask] = (2.0 / (numpy.pi * self.size)) * \
+            numpy.sqrt(self.size - x[mask]**2)
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -225,7 +225,7 @@ class Wigner(object):
             return x
 
         def _Q(x):
-            return 1.0
+            return self.size
 
         P = _P(x)
         Q = _Q(x)
@@ -525,7 +525,7 @@ class Wigner(object):
     # matrix
     # ======
 
-    def matrix(self, size):
+    def matrix(self):
         """
         Generate matrix with the spectral density of the distribution.
 
@@ -552,16 +552,19 @@ class Wigner(object):
         """
 
         # Parameters
-        n = size
-        p = 1.0 / size
+        n = self.size
+        X = numpy.random.randn(n,n)
+        X = (numpy.triu(X,0) + numpy.triu(X,1).T)/2
+        return X
+        #p = 1.0 / size
 
         # Random graph
-        G = nx.erdos_renyi_graph(n, p)
+        #G = nx.erdos_renyi_graph(n, p)
 
         # Adjancency
-        A = nx.to_numpy_array(G)  # shape (n,n), 0/1 entries
+        #A = nx.to_numpy_array(G)  # shape (n,n), 0/1 entries
 
         # Center & scale to get the semicircle
-        A_c = (A - p) / numpy.sqrt(n * p * (1-p))
+        #A_c = (A - p) / numpy.sqrt(n * p * (1-p))
 
-        return A_c
+        #return A_c
