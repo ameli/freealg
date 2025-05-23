@@ -89,8 +89,8 @@ class Wigner(object):
         Initialization.
         """
         self.size = size
-        self.lam_p = size**0.5
-        self.lam_m = -size**0.5
+        self.lam_p = 2*size**0.5
+        self.lam_m = -2*size**0.5
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -156,8 +156,8 @@ class Wigner(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
 
-        rho[mask] = (2.0 / (numpy.pi * self.size)) * \
-            numpy.sqrt(self.size - x[mask]**2)
+        rho[mask] = (2.0 / (4 * numpy.pi * self.size)) * \
+            numpy.sqrt(4 * self.size - x[mask]**2)
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -554,7 +554,7 @@ class Wigner(object):
         # Parameters
         n = self.size
         X = numpy.random.randn(n,n)
-        X = (numpy.triu(X,0) + numpy.triu(X,1).T)/2
+        X = (numpy.triu(X,0) + numpy.triu(X,1).T)
         return X
         #p = 1.0 / size
 
