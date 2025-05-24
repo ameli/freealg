@@ -456,7 +456,7 @@ class MarchenkoPastur(object):
             is used.
 
         method : {``'mc'``, ``'qmc'``}, default= ``'qmc'``
-            Method of drawing samples from uniform distirbution:
+            Method of drawing samples from uniform distribution:
 
             * ``'mc'``: Monte Carlo
             * ``'qmc'``: Quasi Monte Carlo

@@ -275,18 +275,26 @@ class Meixner(object):
         denom = 1.0 + self.b
         A = (self.b * z**2 + self.a * z + 1.0) / denom
         B = ((1.0 + 2.0 * self.b) * z + self.a) / denom
-        D = B**2 - 4 * A
-        sqrtD = numpy.sqrt(D)
+
+        # D = B**2 - 4 * A
+        # sqrtD = numpy.sqrt(D)
+
+        # Avoid numpy picking the wrong branch
+        d = 2 * numpy.sqrt(1.0 + self.b)
+        r_min = self.a - d
+        r_max = self.a + d
+        sqrtD = numpy.sqrt(z - r_min) * numpy.sqrt(z - r_max)
+
         m1 = (-B + sqrtD) / (2 * A)
         m2 = (-B - sqrtD) / (2 * A)
 
         # pick correct branch only for non‑masked entries
         upper = z.imag >= 0
         branch = numpy.empty_like(m1)
-        branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
-                                    m2[upper])
-        branch[~upper] = numpy.where(sign*m1[~upper].imag < 0, m1[~upper],
-                                     m2[~upper])
+        branch[upper] = numpy.where(
+            sign*m1[upper].imag > 0, m1[upper], m2[upper])
+        branch[~upper] = numpy.where(
+            sign*m1[~upper].imag < 0, m1[~upper], m2[~upper])
         m = branch
 
         return m
@@ -454,7 +462,7 @@ class Meixner(object):
             is used.
 
         method : {``'mc'``, ``'qmc'``}, default= ``'qmc'``
-            Method of drawing samples from uniform distirbution:
+            Method of drawing samples from uniform distribution:
 
             * ``'mc'``: Monte Carlo
             * ``'qmc'``: Quasi Monte Carlo
