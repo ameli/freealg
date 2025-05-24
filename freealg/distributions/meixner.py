@@ -98,15 +98,16 @@ class Meixner(object):
     # init
     # ====
 
-    def __init__(self, a, b):
+    def __init__(self, a, b, c):
         """
         Initialization.
         """
 
         self.a = a
         self.b = b
-        self.lam_p = self.a + 2.0 * numpy.sqrt(1.0 + self.b)
-        self.lam_m = self.a - 2.0 * numpy.sqrt(1.0 + self.b)
+        self.c = c
+        self.lam_p = self.a + 2.0 * numpy.sqrt(self.b)
+        self.lam_m = self.a - 2.0 * numpy.sqrt(self.b)
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -172,9 +173,15 @@ class Meixner(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
 
-        rho[mask] = \
-            numpy.sqrt(4.0 * (1.0 + self.b) - (x[mask] - self.a)**2) / \
-            (2.0 * numpy.pi * (self.b * x[mask]**2 + self.a * x[mask] + 1))
+        numer = numpy.zeros_like(x)
+        denom = numpy.ones_like(x)
+        numer[mask] = self.c * numpy.sqrt(4.0 * self.b - (x[mask] - self.a)**2)
+        denom[mask] = (1 - self.c)*(x[mask] - self.a)**2
+        denom[mask] += self.a * (2 - self.c)*(x[mask] - self.a)
+        denom[mask] += self.a**2 + self.b * self.c**2
+        denom[mask] *= 2 * numpy.pi
+
+        rho[mask] = numer[mask] / denom[mask]
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -579,14 +586,4 @@ class Meixner(object):
             >>> A = mx.matrix(2000)
         """
 
-        n = size
-        m1 = int(self.a * n)
-        m2 = int(self.b * n)
-
-        X = numpy.random.randn(n, m1)
-        Y = numpy.random.randn(n, m2)
-
-        Sx = X @ X.T
-        Sy = Y @ Y.T
-
-        return Sx, Sy
+        raise NotImplementedError
