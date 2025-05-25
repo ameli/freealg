@@ -12,7 +12,6 @@
 # =======
 
 import numpy
-import networkx as nx
 from scipy.interpolate import interp1d
 from .._plot_util import plot_density, plot_hilbert, plot_stieltjes, \
     plot_stieltjes_on_disk, plot_samples
@@ -77,20 +76,20 @@ class Wigner(object):
     .. code-block:: python
 
         >>> from freealg.distributions import Wigner
-        >>> wg = Wigner()
+        >>> wg = Wigner(1)
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, size):
+    def __init__(self, r):
         """
         Initialization.
         """
-        self.size = size
-        self.lam_p = 2*size**0.5
-        self.lam_m = -2*size**0.5
+        self.r = r
+        self.lam_p = self.r
+        self.lam_m = -self.r
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -136,7 +135,7 @@ class Wigner(object):
         .. code-block::python
 
             >>> from freealg.distributions import Wigner
-            >>> wg = Wigner()
+            >>> wg = Wigner(1)
             >>> rho = wg.density(plot=True)
 
         .. image:: ../_static/images/plots/wg_density.png
@@ -156,8 +155,8 @@ class Wigner(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
 
-        rho[mask] = (2.0 / (4 * numpy.pi * self.size)) * \
-            numpy.sqrt(4 * self.size - x[mask]**2)
+        rho[mask] = (2.0 / (numpy.pi * self.r**2)) * \
+            numpy.sqrt(self.r**2 - x[mask]**2)
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -204,7 +203,7 @@ class Wigner(object):
         .. code-block::python
 
             >>> from freealg.distributions import Wigner
-            >>> wg = Wigner()
+            >>> wg = Wigner(1)
             >>> hilb = wg.hilbert(plot=True)
 
         .. image:: ../_static/images/plots/wg_hilbert.png
@@ -225,7 +224,7 @@ class Wigner(object):
             return x
 
         def _Q(x):
-            return self.size
+            return (self.r**2) / 4.0
 
         P = _P(x)
         Q = _Q(x)
@@ -256,7 +255,7 @@ class Wigner(object):
 
         # Use quadratic form
         sign = -1 if alt_branch else 1
-        A = 1.0
+        A = (self.r**2) / 4.0
         B = z
         D = B**2 - 4 * A
         sqrtD = numpy.sqrt(D)
@@ -346,7 +345,7 @@ class Wigner(object):
         .. code-block:: python
 
             >>> from freealg.distributions import Wigner
-            >>> wg = Wigner()
+            >>> wg = Wigner(1)
             >>> m1, m2 = wg.stieltjes(plot=True)
 
         .. image:: ../_static/images/plots/wg_stieltjes.png
@@ -471,7 +470,7 @@ class Wigner(object):
         .. code-block::python
 
             >>> from freealg.distributions import Wigner
-            >>> wg = Wigner()
+            >>> wg = Wigner(1)
             >>> s = wg.sample(2000)
 
         .. image:: ../_static/images/plots/wg_samples.png
@@ -525,7 +524,7 @@ class Wigner(object):
     # matrix
     # ======
 
-    def matrix(self):
+    def matrix(self, size):
         """
         Generate matrix with the spectral density of the distribution.
 
@@ -552,19 +551,8 @@ class Wigner(object):
         """
 
         # Parameters
-        n = self.size
-        X = numpy.random.randn(n,n)
-        X = (numpy.triu(X,0) + numpy.triu(X,1).T)
-        return X
-        #p = 1.0 / size
+        n = size
+        X = numpy.random.randn(n, n)
+        X = (numpy.triu(X, 0) + numpy.triu(X, 1).T)
 
-        # Random graph
-        #G = nx.erdos_renyi_graph(n, p)
-
-        # Adjancency
-        #A = nx.to_numpy_array(G)  # shape (n,n), 0/1 entries
-
-        # Center & scale to get the semicircle
-        #A_c = (A - p) / numpy.sqrt(n * p * (1-p))
-
-        #return A_c
+        return X * (self.r / (2.0 * numpy.sqrt(n)))

@@ -71,7 +71,7 @@ class Meixner(object):
         \\frac{4(1+b) - (x-a)^2}{2 \\pi (b x^2 + a x + 1)}
         \\mathbf{1}_{x \\in [\\lambda_{-}, \\lambda_{+}]} \\mathrm{d}{x}
 
-    where :math:`a, b` are the shape parameters of the distributon. The edges
+    where :math:`a, b` are the shape parameters of the distribution. The edges
     of the support are
 
     .. math::
@@ -172,6 +172,10 @@ class Meixner(object):
 
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
+
+        # rho[mask] = \
+        #     numpy.sqrt(4.0 * (1.0 + self.b) - (x[mask] - self.a)**2) / \
+        #     (2.0 * numpy.pi * (self.b * x[mask]**2 + self.a * x[mask] + 1))
 
         numer = numpy.zeros_like(x)
         denom = numpy.ones_like(x)
