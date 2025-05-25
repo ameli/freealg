@@ -326,7 +326,7 @@
 <h1>freealg.distributions.Wigner<a class="headerlink" href="#freealg-distributions-wigner" title="Permalink to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="freealg.distributions.Wigner">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.distributions.</span></span><span class="sig-name descname"><span class="pre">Wigner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.Wigner" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.distributions.</span></span><span class="sig-name descname"><span class="pre">Wigner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.Wigner" title="Permalink to this definition">#</a></dt>
 <dd><p>Wigner semicircle distribution.</p>
 <p class="rubric">Notes</p>
 <p>The Wigner distribution has the absolutely-continuous density</p>
@@ -345,7 +345,7 @@ with infinite dimensions. Annals of Mathematics, 62(3), 548-564.421</p>
 </div>
 <p class="rubric">Examples</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Wigner</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">wg</span> <span class="o">=</span> <span class="n">Wigner</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">wg</span> <span class="o">=</span> <span class="n">Wigner</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
 <p class="rubric">Methods</p>
@@ -363,7 +363,7 @@ with infinite dimensions. Annals of Mathematics, 62(3), 548-564.421</p>
 <tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.Wigner.sample.html#freealg.distributions.Wigner.sample" title="freealg.distributions.Wigner.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(size[, x_min, x_max, method, plot, ...])</p></td>
 <td><p>Sample from distribution.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.Wigner.matrix.html#freealg.distributions.Wigner.matrix" title="freealg.distributions.Wigner.matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.Wigner.matrix.html#freealg.distributions.Wigner.matrix" title="freealg.distributions.Wigner.matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix</span></code></a>(size)</p></td>
 <td><p>Generate matrix with the spectral density of the distribution.</p></td>
 </tr>
 </tbody>
