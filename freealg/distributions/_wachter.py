@@ -22,16 +22,25 @@ except ImportError:
     from scipy.integrate import cumulative_trapezoid as cumtrapz
 from scipy.stats import qmc
 
-__all__ = ['Wigner']
+__all__ = ['Wachter']
 
 
-# ======
-# Wigner
-# ======
+# =======
+# Wachter
+# =======
 
-class Wigner(object):
+class Wachter(object):
     """
-    Wigner semicircle distribution.
+    Wachter distribution.
+
+    Parameters
+    ----------
+
+    a : float
+        Parameter :math:`a` of the distribution. See Notes.
+
+    b : float
+        Parameter :math:`b` of the distribution. See Notes.
 
     Methods
     -------
@@ -54,42 +63,52 @@ class Wigner(object):
     Notes
     -----
 
-    The Wigner distribution has the absolutely-continuous density
+    The Wachter distribution has the absolutely-continuous density
 
     .. math::
 
-        \\mathrm{d} \\rho(x) = \\frac{1}{2 \\pi}
-        \\sqrt{(4 - x^2}
+        \\mathrm{d} \\rho(x) =
+        \\frac{(a + b) )
+        \\sqrt{(\\lambda_{+} - x) (x - \\lambda_{-})}}{2 \\pi x (1 - x)}
         \\mathbf{1}_{x \\in [\\lambda_{-}, \\lambda_{+}]} \\mathrm{d}{x}
 
-    with :math:`\\lambda_{\\pm} = \\pm 2` being the edges of the support
+    where :math:`a, b` are the shape parameters of the distributon. The edges
+    of the support are
+
+    .. math::
+
+        \\lambda_{\\pm} = \\left( \\frac{\\sqrt{b} \\pm \\sqrt{a (a+b-1)}}
+        {a+b} \\right)^2.
 
     References
     ----------
 
-    .. [1] Wigner, E. P. (1955). Characteristic vectors of bordered matrices
-           with infinite dimensions. Annals of Mathematics, 62(3), 548-564.421
+    .. [1] Wachter, K. W. (1978). The strong limits of random matrix spectra
+           for sample matrices of independent elements. The Annals of
+           Probability, 6(1), 1-18
 
     Examples
     --------
 
     .. code-block:: python
 
-        >>> from freealg.distributions import Wigner
-        >>> wg = Wigner(1)
+        >>> from freealg.distributions import Wachter
+        >>> wa = Wachter(2, 3)
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, r):
+    def __init__(self, a, b):
         """
         Initialization.
         """
-        self.r = r
-        self.lam_p = self.r
-        self.lam_m = -self.r
+
+        self.a = a
+        self.b = b
+        self.lam_p = ((numpy.sqrt(b) + numpy.sqrt(a * (a+b-1))) / (a + b))**2
+        self.lam_m = ((numpy.sqrt(b) - numpy.sqrt(a * (a+b-1))) / (a + b))**2
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -134,11 +153,11 @@ class Wigner(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Wigner
-            >>> wg = Wigner(1)
-            >>> rho = wg.density(plot=True)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> rho = wa.density(plot=True)
 
-        .. image:: ../_static/images/plots/wg_density.png
+        .. image:: ../_static/images/plots/wa_density.png
             :align: center
             :class: custom-dark
         """
@@ -153,10 +172,11 @@ class Wigner(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         rho = numpy.zeros_like(x)
-        mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
+        mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
 
-        rho[mask] = (2.0 / (numpy.pi * self.r**2)) * \
-            numpy.sqrt(self.r**2 - x[mask]**2)
+        rho[mask] = ((self.a + self.b) /
+                     (2.0 * numpy.pi * x[mask] * (1.0 - x[mask]))) * \
+            numpy.sqrt((self.lam_p - x[mask]) * (x[mask] - self.lam_m))
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -202,11 +222,11 @@ class Wigner(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Wigner
-            >>> wg = Wigner(1)
-            >>> hilb = wg.hilbert(plot=True)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> hilb = wa.hilbert(plot=True)
 
-        .. image:: ../_static/images/plots/wg_hilbert.png
+        .. image:: ../_static/images/plots/wa_hilbert.png
             :align: center
             :class: custom-dark
         """
@@ -221,10 +241,12 @@ class Wigner(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            return x
+            denom = self.a + self.b - 1.0
+            return (1.0 - self.a + (self.a + self.b - 2.0) * x) / denom
 
         def _Q(x):
-            return (self.r**2) / 4.0
+            denom = self.a + self.b - 1.0
+            return x * (1.0 - x) / denom
 
         P = _P(x)
         Q = _Q(x)
@@ -247,22 +269,20 @@ class Wigner(object):
 
     def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
         """
-        Stieltjes transform (principal or secondary branch) for Wigner
+        Stieltjes transform (principal or secondary branch) for Wachter
         distribution on upper half-plane.
         """
 
-        m = numpy.empty_like(z, dtype=complex)
-
-        # Use quadratic form
         sign = -1 if alt_branch else 1
-        A = (self.r**2) / 4.0
-        B = z
+        denom = self.a + self.b - 1.0
+        A = (z * (1.0 - z)) / denom
+        B = (1.0 - self.a + (self.a + self.b - 2.0) * z) / denom
         D = B**2 - 4 * A
         sqrtD = numpy.sqrt(D)
         m1 = (-B + sqrtD) / (2 * A)
         m2 = (-B - sqrtD) / (2 * A)
 
-        # pick correct branch
+        # pick correct branch only for non‑masked entries
         upper = z.imag >= 0
         branch = numpy.empty_like(m1)
         branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
@@ -344,11 +364,11 @@ class Wigner(object):
 
         .. code-block:: python
 
-            >>> from freealg.distributions import Wigner
-            >>> wg = Wigner(1)
-            >>> m1, m2 = wg.stieltjes(plot=True)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> m1, m2 = wa.stieltjes(plot=True)
 
-        .. image:: ../_static/images/plots/wg_stieltjes.png
+        .. image:: ../_static/images/plots/wa_stieltjes.png
             :align: center
             :class: custom-dark
 
@@ -356,9 +376,9 @@ class Wigner(object):
 
         .. code-block:: python
 
-            >>> m1, m2 = wg.stieltjes(plot=True, on_disk=True)
+            >>> m1, m2 = wa.stieltjes(plot=True, on_disk=True)
 
-        .. image:: ../_static/images/plots/wg_stieltjes_disk.png
+        .. image:: ../_static/images/plots/wa_stieltjes_disk.png
             :align: center
             :class: custom-dark
         """
@@ -441,6 +461,9 @@ class Wigner(object):
             * ``'mc'``: Monte Carlo
             * ``'qmc'``: Quasi Monte Carlo
 
+        seed : int, default=None,
+            Seed for random number generator.
+
         plot : bool, default=False
             If `True`, samples histogram is plotted.
 
@@ -469,16 +492,17 @@ class Wigner(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Wigner
-            >>> wg = Wigner(1)
-            >>> s = wg.sample(2000)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> s = wa.sample(2000)
 
-        .. image:: ../_static/images/plots/wg_samples.png
+        .. image:: ../_static/images/plots/wa_samples.png
             :align: center
             :class: custom-dark
         """
 
-        numpy.random.seed(seed)
+        if seed is not None:
+            numpy.random.seed(seed)
 
         if x_min is None:
             x_min = self.lam_m
@@ -542,7 +566,10 @@ class Wigner(object):
         Returns
         -------
 
-        A : numpy.ndarray
+        Sx : numpy.ndarray
+            A matrix of the size :math:`n \\times n`.
+
+        Sy : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
         Examples
@@ -550,16 +577,22 @@ class Wigner(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Wigner
-            >>> wg = Wigner()
-            >>> A = wg.matrix(2000)
+            >>> from freealg.distributions import Wachter
+            >>> wa = Wachter(2, 3)
+            >>> A = wa.matrix(2000)
         """
 
-        numpy.random.seed(seed)
+        if seed is not None:
+            numpy.random.seed(seed)
 
-        # Parameters
         n = size
-        X = numpy.random.randn(n, n)
-        X = (numpy.triu(X, 0) + numpy.triu(X, 1).T)
+        m1 = int(self.a * n)
+        m2 = int(self.b * n)
 
-        return X * (self.r / (2.0 * numpy.sqrt(n)))
+        X = numpy.random.randn(n, m1)
+        Y = numpy.random.randn(n, m2)
+
+        Sx = X @ X.T
+        Sy = Y @ Y.T
+
+        return Sx, Sy

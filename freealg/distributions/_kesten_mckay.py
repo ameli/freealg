@@ -22,25 +22,22 @@ except ImportError:
     from scipy.integrate import cumulative_trapezoid as cumtrapz
 from scipy.stats import qmc
 
-__all__ = ['Wachter']
+__all__ = ['KestenMcKay']
 
 
-# =======
-# Wachter
-# =======
+# ============
+# Kesten McKay
+# ============
 
-class Wachter(object):
+class KestenMcKay(object):
     """
-    Wachter distribution.
+    Kesten-McKay distribution.
 
     Parameters
     ----------
 
-    a : float
-        Parameter :math:`a` of the distribution. See Notes.
-
-    b : float
-        Parameter :math:`b` of the distribution. See Notes.
+    d : float
+        Parameter :math:`d` of the distribution. See Notes.
 
     Methods
     -------
@@ -63,52 +60,50 @@ class Wachter(object):
     Notes
     -----
 
-    The Wachter distribution has the absolutely-continuous density
+    The Kesten-McKay distribution has the absolutely-continuous density
 
     .. math::
 
         \\mathrm{d} \\rho(x) =
-        \\frac{(a + b) )
-        \\sqrt{(\\lambda_{+} - x) (x - \\lambda_{-})}}{2 \\pi x (1 - x)}
+        \\frac{\\sqrt{4(d-1) - x^2}}{2 \\pi (d^2 - x^2)}
         \\mathbf{1}_{x \\in [\\lambda_{-}, \\lambda_{+}]} \\mathrm{d}{x}
 
-    where :math:`a, b` are the shape parameters of the distributon. The edges
-    of the support are
+    where
 
-    .. math::
-
-        \\lambda_{\\pm} = \\left( \\frac{\\sqrt{b} \\pm \\sqrt{a (a+b-1)}}
-        {a+b} \\right)^2.
+    * :math:`\\lambda_{\\pm} = \\pm 2 \\sqrt{d-1}` are the edges of
+      the support.
+    * :math:`d > 1` is the shape parameter of the density.
 
     References
     ----------
 
-    .. [1] Wachter, K. W. (1978). The strong limits of random matrix spectra
-           for sample matrices of independent elements. The Annals of
-           Probability, 6(1), 1-18
+    .. [1] Kesten, H. (1959). Symmetric random walks on groups. Transactions of
+           the American Mathematical Society, 92(2), 336–354.
+
+    .. [2] McKay, B. D. (1981). The expected eigenvalue distribution of a large
+           regular graph. Linear Algebra and its Applications, 40, 203-216
 
     Examples
     --------
 
     .. code-block:: python
 
-        >>> from freealg.distributions import Wachter
-        >>> wa = Wachter(2, 3)
+        >>> from freealg.distributions import KestenMcKay
+        >>> km = KestenMcKay()
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, a, b):
+    def __init__(self, d):
         """
         Initialization.
         """
 
-        self.a = a
-        self.b = b
-        self.lam_p = ((numpy.sqrt(b) + numpy.sqrt(a * (a+b-1))) / (a + b))**2
-        self.lam_m = ((numpy.sqrt(b) - numpy.sqrt(a * (a+b-1))) / (a + b))**2
+        self.d = d
+        self.lam_p = 2.0 * numpy.sqrt(d - 1.0)
+        self.lam_m = -2.0 * numpy.sqrt(d - 1.0)
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -153,11 +148,11 @@ class Wachter(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Wachter
-            >>> wa = Wachter(2, 3)
-            >>> rho = wa.density(plot=True)
+            >>> from freealg.distributions import KestenMcKay
+            >>> km = KestenMcKay(3)
+            >>> rho = km.density(plot=True)
 
-        .. image:: ../_static/images/plots/wa_density.png
+        .. image:: ../_static/images/plots/km_density.png
             :align: center
             :class: custom-dark
         """
@@ -174,9 +169,8 @@ class Wachter(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
 
-        rho[mask] = ((self.a + self.b) /
-                     (2.0 * numpy.pi * x[mask] * (1.0 - x[mask]))) * \
-            numpy.sqrt((self.lam_p - x[mask]) * (x[mask] - self.lam_m))
+        rho[mask] = (self.d / (2.0 * numpy.pi * (self.d**2 - x[mask]**2))) * \
+            numpy.sqrt(4.0 * (self.d - 1.0) - x[mask]**2)
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -222,11 +216,11 @@ class Wachter(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Wachter
-            >>> wa = Wachter(2, 3)
-            >>> hilb = wa.hilbert(plot=True)
+            >>> from freealg.distributions import KestenMcKay
+            >>> km = KestenMcKay(3)
+            >>> hilb = km.hilbert(plot=True)
 
-        .. image:: ../_static/images/plots/wa_hilbert.png
+        .. image:: ../_static/images/plots/km_hilbert.png
             :align: center
             :class: custom-dark
         """
@@ -241,12 +235,10 @@ class Wachter(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            denom = self.a + self.b - 1.0
-            return (1.0 - self.a + (self.a + self.b - 2.0) * x) / denom
+            return (self.d - 2.0) * x / (self.d - 1.0)
 
         def _Q(x):
-            denom = self.a + self.b - 1.0
-            return x * (1.0 - x) / denom
+            return (self.d**2 - x**2) / (self.d - 1.0)
 
         P = _P(x)
         Q = _Q(x)
@@ -269,20 +261,21 @@ class Wachter(object):
 
     def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
         """
-        Stieltjes transform (principal or secondary branch) for Wachter
+        Stieltjes transform (principal or secondary branch) for Kesten-McKay
         distribution on upper half-plane.
         """
 
+        m = numpy.empty_like(z, dtype=complex)
+
         sign = -1 if alt_branch else 1
-        denom = self.a + self.b - 1.0
-        A = (z * (1.0 - z)) / denom
-        B = (1.0 - self.a + (self.a + self.b - 2.0) * z) / denom
+        A = (self.d**2 - z**2) / (self.d - 1.0)
+        B = ((self.d - 2.0) * z) / (self.d - 1.0)
         D = B**2 - 4 * A
         sqrtD = numpy.sqrt(D)
         m1 = (-B + sqrtD) / (2 * A)
         m2 = (-B - sqrtD) / (2 * A)
 
-        # pick correct branch only for non‑masked entries
+        # pick correct branch
         upper = z.imag >= 0
         branch = numpy.empty_like(m1)
         branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
@@ -364,11 +357,11 @@ class Wachter(object):
 
         .. code-block:: python
 
-            >>> from freealg.distributions import Wachter
-            >>> wa = Wachter(2, 3)
-            >>> m1, m2 = wa.stieltjes(plot=True)
+            >>> from freealg.distributions import KestenMcKay
+            >>> km = KestenMcKay(3)
+            >>> m1, m2 = km.stieltjes(plot=True)
 
-        .. image:: ../_static/images/plots/wa_stieltjes.png
+        .. image:: ../_static/images/plots/km_stieltjes.png
             :align: center
             :class: custom-dark
 
@@ -376,9 +369,9 @@ class Wachter(object):
 
         .. code-block:: python
 
-            >>> m1, m2 = wa.stieltjes(plot=True, on_disk=True)
+            >>> m1, m2 = km.stieltjes(plot=True, on_disk=True)
 
-        .. image:: ../_static/images/plots/wa_stieltjes_disk.png
+        .. image:: ../_static/images/plots/km_stieltjes_disk.png
             :align: center
             :class: custom-dark
         """
@@ -492,16 +485,17 @@ class Wachter(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Wachter
-            >>> wa = Wachter(2, 3)
-            >>> s = wa.sample(2000)
+            >>> from freealg.distributions import KestenMcKay
+            >>> km = KestenMcKay(3)
+            >>> s = km.sample(2000)
 
-        .. image:: ../_static/images/plots/wa_samples.png
+        .. image:: ../_static/images/plots/km_samples.png
             :align: center
             :class: custom-dark
         """
 
-        numpy.random.seed(seed)
+        if seed is not None:
+            numpy.random.seed(seed)
 
         if x_min is None:
             x_min = self.lam_m
@@ -545,6 +539,39 @@ class Wachter(object):
 
         return samples
 
+    # ============
+    # Haar unitary
+    # ============
+
+    def _haar_orthogonal(self, n, k, seed=None):
+        """
+        Haar-distributed O(n) via the Mezzadri QR trick.
+
+        References
+        ----------
+
+        .. [1] Francesco Mezzadri. How to generate random matrices from the
+               classical compact groups. https://arxiv.org/pdf/math-ph/0609050
+
+        Notes
+        -----
+
+        Taking the QR of a normal-Gaussian matrix gives an orthonormal basis,
+        but the columns of that Q are not uniform on the sphere, as they are
+        biased by the signs or phases in the R-factor.
+
+        With Mezzadri method, columns of Q are rescaled by the reciprocals of
+        the diagonals of R phase, resulting in a matrix that is exactly
+        uniformly distributed under Haar measure O(n).
+        """
+
+        rng = numpy.random.default_rng(seed)
+        Z = rng.standard_normal((n, k))
+        Q, R = numpy.linalg.qr(Z, mode='reduced')   # Q is n by k
+        Q *= numpy.sign(numpy.diag(R))
+
+        return Q
+
     # ======
     # matrix
     # ======
@@ -565,32 +592,88 @@ class Wachter(object):
         Returns
         -------
 
-        Sx : numpy.ndarray
+        A : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
-        Sy : numpy.ndarray
-            A matrix of the size :math:`n \\times n`.
+        Notes
+        -----
+
+        If the parameter :math:`d` is even, the matrtix is generated from
+
+        .. math::
+
+            \\mathbf{A} = \\sum_{i=1}^{d/2} \\mathbf{O}_i +
+            \\mathbf{O}_o^{\\intercal},
+
+        where :math:`\\mathbf{O}_i` are randomly generated orthogonal matrices
+        with Haar. This method is fast but :math:`d` has to be even.
+
+        If all other :math:`d`, the following is used:
+
+        .. math::
+
+            \\mathbf{A} = \\mathbf{P} \\mathbf{O} \\mathbf{D} \\mathbf{O}^{-1}
+            \\mathbf{P},
+
+        where :math:`\\mathbf{D}` is diagonal matrix with entries
+        :math:`\\pm 1`, :math:`\\mathbf{O}` is orthogonal with Haar measure,
+        and :math:`\\mathbf{P}` is a projection matrix. For more details, see
+        Section 5 and 6 of [1]_.
+
+        The orthogonal matrices are genrated using the method of [2]_.
+
+        References
+        ----------
+
+        .. [1] Iris S. A. Longoria and James A. Mingo, Freely Independent Coin
+               Tosses, Standard Young Tableaux, and the Kesten--McKay Law.
+               https://arxiv.org/abs/2009.11950
+
+        .. [2] Francesco Mezzadri. How to generate random matrices from the
+               classical compact groups. https://arxiv.org/abs/math-ph/0609050
 
         Examples
         --------
 
         .. code-block::python
 
-            >>> from freealg.distributions import Wachter
-            >>> wa = Wachter(2, 3)
-            >>> A = wa.matrix(2000)
+            >>> from freealg.distributions import KestenMcKay
+            >>> km = KestenMcKay(3)
+            >>> A = km.matrix(2000)
         """
 
-        numpy.random.seed(seed)
+        if (self.d >= 2) and (self.d % 2 == 0):
+            # Uses algorithm 1 . Only if d is even. This is much faster than
+            # algorithm 2.
+            n = size
+            rng = numpy.random.default_rng(seed)
+            m = self.d // 2
+            A = numpy.zeros((n, n))
 
-        n = size
-        m1 = int(self.a * n)
-        m2 = int(self.b * n)
+            for _ in range(m):
+                O_ = self._haar_orthogonal(n, n, seed=seed)
+                A += O_ + O_.T
+        else:
+            # Uses algorithm 2. Only when d is odd, but this algorithm works
+            # for any d (even and odd), but it takes much longer to comute
+            # especially if d is larger. As such, as only use algorithm 1 when
+            # d is even and use algorithm 2 for the rest.
+            n = size * self.d
+            rng = numpy.random.default_rng(seed)
 
-        X = numpy.random.randn(n, m1)
-        Y = numpy.random.randn(n, m2)
+            # Deterministic pieces
+            k = size
+            if k == 0:
+                raise ValueError('Choose size larger then d.')
 
-        Sx = X @ X.T
-        Sy = Y @ Y.T
+            # Projection rows of O
+            Q = self._haar_orthogonal(n, k)
+            O_k = Q.T
 
-        return Sx, Sy
+            # diagonal D with equal \pm 1 (trace 0)
+            diag = numpy.ones(n, dtype=float)
+            diag[:n//2] = -1
+            rng.shuffle(diag)
+            A = (n/k) * (O_k * diag) @ O_k.T
+
+        return A

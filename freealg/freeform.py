@@ -499,17 +499,13 @@ class FreeForm(object):
         # Check density is unit mass
         mass = numpy.trapz(rho, x)
         if not numpy.isclose(mass, 1.0, atol=1e-2):
-            # raise RuntimeWarning(f'"rho" is not unit mass. mass: {mass}. ' +
-            #                      r'Set "force=True".')
-            print(f'"rho" is not unit mass. mass: {mass}. Set "force=True".')
+            print(f'"rho" is not unit mass. mass: {mass:>0.3f}. Set ' +
+                  r'"force=True".')
 
         # Check density is positive
         min_rho = numpy.min(rho)
         if min_rho < 0.0 - 1e-3:
-            # raise RuntimeWarning(
-            #         f'"rho" is not positive. min_rho: {min_rho}. Set ' +
-            #         r'"force=True".')
-            print(f'"rho" is not positive. min_rho: {min_rho}. Set ' +
+            print(f'"rho" is not positive. min_rho: {min_rho:>0.3f}. Set ' +
                   r'"force=True".')
 
         if plot:
@@ -631,7 +627,7 @@ class FreeForm(object):
     # stieltjes
     # =========
 
-    def stieltjes(self, x, y, plot=False, latex=False, save=False):
+    def stieltjes(self, x=None, y=None, plot=False, latex=False, save=False):
         """
         Compute Stieltjes transform of the spectral density over a 2D Cartesian
         grid on the complex plane.

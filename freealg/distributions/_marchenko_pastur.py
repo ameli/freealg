@@ -22,25 +22,22 @@ except ImportError:
     from scipy.integrate import cumulative_trapezoid as cumtrapz
 from scipy.stats import qmc
 
-__all__ = ['Meixner']
+__all__ = ['MarchenkoPastur']
 
 
-# =======
-# Meixner
-# =======
+# ================
+# Marchenko Pastur
+# ================
 
-class Meixner(object):
+class MarchenkoPastur(object):
     """
-    Meixner distribution.
+    Marchenko-Pastur distribution.
 
     Parameters
     ----------
 
-    a : float
-        Parameter :math:`a` of the distribution. See Notes.
-
-    b : float
-        Parameter :math:`b` of the distribution. See Notes.
+    lam : float
+        Parameter :math:`\\lambda` of the distribution. See Notes.
 
     Methods
     -------
@@ -63,51 +60,48 @@ class Meixner(object):
     Notes
     -----
 
-    The Meixner distribution has the absolutely-continuous density
+    The Marchenko-Pastur distribution has the absolutely-continuous density
 
     .. math::
 
-        \\mathrm{d} \\rho(x) =
-        \\frac{4(1+b) - (x-a)^2}{2 \\pi (b x^2 + a x + 1)}
+        \\mathrm{d} \\rho(x) = \\frac{1}{2 \\pi}
+        \\frac{\\sqrt{(\\lambda_{+} - x) (x - \\lambda_{-})}}{\\lambda x}
         \\mathbf{1}_{x \\in [\\lambda_{-}, \\lambda_{+}]} \\mathrm{d}{x}
 
-    where :math:`a, b` are the shape parameters of the distribution. The edges
-    of the support are
+    where
 
-    .. math::
-
-        \\lambda_{\\pm} = a \\pm 2 \\sqrt{1 + b}.
+    * :math:`\\lambda_{\\pm} = (1 \\pm \\sqrt{\\lambda})^2` are the edges of
+      the support.
+    * :math:`\\lambda > 0` is the shape parameter of the density.
 
     References
     ----------
 
-    .. [1] Saitoh, N. & Yosnida, M. (2001). The infinite divisibility and
-           orthogonal polynomials with a constant recursion formula in free
-           probability theory. Probab. Math. Statist., 21, 159–170.
+    .. [1] Marcenko, V. A., Pastur, L. A. (1967). Distribution of eigenvalues
+           for some sets of random matrices. Mathematics of the USSR-Sbornik,
+           1(4), 457
 
     Examples
     --------
 
     .. code-block:: python
 
-        >>> from freealg.distributions import Meixner
-        >>> mx = Meixner(2, 3)
+        >>> from freealg.distributions import MarchenkoPastur
+        >>> mp = MarchenkoPastur()
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, a, b, c):
+    def __init__(self, lam):
         """
         Initialization.
         """
 
-        self.a = a
-        self.b = b
-        self.c = c
-        self.lam_p = self.a + 2.0 * numpy.sqrt(self.b)
-        self.lam_m = self.a - 2.0 * numpy.sqrt(self.b)
+        self.lam = lam
+        self.lam_p = (1 + numpy.sqrt(self.lam))**2
+        self.lam_m = (1 - numpy.sqrt(self.lam))**2
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -152,11 +146,11 @@ class Meixner(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Meixner
-            >>> mx = Meixner(2, 3)
-            >>> rho = mx.density(plot=True)
+            >>> from freealg.distributions import MarchenkoPastur
+            >>> mp = MarchenkoPastur(1/50)
+            >>> rho = mp.density(plot=True)
 
-        .. image:: ../_static/images/plots/mx_density.png
+        .. image:: ../_static/images/plots/mp_density.png
             :align: center
             :class: custom-dark
         """
@@ -171,21 +165,10 @@ class Meixner(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         rho = numpy.zeros_like(x)
-        mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
+        mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
 
-        # rho[mask] = \
-        #     numpy.sqrt(4.0 * (1.0 + self.b) - (x[mask] - self.a)**2) / \
-        #     (2.0 * numpy.pi * (self.b * x[mask]**2 + self.a * x[mask] + 1))
-
-        numer = numpy.zeros_like(x)
-        denom = numpy.ones_like(x)
-        numer[mask] = self.c * numpy.sqrt(4.0 * self.b - (x[mask] - self.a)**2)
-        denom[mask] = (1 - self.c)*(x[mask] - self.a)**2
-        denom[mask] += self.a * (2 - self.c)*(x[mask] - self.a)
-        denom[mask] += self.a**2 + self.b * self.c**2
-        denom[mask] *= 2 * numpy.pi
-
-        rho[mask] = numer[mask] / denom[mask]
+        rho[mask] = (1.0 / (2.0 * numpy.pi * x[mask] * self.lam)) * \
+            numpy.sqrt((self.lam_p - x[mask]) * (x[mask] - self.lam_m))
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -231,11 +214,11 @@ class Meixner(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Meixner
-            >>> mx = Meixner(2, 3)
-            >>> hilb = mx.hilbert(plot=True)
+            >>> from freealg.distributions import MarchenkoPastur
+            >>> mp = MarchenkoPastur(1/50)
+            >>> hilb = mp.hilbert(plot=True)
 
-        .. image:: ../_static/images/plots/mx_hilbert.png
+        .. image:: ../_static/images/plots/mp_hilbert.png
             :align: center
             :class: custom-dark
         """
@@ -250,17 +233,10 @@ class Meixner(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            # denom = 1.0 + self.b
-            # return ((1.0 + 2.0 * self.b) * x + self.a) / denom
-            P = ((self.c - 2.0) * x - self.a * self.c) / 2.0
-            return P
+            return x - 1 + self.lam
 
         def _Q(x):
-            # denom = 1.0 + self.b
-            # return (self.b * x**2 + self.a * x + 1.0) / denom
-            Q = ((1.0 - self.c) * x**2 + self.a * self.c * x +
-                 self.b * self.c**2) / 4.0
-            return Q
+            return self.lam * x
 
         P = _P(x)
         Q = _Q(x)
@@ -283,38 +259,37 @@ class Meixner(object):
 
     def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
         """
-        Stieltjes transform (principal or secondary branch) for Meixner
-        distribution on upper half-plane.
+        Stieltjes transform (principal or secondary branch)
+        for Marchenko–Pastur distribution on upper half-plane.
         """
 
-        sign = -1 if alt_branch else 1
-        # denom = 1.0 + self.b
-        # A = (self.b * z**2 + self.a * z + 1.0) / denom
-        # B = ((1.0 + 2.0 * self.b) * z + self.a) / denom
-        A = ((1.0 - self.c) * z**2 + self.a * self.c * z +
-             self.b * self.c**2) / 4.0
-        B = ((self.c - 2.0) * z - self.a * self.c) / 2.0
+        sigma = 1.0
+        m = numpy.empty_like(z, dtype=complex)
 
-        # D = B**2 - 4 * A
-        # sqrtD = numpy.sqrt(D)
+        # When z is too small, do not use quadratic form.
+        mask = numpy.abs(z) < tol
+        m[mask] = 1 / (sigma**2 * (1 - self.lam))
 
-        # Avoid numpy picking the wrong branch
-        d = 2 * numpy.sqrt(1.0 + self.b)
-        r_min = self.a - d
-        r_max = self.a + d
-        sqrtD = numpy.sqrt(z - r_min) * numpy.sqrt(z - r_max)
+        # Use quadratic form
+        not_mask = ~mask
+        if numpy.any(not_mask):
 
-        m1 = (-B + sqrtD) / (2 * A)
-        m2 = (-B - sqrtD) / (2 * A)
+            sign = -1 if alt_branch else 1
+            A = self.lam * sigma**2 * z
+            B = z - sigma**2 * (1 - self.lam)
+            D = B**2 - 4 * A
+            sqrtD = numpy.sqrt(D)
+            m1 = (-B + sqrtD) / (2 * A)
+            m2 = (-B - sqrtD) / (2 * A)
 
-        # pick correct branch only for non‑masked entries
-        upper = z.imag >= 0
-        branch = numpy.empty_like(m1)
-        branch[upper] = numpy.where(
-            sign*m1[upper].imag > 0, m1[upper], m2[upper])
-        branch[~upper] = numpy.where(
-            sign*m1[~upper].imag < 0, m1[~upper], m2[~upper])
-        m = branch
+            # pick correct branch only for non‑masked entries
+            upper = z[not_mask].imag >= 0
+            branch = numpy.empty_like(m1)
+            branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
+                                        m2[upper])
+            branch[~upper] = numpy.where(sign*m1[~upper].imag < 0, m1[~upper],
+                                         m2[~upper])
+            m[not_mask] = branch
 
         return m
 
@@ -389,11 +364,11 @@ class Meixner(object):
 
         .. code-block:: python
 
-            >>> from freealg.distributions import Meixner
-            >>> mx = Meixner(2, 3)
-            >>> m1, m2 = mx.stieltjes(plot=True)
+            >>> from freealg.distributions import MarchenkoPastur
+            >>> mp = MarchenkoPastur(1/50)
+            >>> m1, m2 = mp.stieltjes(plot=True)
 
-        .. image:: ../_static/images/plots/mx_stieltjes.png
+        .. image:: ../_static/images/plots/mp_stieltjes.png
             :align: center
             :class: custom-dark
 
@@ -401,9 +376,9 @@ class Meixner(object):
 
         .. code-block:: python
 
-            >>> m1, m2 = mx.stieltjes(plot=True, on_disk=True)
+            >>> m1, m2 = mp.stieltjes(plot=True, on_disk=True)
 
-        .. image:: ../_static/images/plots/mx_stieltjes_disk.png
+        .. image:: ../_static/images/plots/mp_stieltjes_disk.png
             :align: center
             :class: custom-dark
         """
@@ -517,16 +492,17 @@ class Meixner(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Meixner
-            >>> mx = Meixner(2, 3)
-            >>> s = mx.sample(2000)
+            >>> from freealg.distributions import MarchenkoPastur
+            >>> mp = MarchenkoPastur(1/50)
+            >>> s = mp.sample(2000)
 
-        .. image:: ../_static/images/plots/mx_samples.png
+        .. image:: ../_static/images/plots/mp_samples.png
             :align: center
             :class: custom-dark
         """
 
-        numpy.random.seed(seed)
+        if seed is not None:
+            numpy.random.seed(seed)
 
         if x_min is None:
             x_min = self.lam_m
@@ -590,10 +566,7 @@ class Meixner(object):
         Returns
         -------
 
-        Sx : numpy.ndarray
-            A matrix of the size :math:`n \\times n`.
-
-        Sy : numpy.ndarray
+        A : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
         Examples
@@ -601,9 +574,21 @@ class Meixner(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import Meixner
-            >>> mx = Meixner(2, 3)
-            >>> A = mx.matrix(2000)
+            >>> from freealg.distributions import MarchenkoPastur
+            >>> mp = MarchenkoPastur(1/50)
+            >>> A = mp.matrix(2000)
         """
 
-        raise NotImplementedError
+        if seed is not None:
+            numpy.random.seed(seed)
+
+        # Parameters
+        m = int(size / self.lam)
+
+        # Generate random matrix X (n x m) with i.i.d. standard normal entries.
+        X = numpy.random.randn(size, m)
+
+        # Form the sample covariance matrix A = (1/m)*XX^T.
+        A = X @ X.T / m
+
+        return A

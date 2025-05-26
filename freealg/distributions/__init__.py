@@ -6,10 +6,10 @@
 # under the terms of the license found in the LICENSE.txt file in the root
 # directory of this source tree.
 
-from .marchenko_pastur import MarchenkoPastur
-from .wigner import Wigner
-from .kesten_mckay import KestenMcKay
-from .wachter import Wachter
-from .meixner import Meixner
+from ._marchenko_pastur import MarchenkoPastur
+from ._wigner import Wigner
+from ._kesten_mckay import KestenMcKay
+from ._wachter import Wachter
+from ._meixner import Meixner
 
 __all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter', 'Meixner']

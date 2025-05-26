@@ -82,7 +82,8 @@ def qmc_sample(x, rho, num_pts, seed=None):
         >>> numpy.allclose(samples.mean(), 0.75, atol=0.02)
     """
 
-    numpy.random.rand(seed)
+    if seed is not None:
+        numpy.random.rand(seed)
 
     quantile = _quantile_func(x, rho)
     engine = qmc.Halton(d=1)

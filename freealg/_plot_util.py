@@ -81,6 +81,59 @@ def plot_fit(psi, x_supp, g_supp, g_supp_approx, support, latex=False,
                                   show_and_save=save_status, verbose=True)
 
 
+# =========
+# auto bins
+# =========
+
+def _auto_bins(array, method='scott', factor=5):
+    """
+    Automatic choice for the number of bins for the histogram of an array.
+
+    Parameters
+    ----------
+
+    array : numpy.array
+        An array for histogram.
+
+    method : {``'freedman'``, ``'scott'``, ``'sturges'``}, default= ``'scott'``
+        Method of choosing number of bins.
+
+    Returns
+    -------
+
+    num_bins : int
+        Number of bins for histogram.
+    """
+
+    if method == 'freedman':
+
+        q75, q25 = numpy.percentile(array, [75, 25])
+        iqr = q75 - q25
+        bin_width = 2 * iqr / (len(array) ** (1/3))
+
+        if bin_width == 0:
+            # Fallback default
+            return
+            num_bins = 100
+        else:
+            num_bins = int(numpy.ceil((array.max() - array.min()) / bin_width))
+
+    elif method == 'scott':
+
+        std = numpy.std(array)
+        bin_width = 3.5 * std / (len(array) ** (1/3))
+        num_bins = int(numpy.ceil((array.max() - array.min()) / bin_width))
+
+    elif method == 'sturges':
+
+        num_bins = int(numpy.ceil(numpy.log2(len(array)) + 1))
+
+    else:
+        raise ValueError('"method" is invalid.')
+
+    return num_bins * factor
+
+
 # ============
 # plot density
 # ============
@@ -96,7 +149,7 @@ def plot_density(x, rho, eig=None, support=None, label='',
 
         if (support is not None) and (eig is not None):
             lam_m, lam_p = support
-            bins = numpy.linspace(lam_m, lam_p, 250)
+            bins = numpy.linspace(lam_m, lam_p, _auto_bins(eig))
             _ = ax.hist(eig, bins, density=True, color='silver',
                         edgecolor='none', label='Histogram')
         else:
@@ -503,7 +556,7 @@ def plot_samples(x, rho, x_min, x_max, samples, latex=False, save=False):
 
         fig, ax = plt.subplots(figsize=(6, 3))
 
-        bins = numpy.linspace(x_min, x_max, samples.size // 15)
+        bins = numpy.linspace(x_min, x_max, _auto_bins(samples))
         _ = ax.hist(samples, bins, density=True, color='silver',
                     edgecolor='none', label='Samples histogram')
         ax.plot(x, rho, color='black', label='Exact density')

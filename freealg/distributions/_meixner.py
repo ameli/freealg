@@ -22,22 +22,25 @@ except ImportError:
     from scipy.integrate import cumulative_trapezoid as cumtrapz
 from scipy.stats import qmc
 
-__all__ = ['KestenMcKay']
+__all__ = ['Meixner']
 
 
-# ============
-# Kesten McKay
-# ============
+# =======
+# Meixner
+# =======
 
-class KestenMcKay(object):
+class Meixner(object):
     """
-    Kesten-McKay distribution.
+    Meixner distribution.
 
     Parameters
     ----------
 
-    d : float
-        Parameter :math:`d` of the distribution. See Notes.
+    a : float
+        Parameter :math:`a` of the distribution. See Notes.
+
+    b : float
+        Parameter :math:`b` of the distribution. See Notes.
 
     Methods
     -------
@@ -60,50 +63,51 @@ class KestenMcKay(object):
     Notes
     -----
 
-    The Kesten-McKay distribution has the absolutely-continuous density
+    The Meixner distribution has the absolutely-continuous density
 
     .. math::
 
         \\mathrm{d} \\rho(x) =
-        \\frac{\\sqrt{4(d-1) - x^2}}{2 \\pi (d^2 - x^2)}
+        \\frac{4(1+b) - (x-a)^2}{2 \\pi (b x^2 + a x + 1)}
         \\mathbf{1}_{x \\in [\\lambda_{-}, \\lambda_{+}]} \\mathrm{d}{x}
 
-    where
+    where :math:`a, b` are the shape parameters of the distribution. The edges
+    of the support are
 
-    * :math:`\\lambda_{\\pm} = \\pm 2 \\sqrt{d-1}` are the edges of
-      the support.
-    * :math:`d > 1` is the shape parameter of the density.
+    .. math::
+
+        \\lambda_{\\pm} = a \\pm 2 \\sqrt{1 + b}.
 
     References
     ----------
 
-    .. [1] Kesten, H. (1959). Symmetric random walks on groups. Transactions of
-           the American Mathematical Society, 92(2), 336–354.
-
-    .. [2] McKay, B. D. (1981). The expected eigenvalue distribution of a large
-           regular graph. Linear Algebra and its Applications, 40, 203-216
+    .. [1] Saitoh, N. & Yosnida, M. (2001). The infinite divisibility and
+           orthogonal polynomials with a constant recursion formula in free
+           probability theory. Probab. Math. Statist., 21, 159–170.
 
     Examples
     --------
 
     .. code-block:: python
 
-        >>> from freealg.distributions import KestenMcKay
-        >>> km = KestenMcKay()
+        >>> from freealg.distributions import Meixner
+        >>> mx = Meixner(2, 3)
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, d):
+    def __init__(self, a, b, c):
         """
         Initialization.
         """
 
-        self.d = d
-        self.lam_p = 2.0 * numpy.sqrt(d - 1.0)
-        self.lam_m = -2.0 * numpy.sqrt(d - 1.0)
+        self.a = a
+        self.b = b
+        self.c = c
+        self.lam_p = self.a + 2.0 * numpy.sqrt(self.b)
+        self.lam_m = self.a - 2.0 * numpy.sqrt(self.b)
         self.support = (self.lam_m, self.lam_p)
 
     # =======
@@ -148,11 +152,11 @@ class KestenMcKay(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> rho = km.density(plot=True)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> rho = mx.density(plot=True)
 
-        .. image:: ../_static/images/plots/km_density.png
+        .. image:: ../_static/images/plots/mx_density.png
             :align: center
             :class: custom-dark
         """
@@ -169,8 +173,19 @@ class KestenMcKay(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
 
-        rho[mask] = (self.d / (2.0 * numpy.pi * (self.d**2 - x[mask]**2))) * \
-            numpy.sqrt(4.0 * (self.d - 1.0) - x[mask]**2)
+        # rho[mask] = \
+        #     numpy.sqrt(4.0 * (1.0 + self.b) - (x[mask] - self.a)**2) / \
+        #     (2.0 * numpy.pi * (self.b * x[mask]**2 + self.a * x[mask] + 1))
+
+        numer = numpy.zeros_like(x)
+        denom = numpy.ones_like(x)
+        numer[mask] = self.c * numpy.sqrt(4.0 * self.b - (x[mask] - self.a)**2)
+        denom[mask] = (1 - self.c)*(x[mask] - self.a)**2
+        denom[mask] += self.a * (2 - self.c)*(x[mask] - self.a)
+        denom[mask] += self.a**2 + self.b * self.c**2
+        denom[mask] *= 2 * numpy.pi
+
+        rho[mask] = numer[mask] / denom[mask]
 
         if plot:
             plot_density(x, rho, label='', latex=latex, save=save)
@@ -216,11 +231,11 @@ class KestenMcKay(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> hilb = km.hilbert(plot=True)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> hilb = mx.hilbert(plot=True)
 
-        .. image:: ../_static/images/plots/km_hilbert.png
+        .. image:: ../_static/images/plots/mx_hilbert.png
             :align: center
             :class: custom-dark
         """
@@ -235,10 +250,17 @@ class KestenMcKay(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            return (self.d - 2.0) * x / (self.d - 1.0)
+            # denom = 1.0 + self.b
+            # return ((1.0 + 2.0 * self.b) * x + self.a) / denom
+            P = ((self.c - 2.0) * x - self.a * self.c) / 2.0
+            return P
 
         def _Q(x):
-            return (self.d**2 - x**2) / (self.d - 1.0)
+            # denom = 1.0 + self.b
+            # return (self.b * x**2 + self.a * x + 1.0) / denom
+            Q = ((1.0 - self.c) * x**2 + self.a * self.c * x +
+                 self.b * self.c**2) / 4.0
+            return Q
 
         P = _P(x)
         Q = _Q(x)
@@ -261,27 +283,37 @@ class KestenMcKay(object):
 
     def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
         """
-        Stieltjes transform (principal or secondary branch) for Kesten-McKay
+        Stieltjes transform (principal or secondary branch) for Meixner
         distribution on upper half-plane.
         """
 
-        m = numpy.empty_like(z, dtype=complex)
-
         sign = -1 if alt_branch else 1
-        A = (self.d**2 - z**2) / (self.d - 1.0)
-        B = ((self.d - 2.0) * z) / (self.d - 1.0)
-        D = B**2 - 4 * A
-        sqrtD = numpy.sqrt(D)
+        # denom = 1.0 + self.b
+        # A = (self.b * z**2 + self.a * z + 1.0) / denom
+        # B = ((1.0 + 2.0 * self.b) * z + self.a) / denom
+        A = ((1.0 - self.c) * z**2 + self.a * self.c * z +
+             self.b * self.c**2) / 4.0
+        B = ((self.c - 2.0) * z - self.a * self.c) / 2.0
+
+        # D = B**2 - 4 * A
+        # sqrtD = numpy.sqrt(D)
+
+        # Avoid numpy picking the wrong branch
+        d = 2 * numpy.sqrt(1.0 + self.b)
+        r_min = self.a - d
+        r_max = self.a + d
+        sqrtD = numpy.sqrt(z - r_min) * numpy.sqrt(z - r_max)
+
         m1 = (-B + sqrtD) / (2 * A)
         m2 = (-B - sqrtD) / (2 * A)
 
-        # pick correct branch
+        # pick correct branch only for non‑masked entries
         upper = z.imag >= 0
         branch = numpy.empty_like(m1)
-        branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
-                                    m2[upper])
-        branch[~upper] = numpy.where(sign*m1[~upper].imag < 0, m1[~upper],
-                                     m2[~upper])
+        branch[upper] = numpy.where(
+            sign*m1[upper].imag > 0, m1[upper], m2[upper])
+        branch[~upper] = numpy.where(
+            sign*m1[~upper].imag < 0, m1[~upper], m2[~upper])
         m = branch
 
         return m
@@ -357,11 +389,11 @@ class KestenMcKay(object):
 
         .. code-block:: python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> m1, m2 = km.stieltjes(plot=True)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> m1, m2 = mx.stieltjes(plot=True)
 
-        .. image:: ../_static/images/plots/km_stieltjes.png
+        .. image:: ../_static/images/plots/mx_stieltjes.png
             :align: center
             :class: custom-dark
 
@@ -369,9 +401,9 @@ class KestenMcKay(object):
 
         .. code-block:: python
 
-            >>> m1, m2 = km.stieltjes(plot=True, on_disk=True)
+            >>> m1, m2 = mx.stieltjes(plot=True, on_disk=True)
 
-        .. image:: ../_static/images/plots/km_stieltjes_disk.png
+        .. image:: ../_static/images/plots/mx_stieltjes_disk.png
             :align: center
             :class: custom-dark
         """
@@ -485,16 +517,17 @@ class KestenMcKay(object):
 
         .. code-block::python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> s = km.sample(2000)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> s = mx.sample(2000)
 
-        .. image:: ../_static/images/plots/km_samples.png
+        .. image:: ../_static/images/plots/mx_samples.png
             :align: center
             :class: custom-dark
         """
 
-        numpy.random.seed(seed)
+        if seed is not None:
+            numpy.random.seed(seed)
 
         if x_min is None:
             x_min = self.lam_m
@@ -538,39 +571,6 @@ class KestenMcKay(object):
 
         return samples
 
-    # ============
-    # Haar unitary
-    # ============
-
-    def _haar_orthogonal(self, n, k, seed=None):
-        """
-        Haar-distributed O(n) via the Mezzadri QR trick.
-
-        References
-        ----------
-
-        .. [1] Francesco Mezzadri. How to generate random matrices from the
-               classical compact groups. https://arxiv.org/pdf/math-ph/0609050
-
-        Notes
-        -----
-
-        Taking the QR of a normal-Gaussian matrix gives an orthonormal basis,
-        but the columns of that Q are not uniform on the sphere, as they are
-        biased by the signs or phases in the R-factor.
-
-        With Mezzadri method, columns of Q are rescaled by the reciprocals of
-        the diagonals of R phase, resulting in a matrix that is exactly
-        uniformly distributed under Haar measure O(n).
-        """
-
-        rng = numpy.random.default_rng(seed)
-        Z = rng.standard_normal((n, k))
-        Q, R = numpy.linalg.qr(Z, mode='reduced')   # Q is n by k
-        Q *= numpy.sign(numpy.diag(R))
-
-        return Q
-
     # ======
     # matrix
     # ======
@@ -591,88 +591,20 @@ class KestenMcKay(object):
         Returns
         -------
 
-        A : numpy.ndarray
+        Sx : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
-        Notes
-        -----
-
-        If the parameter :math:`d` is even, the matrtix is generated from
-
-        .. math::
-
-            \\mathbf{A} = \\sum_{i=1}^{d/2} \\mathbf{O}_i +
-            \\mathbf{O}_o^{\\intercal},
-
-        where :math:`\\mathbf{O}_i` are randomly generated orthogonal matrices
-        with Haar. This method is fast but :math:`d` has to be even.
-
-        If all other :math:`d`, the following is used:
-
-        .. math::
-
-            \\mathbf{A} = \\mathbf{P} \\mathbf{O} \\mathbf{D} \\mathbf{O}^{-1}
-            \\mathbf{P},
-
-        where :math:`\\mathbf{D}` is diagonal matrix with entries
-        :math:`\\pm 1`, :math:`\\mathbf{O}` is orthogonal with Haar measure,
-        and :math:`\\mathbf{P}` is a projection matrix. For more details, see
-        Section 5 and 6 of [1]_.
-
-        The orthogonal matrices are genrated using the method of [2]_.
-
-        References
-        ----------
-
-        .. [1] Iris S. A. Longoria and James A. Mingo, Freely Independent Coin
-               Tosses, Standard Young Tableaux, and the Kesten--McKay Law.
-               https://arxiv.org/abs/2009.11950
-
-        .. [2] Francesco Mezzadri. How to generate random matrices from the
-               classical compact groups. https://arxiv.org/abs/math-ph/0609050
+        Sy : numpy.ndarray
+            A matrix of the size :math:`n \\times n`.
 
         Examples
         --------
 
         .. code-block::python
 
-            >>> from freealg.distributions import KestenMcKay
-            >>> km = KestenMcKay(3)
-            >>> A = km.matrix(2000)
+            >>> from freealg.distributions import Meixner
+            >>> mx = Meixner(2, 3)
+            >>> A = mx.matrix(2000)
         """
 
-        if (self.d >= 2) and (self.d % 2 == 0):
-            # Uses algorithm 1 . Only if d is even. This is much faster than
-            # algorithm 2.
-            n = size
-            rng = numpy.random.default_rng(seed)
-            m = self.d // 2
-            A = numpy.zeros((n, n))
-
-            for _ in range(m):
-                O_ = self._haar_orthogonal(n, n, seed=seed)
-                A += O_ + O_.T
-        else:
-            # Uses algorithm 2. Only when d is odd, but this algorithm works
-            # for any d (even and odd), but it takes much longer to comute
-            # especially if d is larger. As such, as only use algorithm 1 when
-            # d is even and use algorithm 2 for the rest.
-            n = size * self.d
-            rng = numpy.random.default_rng(seed)
-
-            # Deterministic pieces
-            k = size
-            if k == 0:
-                raise ValueError('Choose size larger then d.')
-
-            # Projection rows of O
-            Q = self._haar_orthogonal(n, k)
-            O_k = Q.T
-
-            # diagonal D with equal \pm 1 (trace 0)
-            diag = numpy.ones(n, dtype=float)
-            diag[:n//2] = -1
-            rng.shuffle(diag)
-            A = (n/k) * (O_k * diag) @ O_k.T
-
-        return A
+        raise NotImplementedError

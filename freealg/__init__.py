@@ -7,7 +7,8 @@
 # directory of this source tree.
 
 from .freeform import FreeForm
+from . import distributions
 
-__all__ = ['FreeForm']
+__all__ = ['FreeForm', 'distributions']
 
 from .__version__ import __version__                          # noqa: F401 E402
