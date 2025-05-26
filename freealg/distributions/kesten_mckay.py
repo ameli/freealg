@@ -429,8 +429,8 @@ class KestenMcKay(object):
     # sample
     # ======
 
-    def sample(self, size, x_min=None, x_max=None, method='qmc', plot=False,
-               latex=False, save=False):
+    def sample(self, size, x_min=None, x_max=None, method='qmc', seed=None,
+               plot=False, latex=False, save=False):
         """
         Sample from distribution.
 
@@ -453,6 +453,9 @@ class KestenMcKay(object):
 
             * ``'mc'``: Monte Carlo
             * ``'qmc'``: Quasi Monte Carlo
+
+        seed : int, default=None,
+            Seed for random number generator.
 
         plot : bool, default=False
             If `True`, samples histogram is plotted.
@@ -490,6 +493,8 @@ class KestenMcKay(object):
             :align: center
             :class: custom-dark
         """
+
+        numpy.random.seed(seed)
 
         if x_min is None:
             x_min = self.lam_m
@@ -537,7 +542,7 @@ class KestenMcKay(object):
     # Haar unitary
     # ============
 
-    def _haar_orthogonal(self, n, k):
+    def _haar_orthogonal(self, n, k, seed=None):
         """
         Haar-distributed O(n) via the Mezzadri QR trick.
 
@@ -559,7 +564,7 @@ class KestenMcKay(object):
         uniformly distributed under Haar measure O(n).
         """
 
-        rng = numpy.random.default_rng()
+        rng = numpy.random.default_rng(seed)
         Z = rng.standard_normal((n, k))
         Q, R = numpy.linalg.qr(Z, mode='reduced')   # Q is n by k
         Q *= numpy.sign(numpy.diag(R))
@@ -570,7 +575,7 @@ class KestenMcKay(object):
     # matrix
     # ======
 
-    def matrix(self, size):
+    def matrix(self, size, seed=None):
         """
         Generate matrix with the spectral density of the distribution.
 
@@ -579,6 +584,9 @@ class KestenMcKay(object):
 
         size : int
             Size :math:`n` of the matrix.
+
+        seed : int, default=None
+            Seed for random number generator.
 
         Returns
         -------
@@ -621,7 +629,7 @@ class KestenMcKay(object):
                https://arxiv.org/abs/2009.11950
 
         .. [2] Francesco Mezzadri. How to generate random matrices from the
-               classical compact groups. https://arxiv.org/pdf/math-ph/0609050
+               classical compact groups. https://arxiv.org/abs/math-ph/0609050
 
         Examples
         --------
@@ -637,12 +645,12 @@ class KestenMcKay(object):
             # Uses algorithm 1 . Only if d is even. This is much faster than
             # algorithm 2.
             n = size
-            rng = numpy.random.default_rng()
+            rng = numpy.random.default_rng(seed)
             m = self.d // 2
             A = numpy.zeros((n, n))
 
             for _ in range(m):
-                O_ = self._haar_orthogonal(n, n)
+                O_ = self._haar_orthogonal(n, n, seed=seed)
                 A += O_ + O_.T
         else:
             # Uses algorithm 2. Only when d is odd, but this algorithm works
@@ -650,7 +658,7 @@ class KestenMcKay(object):
             # especially if d is larger. As such, as only use algorithm 1 when
             # d is even and use algorithm 2 for the rest.
             n = size * self.d
-            rng = numpy.random.default_rng()
+            rng = numpy.random.default_rng(seed)
 
             # Deterministic pieces
             k = size

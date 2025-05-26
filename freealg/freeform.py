@@ -839,8 +839,8 @@ class FreeForm(object):
     # ==========
 
     def decompress(self, size, x=None, delta=1e-6, iterations=500,
-                   step_size=0.1, tolerance=1e-4, plot=False, latex=False,
-                   save=False):
+                   step_size=0.1, tolerance=1e-4, seed=None, plot=False,
+                   latex=False, save=False):
         """
         Free decompression of spectral density.
 
@@ -867,6 +867,9 @@ class FreeForm(object):
         tolerance: float, default=1e-4
             Tolerance for the solution obtained by the Newton solver. Also
             used for the finite difference approximation to the derivative.
+
+        seed : int, default=None
+            Seed for random number generator. Used for QMC sampling.
 
         plot : bool, default=False
             If `True`, density is plotted.
@@ -925,6 +928,6 @@ class FreeForm(object):
             plot_density(x, rho, support=(lb, ub),
                          label='Decompression', latex=latex, save=save)
 
-        eigs = numpy.sort(qmc_sample(x, rho, size))
+        eigs = numpy.sort(qmc_sample(x, rho, size, seed=seed))
 
         return rho, eigs

@@ -461,8 +461,8 @@ class Meixner(object):
     # sample
     # ======
 
-    def sample(self, size, x_min=None, x_max=None, method='qmc', plot=False,
-               latex=False, save=False):
+    def sample(self, size, x_min=None, x_max=None, method='qmc', seed=None,
+               plot=False, latex=False, save=False):
         """
         Sample from distribution.
 
@@ -485,6 +485,9 @@ class Meixner(object):
 
             * ``'mc'``: Monte Carlo
             * ``'qmc'``: Quasi Monte Carlo
+
+        seed : int, default=None,
+            Seed for random number generator.
 
         plot : bool, default=False
             If `True`, samples histogram is plotted.
@@ -522,6 +525,8 @@ class Meixner(object):
             :align: center
             :class: custom-dark
         """
+
+        numpy.random.seed(seed)
 
         if x_min is None:
             x_min = self.lam_m
@@ -569,7 +574,7 @@ class Meixner(object):
     # matrix
     # ======
 
-    def matrix(self, size):
+    def matrix(self, size, seed=None):
         """
         Generate matrix with the spectral density of the distribution.
 
@@ -578,6 +583,9 @@ class Meixner(object):
 
         size : int
             Size :math:`n` of the matrix.
+
+        seed : int, default=None
+            Seed for random number generator.
 
         Returns
         -------

@@ -10,6 +10,7 @@
 # Imports
 # =======
 
+import numpy
 from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
 from scipy.stats import qmc
@@ -35,7 +36,7 @@ def _quantile_func(x, rho):
 # qmc sample
 # ==========
 
-def qmc_sample(x, rho, num_pts):
+def qmc_sample(x, rho, num_pts, seed=None):
     """
     Low-discrepancy sampling from a univariate density estimate using
     Quasi-Monte Carlo.
@@ -51,6 +52,9 @@ def qmc_sample(x, rho, num_pts):
 
     num_pts : int
         Number of sample points to generate from the density estimate.
+
+    seed : int, default=None
+        Seed for random number generator
 
     Returns
     -------
@@ -77,6 +81,8 @@ def qmc_sample(x, rho, num_pts):
         >>> # Empirical mean should be close to 3/4
         >>> numpy.allclose(samples.mean(), 0.75, atol=0.02)
     """
+
+    numpy.random.rand(seed)
 
     quantile = _quantile_func(x, rho)
     engine = qmc.Halton(d=1)

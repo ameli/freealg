@@ -436,8 +436,8 @@ class Wachter(object):
     # sample
     # ======
 
-    def sample(self, size, x_min=None, x_max=None, method='qmc', plot=False,
-               latex=False, save=False):
+    def sample(self, size, x_min=None, x_max=None, method='qmc', seed=None,
+               plot=False, latex=False, save=False):
         """
         Sample from distribution.
 
@@ -460,6 +460,9 @@ class Wachter(object):
 
             * ``'mc'``: Monte Carlo
             * ``'qmc'``: Quasi Monte Carlo
+
+        seed : int, default=None,
+            Seed for random number generator.
 
         plot : bool, default=False
             If `True`, samples histogram is plotted.
@@ -497,6 +500,8 @@ class Wachter(object):
             :align: center
             :class: custom-dark
         """
+
+        numpy.random.seed(seed)
 
         if x_min is None:
             x_min = self.lam_m
@@ -544,7 +549,7 @@ class Wachter(object):
     # matrix
     # ======
 
-    def matrix(self, size):
+    def matrix(self, size, seed=None):
         """
         Generate matrix with the spectral density of the distribution.
 
@@ -553,6 +558,9 @@ class Wachter(object):
 
         size : int
             Size :math:`n` of the matrix.
+
+        seed : int, default=None
+            Seed for random number generator.
 
         Returns
         -------
@@ -572,6 +580,8 @@ class Wachter(object):
             >>> wa = Wachter(2, 3)
             >>> A = wa.matrix(2000)
         """
+
+        numpy.random.seed(seed)
 
         n = size
         m1 = int(self.a * n)
