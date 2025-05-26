@@ -12,7 +12,6 @@
 # =======
 
 import numpy
-import networkx as nx
 from scipy.interpolate import interp1d
 from .._plot_util import plot_density, plot_hilbert, plot_stieltjes, \
     plot_stieltjes_on_disk, plot_samples
@@ -534,6 +533,39 @@ class KestenMcKay(object):
 
         return samples
 
+    # ============
+    # Haar unitary
+    # ============
+
+    def _haar_orthogonal(self, n, k):
+        """
+        Haar-distributed O(n) via the Mezzadri QR trick.
+
+        References
+        ----------
+
+        .. [1] Francesco Mezzadri. How to generate random matrices from the
+               classical compact groups. https://arxiv.org/pdf/math-ph/0609050
+
+        Notes
+        -----
+
+        Taking the QR of a normal-Gaussian matrix gives an orthonormal basis,
+        but the columns of that Q are not uniform on the sphere, as they are
+        biased by the signs or phases in the R-factor.
+
+        With Mezzadri method, columns of Q are rescaled by the reciprocals of
+        the diagonals of R phase, resulting in a matrix that is exactly
+        uniformly distributed under Haar measure O(n).
+        """
+
+        rng = numpy.random.default_rng()
+        Z = rng.standard_normal((n, k))
+        Q, R = numpy.linalg.qr(Z, mode='reduced')   # Q is n by k
+        Q *= numpy.sign(numpy.diag(R))
+
+        return Q
+
     # ======
     # matrix
     # ======
@@ -554,6 +586,43 @@ class KestenMcKay(object):
         A : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
+        Notes
+        -----
+
+        If the parameter :math:`d` is even, the matrtix is generated from
+
+        .. math::
+
+            \\mathbf{A} = \\sum_{i=1}^{d/2} \\mathbf{O}_i +
+            \\mathbf{O}_o^{\\intercal},
+
+        where :math:`\\mathbf{O}_i` are randomly generated orthogonal matrices
+        with Haar. This method is fast but :math:`d` has to be even.
+
+        If all other :math:`d`, the following is used:
+
+        .. math::
+
+            \\mathbf{A} = \\mathbf{P} \\mathbf{O} \\mathbf{D} \\mathbf{O}^{-1}
+            \\mathbf{P},
+
+        where :math:`\\mathbf{D}` is diagonal matrix with entries
+        :math:`\\pm 1`, :math:`\\mathbf{O}` is orthogonal with Haar measure,
+        and :math:`\\mathbf{P}` is a projection matrix. For more details, see
+        Section 5 and 6 of [1]_.
+
+        The orthogonal matrices are genrated using the method of [2]_.
+
+        References
+        ----------
+
+        .. [1] Iris S. A. Longoria and James A. Mingo, Freely Independent Coin
+               Tosses, Standard Young Tableaux, and the Kesten--McKay Law.
+               https://arxiv.org/abs/2009.11950
+
+        .. [2] Francesco Mezzadri. How to generate random matrices from the
+               classical compact groups. https://arxiv.org/pdf/math-ph/0609050
+
         Examples
         --------
 
@@ -564,11 +633,38 @@ class KestenMcKay(object):
             >>> A = km.matrix(2000)
         """
 
-        n = size
-        G = nx.random_regular_graph(self.d, n)
-        A = nx.to_numpy_array(G, dtype=float)  # shape (n,n)
+        if (self.d >= 2) and (self.d % 2 == 0):
+            # Uses algorithm 1 . Only if d is even. This is much faster than
+            # algorithm 2.
+            n = size
+            rng = numpy.random.default_rng()
+            m = self.d // 2
+            A = numpy.zeros((n, n))
 
-        mu = self.d / n
-        A_c = A - mu * numpy.ones((n, n))
+            for _ in range(m):
+                O_ = self._haar_orthogonal(n, n)
+                A += O_ + O_.T
+        else:
+            # Uses algorithm 2. Only when d is odd, but this algorithm works
+            # for any d (even and odd), but it takes much longer to comute
+            # especially if d is larger. As such, as only use algorithm 1 when
+            # d is even and use algorithm 2 for the rest.
+            n = size * self.d
+            rng = numpy.random.default_rng()
 
-        return A_c
+            # Deterministic pieces
+            k = size
+            if k == 0:
+                raise ValueError('Choose size larger then d.')
+
+            # Projection rows of O
+            Q = self._haar_orthogonal(n, k)
+            O_k = Q.T
+
+            # diagonal D with equal \pm 1 (trace 0)
+            diag = numpy.ones(n, dtype=float)
+            diag[:n//2] = -1
+            rng.shuffle(diag)
+            A = (n/k) * (O_k * diag) @ O_k.T
+
+        return A

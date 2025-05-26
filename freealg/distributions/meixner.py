@@ -250,12 +250,17 @@ class Meixner(object):
             x = numpy.linspace(x_min, x_max, 500)
 
         def _P(x):
-            denom = 1.0 + self.b
-            return ((1.0 + 2.0 * self.b) * x + self.a) / denom
+            # denom = 1.0 + self.b
+            # return ((1.0 + 2.0 * self.b) * x + self.a) / denom
+            P = ((self.c - 2.0) * x - self.a * self.c) / 2.0
+            return P
 
         def _Q(x):
-            denom = 1.0 + self.b
-            return (self.b * x**2 + self.a * x + 1.0) / denom
+            # denom = 1.0 + self.b
+            # return (self.b * x**2 + self.a * x + 1.0) / denom
+            Q = ((1.0 - self.c) * x**2 + self.a * self.c * x +
+                 self.b * self.c**2) / 4.0
+            return Q
 
         P = _P(x)
         Q = _Q(x)
@@ -283,9 +288,12 @@ class Meixner(object):
         """
 
         sign = -1 if alt_branch else 1
-        denom = 1.0 + self.b
-        A = (self.b * z**2 + self.a * z + 1.0) / denom
-        B = ((1.0 + 2.0 * self.b) * z + self.a) / denom
+        # denom = 1.0 + self.b
+        # A = (self.b * z**2 + self.a * z + 1.0) / denom
+        # B = ((1.0 + 2.0 * self.b) * z + self.a) / denom
+        A = ((1.0 - self.c) * z**2 + self.a * self.c * z +
+             self.b * self.c**2) / 4.0
+        B = ((self.c - 2.0) * z - self.a * self.c) / 2.0
 
         # D = B**2 - 4 * A
         # sqrtD = numpy.sqrt(D)
