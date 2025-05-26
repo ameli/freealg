@@ -342,6 +342,36 @@
 </dl>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>If the parameter <span class="math notranslate nohighlight">\(d\)</span> is even, the matrtix is generated from</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{A} = \sum_{i=1}^{d/2} \mathbf{O}_i +
+\mathbf{O}_o^{\intercal},\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{O}_i\)</span> are randomly generated orthogonal matrices
+with Haar. This method is fast but <span class="math notranslate nohighlight">\(d\)</span> has to be even.</p>
+<p>If all other <span class="math notranslate nohighlight">\(d\)</span>, the following is used:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{A} = \mathbf{P} \mathbf{O} \mathbf{D} \mathbf{O}^{-1}
+\mathbf{P},\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{D}\)</span> is diagonal matrix with entries
+<span class="math notranslate nohighlight">\(\pm 1\)</span>, <span class="math notranslate nohighlight">\(\mathbf{O}\)</span> is orthogonal with Haar measure,
+and <span class="math notranslate nohighlight">\(\mathbf{P}\)</span> is a projection matrix. For more details, see
+Section 5 and 6 of <a class="reference internal" href="#r86332c7a7b8c-1" id="id1">[1]</a>.</p>
+<p>The orthogonal matrices are genrated using the method of <a class="reference internal" href="#r86332c7a7b8c-2" id="id2">[2]</a>.</p>
+<p class="rubric">References</p>
+<div role="list" class="citation-list">
+<div class="citation" id="r86332c7a7b8c-1" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Iris S. A. Longoria and James A. Mingo, Freely Independent Coin
+Tosses, Standard Young Tableaux, and the Kesten–McKay Law.
+<a class="reference external" href="https://arxiv.org/abs/2009.11950">https://arxiv.org/abs/2009.11950</a></p>
+</div>
+<div class="citation" id="r86332c7a7b8c-2" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>Francesco Mezzadri. How to generate random matrices from the
+classical compact groups. <a class="reference external" href="https://arxiv.org/pdf/math-ph/0609050">https://arxiv.org/pdf/math-ph/0609050</a></p>
+</div>
+</div>
 <p class="rubric">Examples</p>
 </dd></dl>
 
