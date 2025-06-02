@@ -20,16 +20,16 @@ __all__ = ['decompress', 'reverse_characteristics']
 # decompress
 # ==========
 
-def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
-               tolerance=1e-4):
+def decompress(freeform, size, x=None, delta=1e-4, iterations=500,
+               step_size=0.1, tolerance=1e-4):
     """
     Free decompression of spectral density.
 
     Parameters
     ----------
 
-    matrix : FreeForm
-        The initial matrix to be decompressed
+    freeform : FreeForm
+        The initial freeform object of matrix to be decompressed
 
     size : int
         Size of the decompressed matrix.
@@ -82,13 +82,13 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
         >>> from freealg import FreeForm
     """
 
-    alpha = size / matrix.n
-    m = matrix._eval_stieltjes
+    alpha = size / freeform.n
+    m = freeform._eval_stieltjes
     # Lower and upper bound on new support
-    hilb_lb = (1 / m(matrix.lam_m + delta * 1j)[1]).real
-    hilb_ub = (1 / m(matrix.lam_p + delta * 1j)[1]).real
-    lb = matrix.lam_m - (alpha - 1) * hilb_lb
-    ub = matrix.lam_p - (alpha - 1) * hilb_ub
+    hilb_lb = (1 / m(freeform.lam_m + delta * 1j)[1]).real
+    hilb_ub = (1 / m(freeform.lam_p + delta * 1j)[1]).real
+    lb = freeform.lam_m - (alpha - 1) * hilb_lb
+    ub = freeform.lam_p - (alpha - 1) * hilb_ub
 
     # Create x if not given
     if x is None:
@@ -107,7 +107,7 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
 
     target = x + delta * 1j
 
-    z = numpy.full(target.shape, numpy.mean(matrix.support) - .1j,
+    z = numpy.full(target.shape, numpy.mean(freeform.support) - .1j,
                    dtype=numpy.complex128)
 
     # Broken Newton steps can produce a lot of warnings. Removing them
@@ -141,22 +141,22 @@ def decompress(matrix, size, x=None, delta=1e-4, iterations=500, step_size=0.1,
 # reverse characteristics
 # =======================
 
-def reverse_characteristics(matrix, z_inits, T, iterations=500, step_size=0.1,
-                            tolerance=1e-8):
+def reverse_characteristics(freeform, z_inits, T, iterations=500,
+                            step_size=0.1, tolerance=1e-8):
     """
     """
 
     t_span = (0, T)
     t_eval = numpy.linspace(t_span[0], t_span[1], 50)
 
-    m = matrix._eval_stieltjes
+    m = freeform._eval_stieltjes
 
     def _char_z(z, t):
         return z + (1 / m(z)[1]) * (1 - numpy.exp(t))
 
     target_z, target_t = numpy.meshgrid(z_inits, t_eval)
 
-    z = numpy.full(target_z.shape, numpy.mean(matrix.support) - .1j,
+    z = numpy.full(target_z.shape, numpy.mean(freeform.support) - .1j,
                    dtype=numpy.complex128)
 
     # Broken Newton steps can produce a lot of warnings. Removing them for now.
