@@ -13,6 +13,7 @@
 
 import numpy
 from scipy.special import eval_chebyu
+from ._pade import wynn_pade
 
 __all__ = ['chebyshev_sample_proj', 'chebyshev_kernel_proj',
            'chebyshev_approx', 'chebyshev_stieltjes']
@@ -66,7 +67,7 @@ def chebyshev_sample_proj(eig, support, K=10, reg=0.0):
     for k in range(K+1):
 
         # empirical moment M_k = (1/N) \\sum U_k(t_i)
-        M_k = numpy.sum(eval_chebyu(k, t)) / N
+        M_k = numpy.mean(eval_chebyu(k, t))
 
         # Regularization
         if k == 0:
@@ -103,7 +104,7 @@ def chebyshev_kernel_proj(xs, pdf, support, K=10, reg=0.0):
 
     for k in range(K + 1):
         Pk = eval_chebyu(k, t)                       # U_k(t) on the grid
-        moment = numpy.trapz(Pk * pdf, xs)           # \int U_k(t) \rho(x) dx
+        moment = numpy.trapezoid(Pk * pdf, xs)           # \int U_k(t) \rho(x) dx
 
         if k == 0:
             penalty = 0
@@ -218,18 +219,21 @@ def chebyshev_stieltjes(z, psi, support):
     Jp = u + root
 
     # Make sure J is Herglotz
-    J = numpy.zeros_like(Jp)
-    J = numpy.where(Jp.imag > 0, Jm, Jp)
+    J = numpy.zeros_like(Jm)
+    J = numpy.where(root.imag < 0, Jp, Jm)
+
+    psi_zero = numpy.concatenate([[0], psi])
+    S = wynn_pade(psi_zero, J)
 
     # build powers J^(k+1) for k=0..K
-    K = len(psi) - 1
+    #K = len(psi) - 1
     # shape: (..., K+1)
-    Jpow = J[..., None] ** numpy.arange(1, K+2)
+    #Jpow = J[..., None] ** numpy.arange(1, K+2)
 
     # sum psi_k * J^(k+1)
-    S = numpy.sum(psi * Jpow, axis=-1)
+    #S = numpy.sum(psi * Jpow, axis=-1)
 
     # assemble m(z)
-    m_z = - (2.0 / span) * numpy.pi * S
+    m_z = -2 / span * numpy.pi * S
 
     return m_z

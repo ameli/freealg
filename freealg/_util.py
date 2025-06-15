@@ -143,7 +143,7 @@ def force_density(psi0, support, approx, grid, alpha=0.0, beta=0.0):
     # Normalize first mode to unit mass
     x = numpy.linspace(lam_m, lam_p, 1000)
     rho = approx(x, psi)
-    mass = numpy.trapz(rho, x)
+    mass = numpy.trapezoid(rho, x)
     psi[0] = psi[0] / mass
 
     return psi

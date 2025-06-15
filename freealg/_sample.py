@@ -12,7 +12,7 @@
 
 import numpy
 from scipy.integrate import cumulative_trapezoid
-from scipy.interpolate import interp1d
+from scipy.interpolate import PchipInterpolator
 from scipy.stats import qmc
 
 __all__ = ['qmc_sample']
@@ -22,14 +22,16 @@ __all__ = ['qmc_sample']
 # quantile func
 # =============
 
-def _quantile_func(x, rho):
+def _quantile_func(x, rho, clamp=1e-4, eps=1e-8):
     """
     Construct a quantile function from evaluations of an estimated density
     on a grid (x, rho(x)).
     """
-    cdf = cumulative_trapezoid(rho, x, initial=0)
+    rho_clamp = rho.copy()
+    rho_clamp[rho < clamp] = eps
+    cdf = cumulative_trapezoid(rho_clamp, x, initial=0)
     cdf /= cdf[-1]
-    return interp1d(cdf, x, bounds_error=False, assume_sorted=True)
+    return PchipInterpolator(cdf, x, extrapolate=False)
 
 
 # ==========

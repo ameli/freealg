@@ -6,9 +6,9 @@
 # under the terms of the license found in the LICENSE.txt file in the root
 # directory of this source tree.
 
-from .freeform import FreeForm
+from .freeform import FreeForm, eigfree
 from . import distributions
 
-__all__ = ['FreeForm', 'distributions']
+__all__ = ['FreeForm', 'distributions', 'eigfree']
 
 from .__version__ import __version__                          # noqa: F401 E402
