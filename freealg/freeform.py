@@ -783,7 +783,7 @@ class FreeForm(object):
     # decompress
     # ==========
 
-    def decompress(self, size, x=None, iterations=500, eigvals=True,
+    def decompress(self, size, x=None, max_iter=500, eigvals=True,
                    step_size=0.1, tolerance=1e-9, seed=None, plot=False,
                    latex=False, save=False):
         """
@@ -799,8 +799,8 @@ class FreeForm(object):
             Positions where density to be evaluated at. If `None`, an interval
             slightly larger than the support interval will be used.
 
-        iterations: int, default=500
-            Maximum number of Newton iterations.
+        max_iter: int, default=500
+            Maximum number of secant method iterations.
 
         eigvals: bool, default=True
             Return estimated (sampled) eigenvalues as well as the density.
@@ -867,8 +867,7 @@ class FreeForm(object):
         size = int(size)
 
         rho, x, (lb, ub) = decompress(self, size, x=x, delta=self.delta,
-                                      iterations=iterations,
-                                      step_size=step_size, tolerance=tolerance)
+                                      max_iter=max_iter, tolerance=tolerance)
         x, rho = x.ravel(), rho.ravel()
 
         if plot:
