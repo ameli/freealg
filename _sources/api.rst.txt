@@ -14,6 +14,14 @@ Main Functions
 
     freealg.FreeForm
 
+.. autosummary::
+    :toctree: generated
+    :caption: Functions
+    :recursive:
+    :template: autosummary/member.rst
+
+    freealg.eigfree
+
 Distributions
 --------------
 
