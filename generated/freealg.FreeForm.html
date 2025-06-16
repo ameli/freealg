@@ -326,7 +326,7 @@
 <h1>freealg.FreeForm<a class="headerlink" href="#freealg-freeform" title="Permalink to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="freealg.FreeForm">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">FreeForm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">FreeForm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm" title="Permalink to this definition">#</a></dt>
 <dd><p>Free probability for large matrices.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -338,12 +338,11 @@ assumed to be the eigenvalues of <span class="math notranslate nohighlight">\(\m
 <dt><strong>support</strong><span class="classifier">tuple, default=None</span></dt><dd><p>The support of the density of <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>. If <cite>None</cite>, it is
 estimated from the minimum and maximum of the eigenvalues.</p>
 </dd>
-<dt><strong>p</strong><span class="classifier">float, default=0.001</span></dt><dd><p>The edges of the support of the distribution is detected by the
-<span class="math notranslate nohighlight">\(p\)</span>-quantile on the left and <span class="math notranslate nohighlight">\((1-p)\)</span>-quantile on the right.
-If the argument <code class="docutils literal notranslate"><span class="pre">support</span></code> is directly provided, this option is
-ignored. This value should be between 0 and 1, ideally a small
-number close to zero.</p>
+<dt><strong>delta: float, default=1e-6</strong></dt><dd><p>Size of perturbations into the upper half plane for Plemelj’s
+formula.</p>
 </dd>
+<dt><strong>Parameters for the ``detect_support`` function can also be prescribed here</strong></dt><dd></dd>
+<dt><strong>when ``support=None``.</strong></dt><dd></dd>
 </dl>
 </dd>
 </dl>
@@ -365,10 +364,13 @@ number close to zero.</p>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>eig</strong><span class="classifier">numpy.array</span></dt><dd><p>Eigenvalues of the matrix</p>
 </dd>
+<dt><strong>support: tuple</strong></dt><dd><p>The predicted (or given) support <span class="math notranslate nohighlight">\((\lambda_\min, \lambda_\max)\)</span> of the 
+eigenvalue density.</p>
+</dd>
 <dt><strong>psi</strong><span class="classifier">numpy.array</span></dt><dd><p>Jacobi coefficients.</p>
 </dd>
 <dt><strong>n</strong><span class="classifier">int</span></dt><dd><p>Initial array size (assuming a square matrix when <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>
-is 2D)</p>
+is 2D).</p>
 </dd>
 </dl>
 </dd>
@@ -386,9 +388,9 @@ is 2D)</p>
 <td><p>Compute Hilbert transform of the spectral density.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="freealg.FreeForm.stieltjes.html#freealg.FreeForm.stieltjes" title="freealg.FreeForm.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a>([x, y, plot, latex, save])</p></td>
-<td><p>Compute Stieltjes transform of the spectral density over a 2D Cartesian grid on the complex plane.</p></td>
+<td><p>Compute Stieltjes transform of the spectral density, evaluated on an array of points, or over a 2D Cartesian grid on the complex plane.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="freealg.FreeForm.decompress.html#freealg.FreeForm.decompress" title="freealg.FreeForm.decompress"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decompress</span></code></a>(size[, x, delta, iterations, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.FreeForm.decompress.html#freealg.FreeForm.decompress" title="freealg.FreeForm.decompress"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decompress</span></code></a>(size[, x, iterations, eigvals, ...])</p></td>
 <td><p>Free decompression of spectral density.</p></td>
 </tr>
 </tbody>
