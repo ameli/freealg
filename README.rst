@@ -42,7 +42,7 @@ smaller Wishart matrix.
     >>> A = mp.matrix(1000)                         # Sample a 1000 x 1000 Wishart matrix
     >>> eigs = fa.eigfree(A, 100_000)               # Estimate the eigenvalues of 100000 x 100000
 
-For more details on how to interface with *freealg* check out the `Quick Start Guide <https://github.com/ameli/freealg/blob/main/notebooks/quick_start.ipynb>`.
+For more details on how to interface with *freealg* check out the `Quick Start Guide <https://github.com/ameli/freealg/blob/main/notebooks/quick_start.ipynb>`__.
 
 
 Test

@@ -20,8 +20,8 @@ __all__ = ['decompress', 'reverse_characteristics']
 # decompress
 # ==========
 
-def decompress(freeform, size, x=None, delta=1e-4, iterations=500,
-               step_size=0.1, tolerance=1e-4):
+def decompress(freeform, size, x=None, delta=1e-6, iterations=500,
+               step_size=0.1, tolerance=1e-9):
     """
     Free decompression of spectral density.
 

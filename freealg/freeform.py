@@ -784,7 +784,7 @@ class FreeForm(object):
     # ==========
 
     def decompress(self, size, x=None, iterations=500, eigvals=True,
-                   step_size=0.1, tolerance=1e-6, seed=None, plot=False,
+                   step_size=0.1, tolerance=1e-9, seed=None, plot=False,
                    latex=False, save=False):
         """
         Free decompression of spectral density.
@@ -808,7 +808,7 @@ class FreeForm(object):
         step_size: float, default=0.1
             Step size for Newton iterations.
 
-        tolerance: float, default=1e-6
+        tolerance: float, default=1e-9
             Tolerance for the solution obtained by the Newton solver. Also
             used for the finite difference approximation to the derivative.
 
@@ -956,12 +956,13 @@ def eigfree(A, N = None, psd = None):
     ff.n = n_s
 
     # Perform fit and estimate eigenvalues
-    order = 1 + int(len(samples)**.25)
+    order = 1 + int(len(samples)**.2)
     ff.fit(method='chebyshev', K=order, projection='sample', damp='jackson', 
-           force=True, plot=False, latex=False, save=False, reg=0.01)
+           force=True, plot=False, latex=False, save=False, reg=0.05)
     _, _, eigs = ff.decompress(N)
 
     if psd:
         eigs = numpy.abs(eigs)
+        eigs.sort()
 
     return eigs
