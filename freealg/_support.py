@@ -1,31 +1,49 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# SPDX-FileType: SOURCE
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the license found in the LICENSE.txt file in the root directory
+# of this source tree.
+
+
+# =======
+# Imports
+# =======
+
 import numpy
 from scipy.stats import gaussian_kde
 
-def detect_support(eigs, method='interior_smooth', k = None, p = 0.001, **kwargs):
+
+# ==============
+# detect support
+# ==============
+
+def detect_support(eigs, method='interior_smooth', k=None, p=0.001, **kwargs):
     """
     Estimates the support of the eigenvalue density.
 
     Parameters
     ----------
-    method : {``'range'``, ``'jackknife'``, ``'regression'``, ``'interior'``, 
+    method : {``'range'``, ``'jackknife'``, ``'regression'``, ``'interior'``,
                 ``'interior_smooth'``}, \
             default= ``'jackknife'``
         The method of support estimation:
 
-        * ``'range'``: no estimation; the support is the range of the eigenvalues
-        * ``'jackknife'``: estimates the support using Quenouille's [1]
-            jackknife estimator. Fast and simple, more accurate than the range.
-        * ``'regression'``: estimates the support by performing a regression under
-            the assumption that the edge behavior is of square-root type. Often
-            most accurate.
+        * ``'range'``: no estimation; the support is the range of the
+          eigenvalues
+        * ``'jackknife'``: estimates the support using Quenouille's [1]_
+          jackknife estimator. Fast and simple, more accurate than the range.
+        * ``'regression'``: estimates the support by performing a regression
+          under the assumption that the edge behavior is of square-root type.
+          Often most accurate.
         * ``'interior'``: estimates a support assuming the range overestimates;
             uses quantiles (p, 1-p).
-        * ``'interior_smooth'``: same as ``'interior'`` but using kernel density
-            estimation.
+        * ``'interior_smooth'``: same as ``'interior'`` but using kernel
+          density estimation.
 
     k : int, default = None
-        Number of extreme order statistics to use for ``method='regression'``. 
-    
+        Number of extreme order statistics to use for ``method='regression'``.
+
     p : float, default=0.001
         The edges of the support of the distribution is detected by the
         :math:`p`-quantile on the left and :math:`(1-p)`-quantile on the right
@@ -36,21 +54,22 @@ def detect_support(eigs, method='interior_smooth', k = None, p = 0.001, **kwargs
     References
     ----------
 
-    .. [1] Quenouille, M. H. (1949, July). Approximate tests of correlation in time-series. 
-        In Mathematical Proceedings of the Cambridge Philosophical Society (Vol. 45, No. 3, 
-        pp. 483-484). Cambridge University Press.
+    .. [1] Quenouille, M. H. (1949, July). Approximate tests of correlation in
+           time-series. In Mathematical Proceedings of the Cambridge
+           Philosophical Society (Vol. 45, No. 3, pp. 483-484). Cambridge
+           University Press.
     """
 
-    if method=='range':
+    if method == 'range':
         lam_m = eigs.min()
         lam_p = eigs.max()
 
-    elif method=='jackknife':
+    elif method == 'jackknife':
         x, n = numpy.sort(eigs), len(eigs)
-        lam_m = x[0]  - (n - 1)/n * (x[1]  - x[0])
+        lam_m = x[0] - (n - 1)/n * (x[1] - x[0])
         lam_p = x[-1] + (n - 1)/n * (x[-1] - x[-2])
 
-    elif method=='regression':
+    elif method == 'regression':
         x, n = numpy.sort(eigs), len(eigs)
         if k is None:
             k = int(round(n ** (2/3)))
@@ -66,10 +85,10 @@ def detect_support(eigs, method='interior_smooth', k = None, p = 0.001, **kwargs
         # Right edge: regress x_{(n-i+1)} on y
         _, lam_p = numpy.polyfit(y, x[-k:][::-1], 1)
 
-    elif method=='interior':
+    elif method == 'interior':
         lam_m, lam_p = numpy.quantile(eigs, [p, 1-p])
-    
-    elif method=='interior_smooth':
+
+    elif method == 'interior_smooth':
         kde = gaussian_kde(eigs)
         xs = numpy.linspace(eigs.min(), eigs.max(), 1000)
         fs = kde(xs)

@@ -58,7 +58,7 @@ def chebyshev_sample_proj(eig, support, K=10, reg=0.0):
 
     # Map to [–1,1] interval
     t = (2 * eig - (lam_m + lam_p)) / (lam_p - lam_m)
-    N = eig.size
+    # N = eig.size
 
     # Inner‐product norm of each U_k under w(t) = sqrt{1–t^2} is \\pi/2
     norm = numpy.pi / 2
@@ -104,7 +104,7 @@ def chebyshev_kernel_proj(xs, pdf, support, K=10, reg=0.0):
 
     for k in range(K + 1):
         Pk = eval_chebyu(k, t)                       # U_k(t) on the grid
-        moment = numpy.trapezoid(Pk * pdf, xs)           # \int U_k(t) \rho(x) dx
+        moment = numpy.trapezoid(Pk * pdf, xs)       # \int U_k(t) \rho(x) dx
 
         if k == 0:
             penalty = 0
@@ -226,12 +226,12 @@ def chebyshev_stieltjes(z, psi, support):
     S = wynn_pade(psi_zero, J)
 
     # build powers J^(k+1) for k=0..K
-    #K = len(psi) - 1
+    # K = len(psi) - 1
     # shape: (..., K+1)
-    #Jpow = J[..., None] ** numpy.arange(1, K+2)
+    # Jpow = J[..., None] ** numpy.arange(1, K+2)
 
     # sum psi_k * J^(k+1)
-    #S = numpy.sum(psi * Jpow, axis=-1)
+    # S = numpy.sum(psi * Jpow, axis=-1)
 
     # assemble m(z)
     m_z = -2 / span * numpy.pi * S

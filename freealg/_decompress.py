@@ -15,8 +15,13 @@ import numpy
 
 __all__ = ['decompress', 'reverse_characteristics']
 
-def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
-    alpha=0.5, max_bt=12, eps=1e-30, verbose=False):
+
+# =============
+# secant method
+# =============
+
+def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100, alpha=0.5,
+                   max_bt=12, eps=1e-30, verbose=False):
     """
     Solves :math:``f(z) = a`` for many starting points simultaneously
     using the secant method in the complex plane.
@@ -69,8 +74,8 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
     orig_shape = z0.shape
     z0, z1, a = (x.ravel() for x in (z0, z1, a))
 
-    n_points   = z0.size
-    roots      = z1.copy()
+    n_points = z0.size
+    roots = z1.copy()
     iterations = numpy.zeros(n_points, dtype=int)
 
     f0 = f(z0) - a
@@ -87,9 +92,9 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
         # Secant step
         denom = f1 - f0
         denom = numpy.where(numpy.abs(denom) < eps, denom + eps, denom)
-        dz    = (z1 - z0) * f1 / denom
-        z2    = z1 - dz
-        f2    = f(z2) - a
+        dz = (z1 - z0) * f1 / denom
+        z2 = z1 - dz
+        f2 = f(z2) - a
 
         # Line search by backtracking
         worse = (numpy.abs(f2) >= numpy.abs(f1)) & active
@@ -135,6 +140,7 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
         residuals.reshape(orig_shape),
         iterations.reshape(orig_shape),
     )
+
 
 # ==========
 # decompress
@@ -228,7 +234,7 @@ def decompress(freeform, size, x=None, delta=1e-6, max_iter=500,
     z0 = numpy.full(target.shape, numpy.mean(freeform.support) + delta*1j,
                     dtype=numpy.complex128)
     z1 = z0 - numpy.log(alpha) * 1j
-    
+
     roots, _, _ = secant_complex(
         _char_z, z0, z1,
         a=target,

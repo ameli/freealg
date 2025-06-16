@@ -539,9 +539,9 @@ class KestenMcKay(object):
 
         return samples
 
-    # ============
-    # Haar unitary
-    # ============
+    # ===============
+    # haar orthogonal
+    # ===============
 
     def _haar_orthogonal(self, n, k, seed=None):
         """

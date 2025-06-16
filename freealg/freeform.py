@@ -28,7 +28,7 @@ from ._decompress import decompress
 from ._sample import qmc_sample
 from ._support import detect_support
 
-__all__ = ['FreeForm', 'eigfree']
+__all__ = ['FreeForm']
 
 
 # =========
@@ -75,15 +75,15 @@ class FreeForm(object):
         Eigenvalues of the matrix
 
     support: tuple
-        The predicted (or given) support :math:`(\lambda_\min, \lambda_\max)` of the 
-        eigenvalue density.
+        The predicted (or given) support :math:`(\\lambda_{\\min},
+        \\lambda_{\\max})` of the eigenvalue density.
 
     psi : numpy.array
         Jacobi coefficients.
 
-    n   : int
-        Initial array size (assuming a square matrix when :math:`\\mathbf{A}`
-        is 2D).
+    n : int
+      Initial array size (assuming a square matrix when :math:`\\mathbf{A}` is
+      2D).
 
     Methods
     -------
@@ -390,10 +390,10 @@ class FreeForm(object):
             x_supp = numpy.linspace(self.lam_m, self.lam_p, 1000)
             g_supp = 2.0 * numpy.pi * self.hilbert(x_supp)
             self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m, self.lam_p,
-                                    p=pade_p, q=pade_q, odd_side=odd_side,
-                                    pade_reg=pade_reg, safety=1.0, max_outer=40,
-                                    xtol=1e-12, ftol=1e-12, optimizer=optimizer,
-                                    verbose=0)
+                                      p=pade_p, q=pade_q, odd_side=odd_side,
+                                      pade_reg=pade_reg, safety=1.0,
+                                      max_outer=40, xtol=1e-12, ftol=1e-12,
+                                      optimizer=optimizer, verbose=0)
 
         if plot:
             g_supp_approx = eval_pade(x_supp[None, :], self._pade_sol)[0, :]
@@ -449,7 +449,8 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using the .fit() function.')
+            raise RuntimeError('The spectral density needs to be fit using ' +
+                               'the .fit() function.')
 
         # Create x if not given
         if x is None:
@@ -543,7 +544,8 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using the .fit() function.')
+            raise RuntimeError('The spectral density needs to be fit using ' +
+                               'the .fit() function.')
 
         # Create x if not given
         if x is None:
@@ -605,8 +607,10 @@ class FreeForm(object):
 
     def stieltjes(self, x=None, y=None, plot=False, latex=False, save=False):
         """
-        Compute Stieltjes transform of the spectral density, evaluated on an array
-        of points, or over a 2D Cartesian grid on the complex plane.
+        Compute Stieltjes transform of the spectral density on a grid.
+
+        This function evaluates Stieltjes transform on an array of points, or
+        over a 2D Cartesian grid on the complex plane.
 
         Parameters
         ----------
@@ -665,11 +669,11 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using the .fit() function.')
+            raise RuntimeError('The spectral density needs to be fit using ' +
+                               'the .fit() function.')
 
-
-        # Determine whether the Stieltjes transform is to be computed on
-        # a Cartesian grid
+        # Determine whether the Stieltjes transform is to be computed on a
+        # Cartesian grid
         cartesian = plot | (y is not None)
 
         # Create x if not given
@@ -693,7 +697,7 @@ class FreeForm(object):
             z = x_grid + 1j * y_grid              # shape (Ny, Nx)
         else:
             z = x
-        
+
         m1, m2 = self._eval_stieltjes(z)
 
         if plot:
@@ -737,14 +741,15 @@ class FreeForm(object):
         z = z.reshape(-1, 1)
 
         # # Set the number of bases as the number of x points insides support
-        # mask_sup = numpy.logical_and(z.real >= self.lam_m, z.real <= self.lam_p)
+        # mask_sup = numpy.logical_and(z.real >= self.lam_m,
+        #                              z.real <= self.lam_p)
         # n_base = 2 * numpy.sum(mask_sup)
 
         # Stieltjes function
         if self.method == 'jacobi':
             stieltjes = partial(jacobi_stieltjes, psi=self.psi,
                                 support=self.support, alpha=self.alpha,
-                                beta=self.beta) # n_base = n_base
+                                beta=self.beta)  # n_base = n_base
         elif self.method == 'chebyshev':
             stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
                                 support=self.support)
@@ -767,12 +772,12 @@ class FreeForm(object):
             m2[mask_p] = m1[mask_p]
             m2[mask_m] = -m1[mask_m] + self._glue(
                 z[mask_m].reshape(-1, 1)).ravel()
-        
+
         else:
-            m2[:]      = stieltjes(z.reshape(-1,1)).reshape(*m2.shape)
+            m2[:] = stieltjes(z.reshape(-1, 1)).reshape(*m2.shape)
             m1[mask_p] = m2[mask_p]
             m1[mask_m] = numpy.conjugate(
-                stieltjes(numpy.conjugate(z[mask_m].reshape(-1,1)))
+                stieltjes(numpy.conjugate(z[mask_m].reshape(-1, 1)))
             ).ravel()
 
         m1, m2 = m1.reshape(*shape), m2.reshape(*shape)
@@ -879,89 +884,3 @@ class FreeForm(object):
             return x, rho, eigs
         else:
             return x, rho
-
-def eigfree(A, N = None, psd = None):
-    """
-    Estimate the eigenvalues of a matrix :math:`\\mathbf{A}` or a larger matrix
-    containing :math:`\\mathbf{A}` using free decompression.
-
-    This is a convenience function for the FreeForm class with some effective
-    defaults that work well for common random matrix ensembles. For improved
-    performance and plotting utilites, consider finetuning parameters using 
-    the FreeForm class.
-
-    Parameters
-    ----------
-
-    A : numpy.ndarray
-        The symmetric real-valued matrix :math:`\\mathbf{A}` whose eigenvalues
-        (or those of a matrix containing :math:`\\mathbf{A}`) are to be computed.
-
-    N : int, default=None
-        The size of the matrix containing :math:`\\mathbf{A}` to estimate
-        eigenvalues of. If None, returns estimates of the eigenvalues of
-        :math:`\\mathbf{A}` itself.
-
-    psd: bool, default=None
-        Determines whether the matrix is positive-semidefinite (PSD; all 
-        eigenvalues are non-negative). If None, the matrix is considered PSD if
-        all sampled eigenvalues are positive.
-
-    Notes
-    -----
-
-    Notes.
-
-    References
-    ----------
-
-    .. [1] Reference.
-
-    Examples
-    --------
-
-    .. code-block:: python
-
-        >>> from freealg import FreeForm
-    """
-    n = A.shape[0]
-    
-    # Size of sample matrix
-    n_s = int(80*(1 + numpy.log(n)))
-
-    # If matrix is not large enough, return eigenvalues
-    if n < n_s:
-        return compute_eig(A)
-    
-    if N is None:
-        N = n
-    
-    # Number of samples
-    num_samples = int(10 * (n / n_s)**0.5)
-
-    # Collect eigenvalue samples
-    samples = []
-    for _ in range(num_samples):
-        indices = numpy.random.choice(n, n_s, replace=False)
-        samples.append(compute_eig(A[numpy.ix_(indices, indices)]))
-    samples = numpy.concatenate(samples).ravel()
-
-    # If all eigenvalues are positive, set PSD flag
-    if psd is None:
-        psd = samples.min() > 0
-
-    ff = FreeForm(samples)
-    # Since we are resampling, we need to provide the correct matrix size
-    ff.n = n_s
-
-    # Perform fit and estimate eigenvalues
-    order = 1 + int(len(samples)**.2)
-    ff.fit(method='chebyshev', K=order, projection='sample', damp='jackson', 
-           force=True, plot=False, latex=False, save=False, reg=0.05)
-    _, _, eigs = ff.decompress(N)
-
-    if psd:
-        eigs = numpy.abs(eigs)
-        eigs.sort()
-
-    return eigs
