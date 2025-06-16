@@ -3,7 +3,10 @@
     :width: 240
     :class: custom-dark
 
-*freealg* is a python package that employs **free** probability for large matrix **form**\ s.
+*freealg* is a Python package that employs **free** probability to evaluate the spectral
+densities of large matrix **form**\ s. The fundamental algorithm employed by *freealg* is
+**free decompression**, which extrapolates from the empirical spectral densities of small 
+submatrices to infer the eigenspectrum of extremely large matrices. 
 
 Install
 =======
@@ -29,12 +32,18 @@ Documentation is available at `ameli.github.io/freealg <https://ameli.github.io/
 Quick Usage
 ===========
 
-Create and Train a Model
-------------------------
+The following code estimates the eigenvalues of a very large Wishart matrix using a much
+smaller Wishart matrix.
 
 .. code-block:: python
 
     >>> import freealg as fa
+    >>> mp = fa.distributions.MarchenkoPastur(1/50) # Wishart matrices with aspect ratio 1/50
+    >>> A = mp.matrix(1000)                         # Sample a 1000 x 1000 Wishart matrix
+    >>> eigs = fa.eigfree(A, 100_000)               # Estimate the eigenvalues of 100000 x 100000
+
+For more details on how to interface with *freealg* check out the `Quick Start Guide <https://github.com/ameli/freealg/blob/main/notebooks/quick_start.ipynb>`.
+
 
 Test
 ====
@@ -64,13 +73,17 @@ requests and bug reports.
 How to Cite
 ===========
 
-* TBD
+If you use this work, please cite the `arXiv paper <https://arxiv.org/abs/2506.11994>`.
 
   .. code::
 
-      @inproceedings{
-          TBD
+      @article{ameli2025spectral,
+        title={Spectral Estimation with Free Decompression},
+        author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
+        journal={arXiv preprint arXiv:2506.11994},
+        year={2025}
       }
+
 
 License
 =======
