@@ -23,7 +23,7 @@
 //    file.
 
 // My Adobe Embedded API user ID
-const clientId = "ec3799abaed846ae9e640d0dfa9b3a33";
+const clientId = "a041c1eac27347b6bf69c3dd05824bb9";
 
 // =================================
 // Options to show Text (non-slides)
