@@ -176,7 +176,7 @@ class MarchenkoPastur(object):
 
         if plot:
             if eig is not None:
-                label = 'Estimate'
+                label = 'Theoretical'
             else:
                 label = ''
             plot_density(x, rho, label=label, latex=latex, save=save, eig=eig)

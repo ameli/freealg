@@ -69,7 +69,11 @@ def eigfree(A, N=None, psd=None, plots=False):
 
     .. code-block:: python
 
-        >>> from freealg import FreeForm
+        >>> from freealg import condfree
+        >>> from freealg.distributions import MarchenkoPastur
+        >>> mp = MarchenkoPastur(1/50)
+        >>> A = mp.matrix(3000)
+        >>> eigs = eigfree(A)
     """
 
     if A.ndim != 2 or A.shape[0] != A.shape[1]:
@@ -155,7 +159,11 @@ def condfree(A, N=None):
 
     .. code-block:: python
 
-        >>> from freealg import FreeForm
+        >>> from freealg import condfree
+        >>> from freealg.distributions import MarchenkoPastur
+        >>> mp = MarchenkoPastur(1/50)
+        >>> A = mp.matrix(3000)
+        >>> condfree(A)
     """
 
     eigs = eigfree(A, N)

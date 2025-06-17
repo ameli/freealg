@@ -224,14 +224,6 @@ def chebyshev_stieltjes(z, psi, support):
     psi_zero = numpy.concatenate([[0], psi])
     S = wynn_pade(psi_zero, J)
 
-    # build powers J^(k+1) for k=0..K
-    # K = len(psi) - 1
-    # shape: (..., K+1)
-    # Jpow = J[..., None] ** numpy.arange(1, K+2)
-
-    # sum psi_k * J^(k+1)
-    # S = numpy.sum(psi * Jpow, axis=-1)
-
     # assemble m(z)
     m_z = -2 / span * numpy.pi * S
 
