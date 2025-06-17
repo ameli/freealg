@@ -1,5 +1,17 @@
-import numba
+# SPDX-License-Identifier: BSD-3-Clause
+# SPDX-FileType: SOURCE
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the license found in the LICENSE.txt file in the root directory
+# of this source tree.
+
+
+# =======
+# Imports
+# =======
+
 import numpy
+import numba
 from scipy.stats import gaussian_kde
 
 
@@ -120,8 +132,9 @@ def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
     ----------
 
     .. [1] Quenouille, M. H. (1949, July). Approximate tests of correlation in
-        time-series. In Mathematical Proceedings of the Cambridge Philosophical
-        Society (Vol. 45, No. 3, pp. 483-484). Cambridge University Press.
+           time-series. In Mathematical Proceedings of the Cambridge
+           Philosophical Society (Vol. 45, No. 3, pp. 483-484). Cambridge
+           University Press.
     """
 
     if method == 'range':

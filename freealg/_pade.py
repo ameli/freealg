@@ -236,10 +236,10 @@ def _eval_rational(z, c, D, poles, resid):
 
     return c + D * z + term
 
-# ========
-# Wynn epsilon algorithm for Pade
-# ========
 
+# =========
+# Wynn pade
+# =========
 
 @numba.jit(nopython=True, parallel=True)
 def wynn_pade(coeffs, x):
@@ -249,14 +249,19 @@ def wynn_pade(coeffs, x):
     returns a function handle that computes the Pade approximant at any x
     using Wynn's epsilon algorithm.
 
-    Parameters:
-        coeffs (list or array): Coefficients [a0, a1, a2, ...] of the power
-        series.
+    Parameters
+    ----------
 
-    Returns:
-        function: A function approximant(x) that returns the approximated
-        value f(x).
+    coeffs (list or array):
+        Coefficients [a0, a1, a2, ...] of the power series.
+
+    Returns
+    -------
+
+    function:
+        A function approximant(x) that returns the approximated value f(x).
     """
+
     # Number of coefficients
     xn = x.ravel()
     d = len(xn)
@@ -288,6 +293,7 @@ def wynn_pade(coeffs, x):
         N -= 1
 
     return eps[N-1, 0, :].reshape(x.shape)
+
 
 # ========
 # fit pade

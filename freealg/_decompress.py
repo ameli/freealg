@@ -15,6 +15,11 @@ import numpy
 __all__ = ['decompress', 'reverse_characteristics']
 
 
+# =============
+# secant method
+# =============
+
+
 def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
                    alpha=0.5, max_bt=2, eps=1e-30, step_factor=5.0,
                    post_smooth=True, jump_tol=10.0, verbose=False):
@@ -189,6 +194,7 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
         residuals.reshape(orig_shape),
         iterations.reshape(orig_shape),
     )
+
 
 # ==========
 # decompress

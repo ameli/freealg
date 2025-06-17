@@ -102,8 +102,8 @@ def chebyshev_kernel_proj(xs, pdf, support, K=10, reg=0.0):
     psi = numpy.empty(K + 1)
 
     for k in range(K + 1):
-        Pk = eval_chebyu(k, t)                     # U_k(t) on the grid
-        moment = numpy.trapezoid(Pk * pdf, xs)     # \int U_k(t) \rho(x) dx
+        Pk = eval_chebyu(k, t)                       # U_k(t) on the grid
+        moment = numpy.trapezoid(Pk * pdf, xs)       # \int U_k(t) \rho(x) dx
 
         if k == 0:
             penalty = 0
@@ -223,6 +223,14 @@ def chebyshev_stieltjes(z, psi, support):
 
     psi_zero = numpy.concatenate([[0], psi])
     S = wynn_pade(psi_zero, J)
+
+    # build powers J^(k+1) for k=0..K
+    # K = len(psi) - 1
+    # shape: (..., K+1)
+    # Jpow = J[..., None] ** numpy.arange(1, K+2)
+
+    # sum psi_k * J^(k+1)
+    # S = numpy.sum(psi * Jpow, axis=-1)
 
     # assemble m(z)
     m_z = -2 / span * numpy.pi * S

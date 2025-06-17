@@ -28,7 +28,7 @@ from ._decompress import decompress
 from ._sample import qmc_sample
 from ._support import detect_support
 
-__all__ = ['FreeForm', 'eigfree']
+__all__ = ['FreeForm']
 
 
 # =========
@@ -81,9 +81,9 @@ class FreeForm(object):
     psi : numpy.array
         Jacobi coefficients.
 
-    n   : int
-        Initial array size (assuming a square matrix when :math:`\\mathbf{A}`
-        is 2D).
+    n : int
+      Initial array size (assuming a square matrix when :math:`\\mathbf{A}` is
+      2D).
 
     Methods
     -------
@@ -449,7 +449,7 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using '
+            raise RuntimeError('The spectral density needs to be fit using ' +
                                'the .fit() function.')
 
         # Create x if not given
@@ -544,7 +544,7 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using '
+            raise RuntimeError('The spectral density needs to be fit using ' +
                                'the .fit() function.')
 
         # Create x if not given
@@ -607,8 +607,10 @@ class FreeForm(object):
 
     def stieltjes(self, x=None, y=None, plot=False, latex=False, save=False):
         """
-        Compute Stieltjes transform of the spectral density, evaluated on an
-        array of points, or over a 2D Cartesian grid on the complex plane.
+        Compute Stieltjes transform of the spectral density on a grid.
+
+        This function evaluates Stieltjes transform on an array of points, or
+        over a 2D Cartesian grid on the complex plane.
 
         Parameters
         ----------
@@ -667,11 +669,11 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using '
+            raise RuntimeError('The spectral density needs to be fit using ' +
                                'the .fit() function.')
 
-        # Determine whether the Stieltjes transform is to be computed on
-        # a Cartesian grid
+        # Determine whether the Stieltjes transform is to be computed on a
+        # Cartesian grid
         cartesian = plot | (y is not None)
 
         # Create x if not given
@@ -745,7 +747,8 @@ class FreeForm(object):
         z = z.reshape(-1, 1)
 
         # # Set the number of bases as the number of x points insides support
-        # mask_sup = numpy.logical_and(z.real>=self.lam_m,z.real<=self.lam_p)
+        # mask_sup = numpy.logical_and(z.real >= self.lam_m,
+        #                              z.real <= self.lam_p)
         # n_base = 2 * numpy.sum(mask_sup)
 
         # Stieltjes function
