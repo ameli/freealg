@@ -1,0 +1,6 @@
+﻿freealg.cond
+============
+
+.. currentmodule:: freealg
+
+.. autofunction:: cond

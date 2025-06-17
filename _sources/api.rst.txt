@@ -20,7 +20,8 @@ Main Functions
     :recursive:
     :template: autosummary/member.rst
 
-    freealg.eigfree
+    freealg.eigh
+    freealg.cond
 
 Distributions
 --------------
