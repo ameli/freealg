@@ -59,13 +59,14 @@ class FreeForm(object):
         Size of perturbations into the upper half plane for Plemelj's
         formula.
 
-    Parameters for the ``detect_support`` function can also be prescribed here
-    when ``support=None``.
+    **kwargs : dict, optional
+        Parameters for the ``detect_support`` function can also be prescribed
+        here when ``support=None``.
 
     Notes
     -----
 
-    Notes.
+    TBD
 
     References
     ----------
