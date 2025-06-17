@@ -8,7 +8,7 @@ How to Cite
         <div class="highlight-BibTeX notranslate collapse" id="collapse-bib1">
         <div class="highlight">
         <pre class="language-bib">
-        <code class="language-bib">@article{ameli2025spectral,
+        <code class="language-bib">@article{spectral2025,
             title={Spectral Estimation with Free Decompression},
             author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
             year={2025},

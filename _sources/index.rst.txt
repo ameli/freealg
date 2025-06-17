@@ -35,7 +35,7 @@
         :class-card: custom-card-link
 
     .. grid-item-card:: Slides
-        :link: https://github.com/ameli/freealg/blob/main/docs/source/_static/data/slides.pdf
+        :link: _static/data/slides.pdf
         :text-align: center
         :class-card: custom-card-link
 
