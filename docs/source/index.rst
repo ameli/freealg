@@ -27,6 +27,18 @@
         :text-align: center
         :class-card: custom-card-link
 
+.. grid:: 4
+
+    .. grid-item-card:: Paper
+        :link: https://arxiv.org/pdf/2506.11994
+        :text-align: center
+        :class-card: custom-card-link
+
+    .. grid-item-card:: Slides
+        :link: https://github.com/ameli/freealg/blob/main/docs/source/_static/data/slides.pdf
+        :text-align: center
+        :class-card: custom-card-link
+
 Install
 =======
 

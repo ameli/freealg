@@ -142,7 +142,7 @@ function showPDF(urlToPDF, slide=false, allowTextSelection) {
 const pdfData = [
     {
         id: ["showPaper01"],
-        url: "https://arxiv.org/pdf/2412.18407",
+        url: "https://arxiv.org/pdf/2506.11994",
         slide: false,
         allowTextSelection: true,
     },

@@ -3,6 +3,10 @@
     :width: 240
     :class: custom-dark
 
+`Paper <https://arxiv.org/abs/2506.11994>`__ |
+`Slides <https://github.com/ameli/freealg/blob/main/docs/source/_static/data/slides.pdf>`__ |
+`Docs <https://ameli.github.io/freealg/`__
+
 *freealg* is a Python package that employs **free** probability to evaluate the spectral
 densities of large matrix **form**\ s. The fundamental algorithm employed by *freealg* is
 **free decompression**, which extrapolates from the empirical spectral densities of small 
@@ -73,15 +77,19 @@ requests and bug reports.
 How to Cite
 ===========
 
-If you use this work, please cite the `arXiv paper <https://arxiv.org/abs/2506.11994>`.
+If you use this work, please cite the `arXiv paper <https://arxiv.org/abs/2506.11994>`__.
 
   .. code::
 
       @article{ameli2025spectral,
-        title={Spectral Estimation with Free Decompression},
-        author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
-        journal={arXiv preprint arXiv:2506.11994},
-        year={2025}
+          title={Spectral Estimation with Free Decompression},
+          author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
+          year={2025},
+          eprint={2506.11994},
+          archivePrefix={arXiv},
+          primaryClass={stat.ML},
+          url={https://arxiv.org/abs/2506.11994},
+          journal={arXiv preprint arXiv:2506.11994},
       }
 
 
