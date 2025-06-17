@@ -240,6 +240,7 @@ def _eval_rational(z, c, D, poles, resid):
 # Wynn epsilon algorithm for Pade
 # ========
 
+
 @numba.jit(nopython=True, parallel=True)
 def wynn_pade(coeffs, x):
     """
@@ -249,46 +250,49 @@ def wynn_pade(coeffs, x):
     using Wynn's epsilon algorithm.
 
     Parameters:
-        coeffs (list or array): Coefficients [a0, a1, a2, ...] of the power series.
+        coeffs (list or array): Coefficients [a0, a1, a2, ...] of the power
+        series.
 
     Returns:
-        function: A function approximant(x) that returns the approximated value f(x).
+        function: A function approximant(x) that returns the approximated
+        value f(x).
     """
     # Number of coefficients
     xn = x.ravel()
     d = len(xn)
     N = len(coeffs)
-    
+
     # Compute the partial sums s_n = sum_{i=0}^n a_i * x^i for n=0,...,N-1
     eps = numpy.zeros((N+1, N, d), dtype=numpy.complex128)
     for i in numba.prange(d):
         partial_sum = 0.0
         for n in range(N):
             partial_sum += coeffs[n] * (xn[i] ** n)
-            eps[0,n,i] = partial_sum
+            eps[0, n, i] = partial_sum
 
     for i in numba.prange(d):
         for k in range(1, N+1):
             for j in range(N - k):
-                delta = eps[k-1, j+1,i] - eps[k-1, j,i]
+                delta = eps[k-1, j+1, i] - eps[k-1, j, i]
                 if delta == 0:
                     rec_delta = numpy.inf
                 elif numpy.isinf(delta) or numpy.isnan(delta):
                     rec_delta = 0.0
                 else:
                     rec_delta = 1.0 / delta
-                eps[k,j,i] = rec_delta
+                eps[k, j, i] = rec_delta
                 if k > 1:
-                    eps[k,j,i] += eps[k-2,j+1,i]
+                    eps[k, j, i] += eps[k-2, j+1, i]
 
     if (N % 2) == 0:
         N -= 1
-    
+
     return eps[N-1, 0, :].reshape(x.shape)
 
 # ========
 # fit pade
 # ========
+
 
 def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', pade_reg=0.0,
              safety=1.0, max_outer=40, xtol=1e-12, ftol=1e-12, optimizer='ls',

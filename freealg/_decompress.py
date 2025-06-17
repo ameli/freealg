@@ -11,12 +11,13 @@
 # =======
 
 import numpy
-# from scipy.integrate import solve_ivp
 
 __all__ = ['decompress', 'reverse_characteristics']
 
+
 def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
-    alpha=0.5, max_bt=12, eps=1e-30, verbose=False):
+                   alpha=0.5, max_bt=2, eps=1e-30, step_factor=5.0,
+                   post_smooth=True, jump_tol=10.0, verbose=False):
     """
     Solves :math:``f(z) = a`` for many starting points simultaneously
     using the secant method in the complex plane.
@@ -42,10 +43,19 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
         Back‑tracking shrink factor (``0 < alpha < 1``). Defaults to ``0.5``.
 
     max_bt : int, optional
-        Maximum back‑tracking trials per iteration. Defaults to ``12``.
+        Maximum back‑tracking trials per iteration. Defaults to ``0``.
 
     eps : float, optional
         Safeguard added to tiny denominators. Defaults to ``1e-30``.
+
+    post_smooth : bool, optional
+        If True (default) run a single vectorised clean-up pass that
+        re-solves points whose final root differs from the *nearest*
+        neighbour by more than ``jump_tol`` times the local median jump.
+
+    jump_tol : float, optional
+        Sensitivity of the clean-up pass; larger tolerance implies fewer
+        re-solves.
 
     verbose : bool, optional
         If *True*, prints progress every 10 iterations.
@@ -69,8 +79,8 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
     orig_shape = z0.shape
     z0, z1, a = (x.ravel() for x in (z0, z1, a))
 
-    n_points   = z0.size
-    roots      = z1.copy()
+    n_points = z0.size
+    roots = z1.copy()
     iterations = numpy.zeros(n_points, dtype=int)
 
     f0 = f(z0) - a
@@ -87,9 +97,16 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
         # Secant step
         denom = f1 - f0
         denom = numpy.where(numpy.abs(denom) < eps, denom + eps, denom)
-        dz    = (z1 - z0) * f1 / denom
-        z2    = z1 - dz
-        f2    = f(z2) - a
+        dz = (z1 - z0) * f1 / denom
+
+        # Step-size limiter
+        prev_step = numpy.maximum(numpy.abs(z1 - z0), eps)
+        max_step = step_factor * prev_step
+        big = numpy.abs(dz) > max_step
+        dz[big] *= max_step[big] / numpy.abs(dz[big])
+
+        z2 = z1 - dz
+        f2 = f(z2) - a
 
         # Line search by backtracking
         worse = (numpy.abs(f2) >= numpy.abs(f1)) & active
@@ -130,6 +147,43 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
     residuals[remaining] = numpy.abs(f1[remaining])
     iterations[remaining] = max_iter
 
+    # Optional clean-up pass
+    if post_smooth and n_points > 2:
+        # absolute jump to *nearest* neighbour (left or right)
+        diff_left = numpy.empty_like(roots)
+        diff_right = numpy.empty_like(roots)
+        diff_left[1:] = numpy.abs(roots[1:] - roots[:-1])
+        diff_right[:-1] = numpy.abs(roots[:-1] - roots[1:])
+        jump = numpy.minimum(diff_left, diff_right)
+
+        # ignore unconverged points
+        median_jump = numpy.median(jump[~remaining])
+        bad = (jump > jump_tol * median_jump) & ~remaining
+
+        if bad.any():
+            z_first_all = numpy.where(bad & (diff_left <= diff_right),
+                                      roots - diff_left,
+                                      roots + diff_right)
+
+            # keep only the offending indices
+            z_first = z_first_all[bad]
+            z_second = z_first + (roots[bad] - z_first) * 1e-2
+
+            # re-solve just the outliers in one vector call
+            new_root, new_res, new_iter = secant_complex(
+                f, z_first, z_second, a[bad],
+                tol=tol, max_iter=max_iter,
+                alpha=alpha, max_bt=max_bt,
+                eps=eps, step_factor=step_factor,
+                post_smooth=False,      # avoid recursion
+            )
+            roots[bad] = new_root
+            residuals[bad] = new_res
+            iterations[bad] = iterations[bad] + new_iter
+
+            if verbose:
+                print(f"Clean-up: re-solved {bad.sum()} outliers")
+
     return (
         roots.reshape(orig_shape),
         residuals.reshape(orig_shape),
@@ -140,8 +194,9 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
 # decompress
 # ==========
 
-def decompress(freeform, size, x=None, delta=1e-6, max_iter=500,
-               tolerance=1e-12):
+
+def decompress(freeform, size, x=None, delta=1e-4, max_iter=500,
+               tolerance=1e-8):
     """
     Free decompression of spectral density.
 
@@ -201,34 +256,35 @@ def decompress(freeform, size, x=None, delta=1e-6, max_iter=500,
     alpha = size / freeform.n
     m = freeform._eval_stieltjes
     # Lower and upper bound on new support
-    hilb_lb = (1 / m(freeform.lam_m + delta * 1j)[1]).real
-    hilb_ub = (1 / m(freeform.lam_p + delta * 1j)[1]).real
+    hilb_lb = (1 / m(freeform.lam_m + delta * 1j)).real
+    hilb_ub = (1 / m(freeform.lam_p + delta * 1j)).real
     lb = freeform.lam_m - (alpha - 1) * hilb_lb
     ub = freeform.lam_p - (alpha - 1) * hilb_ub
 
     # Create x if not given
-    if x is None:
+    on_grid = (x is None)
+    if on_grid:
         radius = 0.5 * (ub - lb)
         center = 0.5 * (ub + lb)
         scale = 1.25
         x_min = numpy.floor(center - radius * scale)
         x_max = numpy.ceil(center + radius * scale)
         x = numpy.linspace(x_min, x_max, 500)
+    else:
+        x = numpy.asarray(x)
 
-    # Ensure that input is an array
-    x = numpy.asarray(x)
     target = x + delta * 1j
     if numpy.isclose(alpha, 1.0):
         return freeform.density(x), x, freeform.support
 
     # Characteristic curve map
     def _char_z(z):
-        return z + (1 / m(z)[1]) * (1 - alpha)
+        return z + (1 / m(z)) * (1 - alpha)
 
-    z0 = numpy.full(target.shape, numpy.mean(freeform.support) + delta*1j,
+    z0 = numpy.full(target.shape, numpy.mean(freeform.support) + .1j,
                     dtype=numpy.complex128)
-    z1 = z0 - numpy.log(alpha) * 1j
-    
+    z1 = z0 - .2j
+
     roots, _, _ = secant_complex(
         _char_z, z0, z1,
         a=target,
@@ -238,9 +294,15 @@ def decompress(freeform, size, x=None, delta=1e-6, max_iter=500,
 
     # Plemelj's formula
     z = roots
-    char_s = m(z)[1] / alpha
+    char_s = m(z) / alpha
     rho = numpy.maximum(0, char_s.imag / numpy.pi)
     rho[numpy.isnan(rho) | numpy.isinf(rho)] = 0
+    if on_grid:
+        x, rho = x.ravel(), rho.ravel()
+        # dx = x[1] - x[0]
+        # left_idx, right_idx = support_from_density(dx, rho)
+        # x, rho = x[left_idx-1:right_idx+1], rho[left_idx-1:right_idx+1]
+        rho = rho / numpy.trapezoid(rho, x)
 
     return rho.reshape(*x.shape), x, (lb, ub)
 
@@ -260,7 +322,7 @@ def reverse_characteristics(freeform, z_inits, T, iterations=500,
     m = freeform._eval_stieltjes
 
     def _char_z(z, t):
-        return z + (1 / m(z)[1]) * (1 - numpy.exp(t))
+        return z + (1 / m(z)) * (1 - numpy.exp(t))
 
     target_z, target_t = numpy.meshgrid(z_inits, t_eval)
 

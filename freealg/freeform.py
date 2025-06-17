@@ -75,8 +75,8 @@ class FreeForm(object):
         Eigenvalues of the matrix
 
     support: tuple
-        The predicted (or given) support :math:`(\lambda_\min, \lambda_\max)` of the 
-        eigenvalue density.
+        The predicted (or given) support :math:`(\\lambda_{\\min},
+        \\lambda_{\\max})` of the eigenvalue density.
 
     psi : numpy.array
         Jacobi coefficients.
@@ -390,10 +390,10 @@ class FreeForm(object):
             x_supp = numpy.linspace(self.lam_m, self.lam_p, 1000)
             g_supp = 2.0 * numpy.pi * self.hilbert(x_supp)
             self._pade_sol = fit_pade(x_supp, g_supp, self.lam_m, self.lam_p,
-                                    p=pade_p, q=pade_q, odd_side=odd_side,
-                                    pade_reg=pade_reg, safety=1.0, max_outer=40,
-                                    xtol=1e-12, ftol=1e-12, optimizer=optimizer,
-                                    verbose=0)
+                                      p=pade_p, q=pade_q, odd_side=odd_side,
+                                      pade_reg=pade_reg, safety=1.0,
+                                      max_outer=40, xtol=1e-12, ftol=1e-12,
+                                      optimizer=optimizer, verbose=0)
 
         if plot:
             g_supp_approx = eval_pade(x_supp[None, :], self._pade_sol)[0, :]
@@ -449,7 +449,8 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using the .fit() function.')
+            raise RuntimeError('The spectral density needs to be fit using '
+                               'the .fit() function.')
 
         # Create x if not given
         if x is None:
@@ -543,7 +544,8 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using the .fit() function.')
+            raise RuntimeError('The spectral density needs to be fit using '
+                               'the .fit() function.')
 
         # Create x if not given
         if x is None:
@@ -605,8 +607,8 @@ class FreeForm(object):
 
     def stieltjes(self, x=None, y=None, plot=False, latex=False, save=False):
         """
-        Compute Stieltjes transform of the spectral density, evaluated on an array
-        of points, or over a 2D Cartesian grid on the complex plane.
+        Compute Stieltjes transform of the spectral density, evaluated on an
+        array of points, or over a 2D Cartesian grid on the complex plane.
 
         Parameters
         ----------
@@ -665,8 +667,8 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using the .fit() function.')
-
+            raise RuntimeError('The spectral density needs to be fit using '
+                               'the .fit() function.')
 
         # Determine whether the Stieltjes transform is to be computed on
         # a Cartesian grid
@@ -693,8 +695,8 @@ class FreeForm(object):
             z = x_grid + 1j * y_grid              # shape (Ny, Nx)
         else:
             z = x
-        
-        m1, m2 = self._eval_stieltjes(z)
+
+        m1, m2 = self._eval_stieltjes(z, branches=True)
 
         if plot:
             plot_stieltjes(x, y, m1, m2, self.support, latex=latex, save=save)
@@ -705,7 +707,7 @@ class FreeForm(object):
     # eval stieltjes
     # ==============
 
-    def _eval_stieltjes(self, z):
+    def _eval_stieltjes(self, z, branches=False):
         """
         Compute Stieltjes transform of the spectral density.
 
@@ -716,12 +718,18 @@ class FreeForm(object):
             The z values in the complex plan where the Stieltjes transform is
             evaluated.
 
+        branches : bool, default = False
+            Return both the principal and secondary branches of the Stieltjes
+            transform. The default ``branches=False`` will return only
+            the secondary branch.
+
 
         Returns
         -------
 
         m_p : numpy.ndarray
-            The Stieltjes transform on the principal branch.
+            The Stieltjes transform on the principal branch if
+            ``branches=True``.
 
         m_m : numpy.ndarray
             The Stieltjes transform continued to the secondary branch.
@@ -737,14 +745,14 @@ class FreeForm(object):
         z = z.reshape(-1, 1)
 
         # # Set the number of bases as the number of x points insides support
-        # mask_sup = numpy.logical_and(z.real >= self.lam_m, z.real <= self.lam_p)
+        # mask_sup = numpy.logical_and(z.real>=self.lam_m,z.real<=self.lam_p)
         # n_base = 2 * numpy.sum(mask_sup)
 
         # Stieltjes function
         if self.method == 'jacobi':
             stieltjes = partial(jacobi_stieltjes, psi=self.psi,
                                 support=self.support, alpha=self.alpha,
-                                beta=self.beta) # n_base = n_base
+                                beta=self.beta)  # n_base = n_base
         elif self.method == 'chebyshev':
             stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
                                 support=self.support)
@@ -760,31 +768,34 @@ class FreeForm(object):
             m1[mask_p] = stieltjes(z[mask_p].reshape(-1, 1)).ravel()
 
             # Lower half-plane, use Schwarz reflection
-            m1[mask_m] = numpy.conjugate(
-                stieltjes(numpy.conjugate(z[mask_m].reshape(-1, 1)))).ravel()
+            z_conj = numpy.conjugate(z[mask_m].reshape(-1, 1))
+            m1[mask_m] = numpy.conjugate(stieltjes(z_conj)).ravel()
 
             # Second Riemann sheet
             m2[mask_p] = m1[mask_p]
             m2[mask_m] = -m1[mask_m] + self._glue(
                 z[mask_m].reshape(-1, 1)).ravel()
-        
+
         else:
-            m2[:]      = stieltjes(z.reshape(-1,1)).reshape(*m2.shape)
-            m1[mask_p] = m2[mask_p]
-            m1[mask_m] = numpy.conjugate(
-                stieltjes(numpy.conjugate(z[mask_m].reshape(-1,1)))
-            ).ravel()
+            m2[:] = stieltjes(z.reshape(-1, 1)).reshape(*m2.shape)
+            if branches:
+                m1[mask_p] = m2[mask_p]
+                m1[mask_m] = numpy.conjugate(
+                    stieltjes(numpy.conjugate(z[mask_m].reshape(-1, 1)))
+                ).ravel()
 
-        m1, m2 = m1.reshape(*shape), m2.reshape(*shape)
-
-        return m1, m2
+        if not branches:
+            return m2.reshape(*shape)
+        else:
+            m1, m2 = m1.reshape(*shape), m2.reshape(*shape)
+            return m1, m2
 
     # ==========
     # decompress
     # ==========
 
     def decompress(self, size, x=None, max_iter=500, eigvals=True,
-                   step_size=0.1, tolerance=1e-9, seed=None, plot=False,
+                   tolerance=1e-9, seed=None, plot=False,
                    latex=False, save=False):
         """
         Free decompression of spectral density.
@@ -804,9 +815,6 @@ class FreeForm(object):
 
         eigvals: bool, default=True
             Return estimated (sampled) eigenvalues as well as the density.
-
-        step_size: float, default=0.1
-            Step size for Newton iterations.
 
         tolerance: float, default=1e-9
             Tolerance for the solution obtained by the Newton solver. Also
@@ -880,14 +888,15 @@ class FreeForm(object):
         else:
             return x, rho
 
-def eigfree(A, N = None, psd = None):
+
+def eigfree(A, N=None, psd=None, plots=False):
     """
     Estimate the eigenvalues of a matrix :math:`\\mathbf{A}` or a larger matrix
     containing :math:`\\mathbf{A}` using free decompression.
 
     This is a convenience function for the FreeForm class with some effective
     defaults that work well for common random matrix ensembles. For improved
-    performance and plotting utilites, consider finetuning parameters using 
+    performance and plotting utilites, consider finetuning parameters using
     the FreeForm class.
 
     Parameters
@@ -895,17 +904,21 @@ def eigfree(A, N = None, psd = None):
 
     A : numpy.ndarray
         The symmetric real-valued matrix :math:`\\mathbf{A}` whose eigenvalues
-        (or those of a matrix containing :math:`\\mathbf{A}`) are to be computed.
+        (or those of a matrix containing :math:`\\mathbf{A}`) are to be
+        computed.
 
     N : int, default=None
         The size of the matrix containing :math:`\\mathbf{A}` to estimate
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
 
-    psd: bool, default=None
-        Determines whether the matrix is positive-semidefinite (PSD; all 
+    psd : bool, default=None
+        Determines whether the matrix is positive-semidefinite (PSD; all
         eigenvalues are non-negative). If None, the matrix is considered PSD if
         all sampled eigenvalues are positive.
+
+    plots : bool, default=False
+        Print out all relevant plots for diagnosing eigenvalue accuracy.
 
     Notes
     -----
@@ -924,20 +937,24 @@ def eigfree(A, N = None, psd = None):
 
         >>> from freealg import FreeForm
     """
+    if A.ndim != 2 or A.shape[0] != A.shape[1]:
+        raise RuntimeError("Only square matrices are permitted.")
     n = A.shape[0]
-    
+
+    if N is None:
+        N = n
+
     # Size of sample matrix
     n_s = int(80*(1 + numpy.log(n)))
-
     # If matrix is not large enough, return eigenvalues
     if n < n_s:
         return compute_eig(A)
-    
-    if N is None:
-        N = n
-    
     # Number of samples
     num_samples = int(10 * (n / n_s)**0.5)
+    # else:
+    #     # Use the entire matrix given
+    #     n_s = n
+    #     num_samples = 1
 
     # Collect eigenvalue samples
     samples = []
@@ -956,9 +973,14 @@ def eigfree(A, N = None, psd = None):
 
     # Perform fit and estimate eigenvalues
     order = 1 + int(len(samples)**.2)
-    ff.fit(method='chebyshev', K=order, projection='sample', damp='jackson', 
-           force=True, plot=False, latex=False, save=False, reg=0.05)
-    _, _, eigs = ff.decompress(N)
+    ff.fit(method='chebyshev', K=order, projection='sample',
+           force=True, plot=False, latex=False, save=False)
+
+    if plots:
+        ff.density(plot=True)
+        ff.stieltjes(plot=True)
+
+    _, _, eigs = ff.decompress(N, plot=plots)
 
     if psd:
         eigs = numpy.abs(eigs)

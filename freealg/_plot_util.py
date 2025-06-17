@@ -139,7 +139,7 @@ def _auto_bins(array, method='scott', factor=5):
 # ============
 
 def plot_density(x, rho, eig=None, support=None, label='',
-                 title='Spectral density', latex=False, save=False):
+                 title='Spectral Density', latex=False, save=False):
     """
     """
 
@@ -147,8 +147,11 @@ def plot_density(x, rho, eig=None, support=None, label='',
 
         fig, ax = plt.subplots(figsize=(6, 2.7))
 
-        if (support is not None) and (eig is not None):
-            lam_m, lam_p = support
+        if eig is not None:
+            if support is not None:
+                lam_m, lam_p = support
+            else:
+                lam_m, lam_p = min(eig), max(eig)
             bins = numpy.linspace(lam_m, lam_p, _auto_bins(eig))
             _ = ax.hist(eig, bins, density=True, color='silver',
                         edgecolor='none', label='Histogram')

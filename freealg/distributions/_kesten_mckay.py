@@ -110,7 +110,7 @@ class KestenMcKay(object):
     # density
     # =======
 
-    def density(self, x=None, plot=False, latex=False, save=False):
+    def density(self, x=None, plot=False, latex=False, save=False, eig=None):
         """
         Density of distribution.
 
@@ -136,6 +136,10 @@ class KestenMcKay(object):
             If not `False`, the plot is saved. If a string is given, it is
             assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
+
+        eig : numpy.array, default=None
+            A collection of eigenvalues to compare to via histogram. This
+            option is relevant only if ``plot=True``.
 
         Returns
         -------
@@ -173,7 +177,11 @@ class KestenMcKay(object):
             numpy.sqrt(4.0 * (self.d - 1.0) - x[mask]**2)
 
         if plot:
-            plot_density(x, rho, label='', latex=latex, save=save)
+            if eig is not None:
+                label = 'Estimate'
+            else:
+                label = ''
+            plot_density(x, rho, label=label, latex=latex, save=save, eig=eig)
 
         return rho
 

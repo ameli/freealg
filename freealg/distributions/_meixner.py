@@ -114,7 +114,7 @@ class Meixner(object):
     # density
     # =======
 
-    def density(self, x=None, plot=False, latex=False, save=False):
+    def density(self, x=None, plot=False, latex=False, save=False, eig=None):
         """
         Density of distribution.
 
@@ -140,6 +140,10 @@ class Meixner(object):
             If not `False`, the plot is saved. If a string is given, it is
             assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
+
+        eig : numpy.array, default=None
+            A collection of eigenvalues to compare to via histogram. This
+            option is relevant only if ``plot=True``.
 
         Returns
         -------
@@ -188,7 +192,11 @@ class Meixner(object):
         rho[mask] = numer[mask] / denom[mask]
 
         if plot:
-            plot_density(x, rho, label='', latex=latex, save=save)
+            if eig is not None:
+                label = 'Estimate'
+            else:
+                label = ''
+            plot_density(x, rho, label=label, latex=latex, save=save, eig=eig)
 
         return rho
 
