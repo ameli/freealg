@@ -4,7 +4,7 @@
     :class: custom-dark
 
 `Paper <https://arxiv.org/abs/2506.11994>`__ |
-`Slides <https://github.com/ameli/freealg/blob/main/docs/source/_static/data/slides.pdf>`__ |
+`Slides <https://ameli.github.io/freealg/_static/data/slides.pdf>`__ |
 `Docs <https://ameli.github.io/freealg>`__
 
 *freealg* is a Python package that employs **free** probability to evaluate the spectral
