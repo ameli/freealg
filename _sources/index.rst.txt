@@ -35,9 +35,15 @@
         :class-card: custom-card-link
 
     .. grid-item-card:: Slides
-        :link: _static/data/slides.pdf
+        :link: https://www.dropbox.com/scl/fi/03gjuyz17k9yhsqy0isoz/free_decomporession_slides.pdf?rlkey=8f82mhciyl2ju02l7hv1md5li&st=26xmhjga&dl=0
         :text-align: center
         :class-card: custom-card-link
+
+    .. .. grid-item-card:: Slides
+    ..     :link: _static/data/slides.pdf
+    ..     :text-align: center
+    ..     :class-card: custom-card-link
+
 
 Install
 =======
