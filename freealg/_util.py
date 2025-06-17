@@ -16,6 +16,10 @@ import scipy
 from scipy.stats import beta
 from scipy.optimize import minimize
 
+# Fallback to previous API
+if not hasattr(numpy, 'trapezoid'):
+    numpy.trapezoid = numpy.trapz
+
 __all__ = ['compute_eig', 'beta_kde', 'force_density']
 
 

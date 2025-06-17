@@ -12,13 +12,16 @@
 
 import numpy
 
+# Fallback to previous API
+if not hasattr(numpy, 'trapezoid'):
+    numpy.trapezoid = numpy.trapz
+
 __all__ = ['decompress', 'reverse_characteristics']
 
 
 # =============
 # secant method
 # =============
-
 
 def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
                    alpha=0.5, max_bt=1, eps=1e-30, step_factor=5.0,
@@ -200,7 +203,6 @@ def secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
 # decompress
 # ==========
 
-
 def decompress(freeform, size, x=None, delta=1e-4, max_iter=500,
                tolerance=1e-8):
     """
@@ -287,9 +289,9 @@ def decompress(freeform, size, x=None, delta=1e-4, max_iter=500,
     def _char_z(z):
         return z + (1 / m(z)) * (1 - alpha)
 
-    z0 = numpy.full(target.shape, numpy.mean(freeform.support) + .1j,
+    z0 = numpy.full(target.shape, numpy.mean(freeform.support) + 0.1j,
                     dtype=numpy.complex128)
-    z1 = z0 - .2j
+    z1 = z0 - 0.2j
 
     roots, _, _ = secant_complex(
         _char_z, z0, z1,

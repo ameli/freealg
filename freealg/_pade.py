@@ -299,7 +299,6 @@ def wynn_pade(coeffs, x):
 # fit pade
 # ========
 
-
 def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', pade_reg=0.0,
              safety=1.0, max_outer=40, xtol=1e-12, ftol=1e-12, optimizer='ls',
              verbose=0):

@@ -14,6 +14,12 @@ import numpy
 import numba
 from scipy.stats import gaussian_kde
 
+__all__ = ['support_from_density', 'detect_support']
+
+
+# ====================
+# support from density
+# ====================
 
 @numba.njit(numba.types.UniTuple(numba.types.int64, 2)(
     numba.types.float64,
@@ -24,6 +30,7 @@ def support_from_density(dx, density):
     Estimates the support from a collection of noisy observations of a
     density over a grid of x-values with mesh spacing dx.
     """
+
     n = density.shape[0]
     target = 1.0 / dx
 
@@ -91,6 +98,10 @@ def support_from_density(dx, density):
 
     return optimal_i, optimal_j
 
+
+# ==============
+# detect support
+# ==============
 
 def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
     """

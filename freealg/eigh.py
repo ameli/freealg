@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright 2025, Siavash Ameli <sameli@berkeley.edu>
 # SPDX-License-Identifier: BSD-3-Clause
 # SPDX-FileType: SOURCE
 #
@@ -15,15 +14,14 @@ import numpy
 from ._util import compute_eig
 from .freeform import FreeForm
 
-__all__ = ['eigfree', 'condfree']
+__all__ = ['eigh', 'cond']
 
 
-# ========
-# eig free
-# ========
+# ====
+# eigh
+# ====
 
-
-def eigfree(A, N=None, psd=None, plots=False):
+def eigh(A, N=None, psd=None, plots=False):
     """
     Estimate the eigenvalues of a matrix.
 
@@ -43,21 +41,32 @@ def eigfree(A, N=None, psd=None, plots=False):
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
 
-    psd: bool, default=None
+    psd : bool, default=None
         Determines whether the matrix is positive-semidefinite (PSD; all
-        eigenvalues are non-negative). If None, the matrix is considered PSD if
-        all sampled eigenvalues are positive.
+        eigenvalues are non-negative). If `None`, the matrix is considered PSD
+        if all sampled eigenvalues are positive.
 
     plots : bool, default=False
         Print out all relevant plots for diagnosing eigenvalue accuracy.
 
+    Returns
+    -------
+
+    eigs : numpy.array
+        Eigenvalues of decompressed matrix
+
+    See Also
+    --------
+
+    cond
+
     Notes
     -----
 
-    This is a convenience function for the FreeForm class with some effective
-    defaults that work well for common random matrix ensembles. For improved
-    performance and plotting utilites, consider finetuning parameters using
-    the FreeForm class.
+    This is a convenience function for the :class:`freealg.FreeForm` class with
+    some effective defaults that work well for common random matrix ensembles.
+    For improved performance and plotting utilites, consider fine-tuning
+    parameters using the FreeForm class.
 
     References
     ----------
@@ -68,12 +77,14 @@ def eigfree(A, N=None, psd=None, plots=False):
     --------
 
     .. code-block:: python
+        :emphasize-lines: 6
 
-        >>> from freealg import condfree
+        >>> from freealg import cond
         >>> from freealg.distributions import MarchenkoPastur
+
         >>> mp = MarchenkoPastur(1/50)
         >>> A = mp.matrix(3000)
-        >>> eigs = eigfree(A)
+        >>> eigs = eigh(A)
     """
 
     if A.ndim != 2 or A.shape[0] != A.shape[1]:
@@ -124,11 +135,11 @@ def eigfree(A, N=None, psd=None, plots=False):
     return eigs
 
 
-# ========
-# cond free
-# ========
+# ====
+# cond
+# ====
 
-def condfree(A, N=None):
+def cond(A, N=None):
     """
     Estimate the condition number of a positive-definite matrix.
 
@@ -149,22 +160,35 @@ def condfree(A, N=None):
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
 
+    Returns
+    -------
+
+    c : float
+        Condition number
+
+    See Also
+    --------
+
+    eigh
+
     Notes
     -----
 
-    This is a convenience function using the eigfree procedure.
+    This is a convenience function using :func:`freealg.eigh`.
 
     Examples
     --------
 
     .. code-block:: python
+        :emphasize-lines: 6
 
-        >>> from freealg import condfree
+        >>> from freealg import cond
         >>> from freealg.distributions import MarchenkoPastur
+
         >>> mp = MarchenkoPastur(1/50)
         >>> A = mp.matrix(3000)
-        >>> condfree(A)
+        >>> cond(A)
     """
 
-    eigs = eigfree(A, N)
+    eigs = eigh(A, N)
     return eigs.max() / eigs.min()
