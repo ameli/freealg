@@ -1,6 +1,0 @@
-﻿freealg.eigfree
-===============
-
-.. currentmodule:: freealg
-
-.. autofunction:: eigfree
