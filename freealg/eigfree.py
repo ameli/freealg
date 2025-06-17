@@ -22,7 +22,8 @@ __all__ = ['eigfree']
 # eig free
 # ========
 
-def eigfree(A, N=None, psd=None):
+
+def eigfree(A, N=None, psd=None, plots=False):
     """
     Estimate the eigenvalues of a matrix.
 
@@ -47,6 +48,9 @@ def eigfree(A, N=None, psd=None):
         eigenvalues are non-negative). If None, the matrix is considered PSD if
         all sampled eigenvalues are positive.
 
+    plots : bool, default=False
+        Print out all relevant plots for diagnosing eigenvalue accuracy.
+
     Notes
     -----
 
@@ -68,18 +72,18 @@ def eigfree(A, N=None, psd=None):
         >>> from freealg import FreeForm
     """
 
+    if A.ndim != 2 or A.shape[0] != A.shape[1]:
+        raise RuntimeError("Only square matrices are permitted.")
     n = A.shape[0]
-
-    # Size of sample matrix
-    n_s = int(80*(1 + numpy.log(n)))
-
-    # If matrix is not large enough, return eigenvalues
-    if n < n_s:
-        return compute_eig(A)
 
     if N is None:
         N = n
 
+    # Size of sample matrix
+    n_s = int(80*(1 + numpy.log(n)))
+    # If matrix is not large enough, return eigenvalues
+    if n < n_s:
+        return compute_eig(A)
     # Number of samples
     num_samples = int(10 * (n / n_s)**0.5)
 
@@ -100,9 +104,14 @@ def eigfree(A, N=None, psd=None):
 
     # Perform fit and estimate eigenvalues
     order = 1 + int(len(samples)**.2)
-    ff.fit(method='chebyshev', K=order, projection='sample', damp='jackson',
-           force=True, plot=False, latex=False, save=False, reg=0.05)
-    _, _, eigs = ff.decompress(N)
+    ff.fit(method='chebyshev', K=order, projection='sample',
+           force=True, plot=False, latex=False, save=False)
+
+    if plots:
+        ff.density(plot=True)
+        ff.stieltjes(plot=True)
+
+    _, _, eigs = ff.decompress(N, plot=plots)
 
     if psd:
         eigs = numpy.abs(eigs)
