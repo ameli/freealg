@@ -15,7 +15,7 @@ import numpy
 from ._util import compute_eig
 from .freeform import FreeForm
 
-__all__ = ['eigfree']
+__all__ = ['eigfree', 'condfree']
 
 
 # ========
@@ -118,3 +118,45 @@ def eigfree(A, N=None, psd=None, plots=False):
         eigs.sort()
 
     return eigs
+
+
+# ========
+# cond free
+# ========
+
+def condfree(A, N=None):
+    """
+    Estimate the condition number of a positive-definite matrix.
+
+    This function estimates the condition number of the matrix
+    :math:`\\mathbf{A}` or a larger matrix containing :math:`\\mathbf{A}`
+    using free decompression.
+
+    Parameters
+    ----------
+
+    A : numpy.ndarray
+        The symmetric real-valued matrix :math:`\\mathbf{A}` whose condition
+        number (or that of a matrix containing :math:`\\mathbf{A}`) are to be
+        computed.
+
+    N : int, default=None
+        The size of the matrix containing :math:`\\mathbf{A}` to estimate
+        eigenvalues of. If None, returns estimates of the eigenvalues of
+        :math:`\\mathbf{A}` itself.
+
+    Notes
+    -----
+
+    This is a convenience function using the eigfree procedure.
+
+    Examples
+    --------
+
+    .. code-block:: python
+
+        >>> from freealg import FreeForm
+    """
+
+    eigs = eigfree(A, N)
+    return eigs.max() / eigs.min()
