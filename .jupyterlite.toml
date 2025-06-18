@@ -1,7 +1,7 @@
 # .jupyterlite.toml
 [lite]
 title = "freealg demo"
-output_dir = "_output"
+output_dir = "docs/build/html/jlite"
 
 [contents]
 paths = ["notebooks"]
