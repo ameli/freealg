@@ -43,8 +43,12 @@ jobs:
 
             - name: Build JupyterLite
               run: |
-                pip install jupyterlite jupyter-server
-                jupyter lite build --contents notebooks --output-dir docs/build/html/jlite
+                pip install jupyterlite jupyter-server jupyterlite-pyodide-kernel
+                jupyter lite build \
+                  --contents notebooks \
+                  --output-dir docs/build/html/jlite \
+                  --piplite \
+                  --requirements jlite-requirements.txt
 
             # Deploy to github pages
             - name: Deploy
