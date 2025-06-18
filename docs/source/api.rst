@@ -3,8 +3,10 @@
 API Reference
 *************
 
-Main Functions
---------------
+Free Forms
+----------
+
+The following classes core implementations defining the free objects.
 
 .. autosummary::
     :toctree: generated
@@ -14,6 +16,11 @@ Main Functions
 
     freealg.FreeForm
 
+Functions
+---------
+
+The followings are the free version of some of the common `linalg` functions.
+
 .. autosummary::
     :toctree: generated
     :caption: Functions
@@ -22,9 +29,14 @@ Main Functions
 
     freealg.eigh
     freealg.cond
+    freealg.norm
+    freealg.trace
+    freealg.slogdet
 
 Distributions
 --------------
+
+The following classes define classical random ennobles.
 
 .. autosummary::
     :toctree: generated

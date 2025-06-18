@@ -14,7 +14,7 @@ import numpy
 from ._util import compute_eig
 from .freeform import FreeForm
 
-__all__ = ['eigh', 'cond']
+__all__ = ['eigh', 'cond', 'norm', 'trace', 'slogdet']
 
 
 # ====
@@ -141,7 +141,7 @@ def eigh(A, N=None, psd=None, plots=False):
 
 def cond(A, N=None):
     """
-    Estimate the condition number of a positive-definite matrix.
+    Estimate the condition number of a Hermitian positive-definite matrix.
 
     This function estimates the condition number of the matrix
     :math:`\\mathbf{A}` or a larger matrix containing :math:`\\mathbf{A}`
@@ -170,6 +170,9 @@ def cond(A, N=None):
     --------
 
     eigh
+    norm
+    slogdet
+    trace
 
     Notes
     -----
@@ -192,3 +195,232 @@ def cond(A, N=None):
 
     eigs = eigh(A, N)
     return eigs.max() / eigs.min()
+
+
+# ====
+# norm
+# ====
+
+def norm(A, N=None, order=None):
+    """
+    Estimate the Schatten norm of a Hermitian matrix.
+
+    This function estimates the norm of the matrix :math:`\\mathbf{A}` or a
+    larger matrix containing :math:`\\mathbf{A}` using free decompression.
+
+    Parameters
+    ----------
+
+    A : numpy.ndarray
+        The symmetric real-valued matrix :math:`\\mathbf{A}` whose condition
+        number (or that of a matrix containing :math:`\\mathbf{A}`) are to be
+        computed.
+
+    N : int, default=None
+        The size of the matrix containing :math:`\\mathbf{A}` to estimate
+        eigenvalues of. If None, returns estimates of the eigenvalues of
+        :math:`\\mathbf{A}` itself.
+
+    order : {float, ``''inf``, ``'-inf'``, ``'fro'``, ``'nuc'``}, default=2
+        Order of the norm.
+
+        * float :math:`p`: Schtten p-norm.
+        * ``'inf'``: Largest absolute eigenvalue
+          :math:`\\max \\vert \\lambda_i \\vert)`
+        * ``'-inf'``: Smallest absolute eigenvalue
+          :math:`\\min \\vert \\lambda_i \\vert)`
+        * ``'fro'``: Frobenius norm corresponding to :math:`p=2`
+        * ``'nuc'``: Nuclear (or trace) norm corresponding to :math:`p=1`
+
+    Returns
+    -------
+
+    norm : float
+        matrix norm
+
+    See Also
+    --------
+
+    eigh
+    cond
+    slogdet
+    trace
+
+    Notes
+    -----
+
+    Thes Schatten :math:`p`-norm is defined by
+
+    .. math::
+
+        \\Vert \\mathbf{A} \\Vert_p = \\left(
+        \\sum_{i=1}^N \\vert \\lambda_i \\vert^p \\right)^{1/p}.
+
+    Examples
+    --------
+
+    .. code-block:: python
+        :emphasize-lines: 6
+
+        >>> from freealg import norm
+        >>> from freealg.distributions import MarchenkoPastur
+
+        >>> mp = MarchenkoPastur(1/50)
+        >>> A = mp.matrix(3000)
+        >>> norm(A, 100_000, order='fro')
+    """
+
+    eigs = eigh(A, N)
+
+    if (order == 'inf') or numpy.isinf(order):
+        norm_ = max(numpy.abs(eigs))
+
+    elif (order == '-inf') or numpy.isneginf(order):
+        norm_ = min(numpy.abs(eigs))
+
+    elif (order == 'nuc') or (order == 1.0):
+        norm_ = numpy.sum(numpy.abs(eigs))
+
+    elif (order == 'fro') or (order == 2.0):
+        norm_2 = numpy.sum(numpy.abs(eigs)**2)
+        norm_ = numpy.sqrt(norm_2)
+
+    elif isinstance(order, (int, float, numpy.integer, numpy.floating)) and \
+            not isinstance(order, (bool, numpy.bool_)):
+        norm_q = numpy.sum(numpy.abs(eigs)**order)
+        norm_ = norm_q**(1.0 / order)
+
+    else:
+        raise ValueError('"order" is invalid.')
+
+    return norm_
+
+
+# =====
+# trace
+# =====
+
+def trace(A, N=None):
+    """
+    Estimate the trace of a Hermitian matrix.
+
+    This function estimates the trace of the matrix :math:`\\mathbf{A}` or a
+    larger matrix containing :math:`\\mathbf{A}` using free decompression.
+
+    Parameters
+    ----------
+
+    A : numpy.ndarray
+        The symmetric real-valued matrix :math:`\\mathbf{A}` whose condition
+        number (or that of a matrix containing :math:`\\mathbf{A}`) are to be
+        computed.
+
+    N : int, default=None
+        The size of the matrix containing :math:`\\mathbf{A}` to estimate
+        eigenvalues of. If None, returns estimates of the eigenvalues of
+        :math:`\\mathbf{A}` itself.
+
+    Returns
+    -------
+
+    trace : float
+        matrix trace
+
+    See Also
+    --------
+
+    eigh
+    cond
+    slogdet
+    norm
+
+    Notes
+    -----
+
+    This is a convenience function using :func:`freealg.eigh`.
+
+    Examples
+    --------
+
+    .. code-block:: python
+        :emphasize-lines: 6
+
+        >>> from freealg import norm
+        >>> from freealg.distributions import MarchenkoPastur
+
+        >>> mp = MarchenkoPastur(1/50)
+        >>> A = mp.matrix(3000)
+        >>> trace(A, 100_000)
+    """
+
+    eigs = eigh(A, N)
+    trace_ = numpy.sum(eigs)
+
+    return trace_
+
+
+# =======
+# slogdet
+# =======
+
+def slogdet(A, N=None):
+    """
+    Estimate the sign and logarithm of the determinant of a Hermitian matrix.
+
+    This function estimates the *slogdet* of the matrix :math:`\\mathbf{A}` or
+    a larger matrix containing :math:`\\mathbf{A}` using free decompression.
+
+    Parameters
+    ----------
+
+    A : numpy.ndarray
+        The symmetric real-valued matrix :math:`\\mathbf{A}` whose condition
+        number (or that of a matrix containing :math:`\\mathbf{A}`) are to be
+        computed.
+
+    N : int, default=None
+        The size of the matrix containing :math:`\\mathbf{A}` to estimate
+        eigenvalues of. If None, returns estimates of the eigenvalues of
+        :math:`\\mathbf{A}` itself.
+
+    Returns
+    -------
+
+    sign : float
+        Sign of determinant
+
+    ld : float
+        natural logarithm of the absolute value of the determinant
+
+    See Also
+    --------
+
+    eigh
+    cond
+    trace
+    norm
+
+    Notes
+    -----
+
+    This is a convenience function using :func:`freealg.eigh`.
+
+    Examples
+    --------
+
+    .. code-block:: python
+        :emphasize-lines: 6
+
+        >>> from freealg import norm
+        >>> from freealg.distributions import MarchenkoPastur
+
+        >>> mp = MarchenkoPastur(1/50)
+        >>> A = mp.matrix(3000)
+        >>> sign, ld = slogdet(A, 100_000)
+    """
+
+    eigs = eigh(A, N)
+    sign = numpy.prod(numpy.sign(eigs))
+    ld = numpy.sum(numpy.log(numpy.abs(eigs)))
+
+    return sign, ld

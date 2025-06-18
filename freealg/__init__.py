@@ -7,9 +7,10 @@
 # directory of this source tree.
 
 from .freeform import FreeForm
-from .eigh import eigh, cond
+from .eigh import eigh, cond, norm, trace, slogdet
 from . import distributions
 
-__all__ = ['FreeForm', 'distributions', 'eigh', 'cond']
+__all__ = ['FreeForm', 'distributions', 'eigh', 'cond', 'norm', 'trace',
+           'slogdet']
 
 from .__version__ import __version__                          # noqa: F401 E402
