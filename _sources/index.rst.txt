@@ -39,6 +39,11 @@
         :text-align: center
         :class-card: custom-card-link
 
+    .. grid-item-card:: Live Demo
+        :link: https://ameli.github.io/freealg/jlite/lab/index.html?path=notebooks/quick_start.ipynb
+        :text-align: center
+        :class-card: custom-card-link
+
     .. .. grid-item-card:: Slides
     ..     :link: _static/data/slides.pdf
     ..     :text-align: center
