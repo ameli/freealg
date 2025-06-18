@@ -11,10 +11,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://ameli.github.io/api.html" />
 <meta property="og:site_name" content="FreeAlg" />
-<meta property="og:description" content="Main Functions: Distributions:" />
+<meta property="og:description" content="Free Forms: The following classes core implementations defining the free objects. Functions: The followings are the free version of some of the common linalg functions. Distributions: The following classes define classical random ennobles." />
 <meta property="og:image" content="https://raw.githubusercontent.com/sameli/freealg/main/docs/source/_static/images/icons/logo-freealg-light.svg" />
 <meta property="og:image:alt" content="FreeAlg" />
-<meta name="description" content="Main Functions: Distributions:" />
+<meta name="description" content="Free Forms: The following classes core implementations defining the free objects. Functions: The followings are the free version of some of the common linalg functions. Distributions: The following classes define classical random ennobles." />
 <meta property="og:title" content="freealg">
 <meta property="og:description" content="FreeAlg is a python package for applying free probability on large matrices.">
 
@@ -215,6 +215,21 @@
    freealg.cond
   </a>
  </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.norm.html">
+   freealg.norm
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.trace.html">
+   freealg.trace
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.slogdet.html">
+   freealg.slogdet
+  </a>
+ </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
@@ -273,11 +288,14 @@
 <nav id="bd-toc-nav">
     <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#main-functions">
-   Main Functions
+  <a class="reference internal nav-link" href="#free-forms">
+   Free Forms
   </a>
-  <ul class="nav section-nav flex-column">
-  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#functions">
+   Functions
+  </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#distributions">
@@ -312,8 +330,9 @@
                 
   <section id="api-reference">
 <span id="api"></span><h1>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading">#</a></h1>
-<section id="main-functions">
-<h2>Main Functions<a class="headerlink" href="#main-functions" title="Permalink to this heading">#</a></h2>
+<section id="free-forms">
+<h2>Free Forms<a class="headerlink" href="#free-forms" title="Permalink to this heading">#</a></h2>
+<p>The following classes core implementations defining the free objects.</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.FreeForm.html#freealg.FreeForm" title="freealg.FreeForm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.FreeForm</span></code></a>(A[, support, delta])</p></td>
@@ -321,19 +340,33 @@
 </tr>
 </tbody>
 </table>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">#</a></h2>
+<p>The followings are the free version of some of the common <cite>linalg</cite> functions.</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.eigh.html#freealg.eigh" title="freealg.eigh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.eigh</span></code></a>(A[, N, psd, plots])</p></td>
 <td><p>Estimate the eigenvalues of a matrix.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.cond.html#freealg.cond" title="freealg.cond"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.cond</span></code></a>(A[, N])</p></td>
-<td><p>Estimate the condition number of a positive-definite matrix.</p></td>
+<td><p>Estimate the condition number of a Hermitian positive-definite matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.norm.html#freealg.norm" title="freealg.norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.norm</span></code></a>(A[, N, order])</p></td>
+<td><p>Estimate the Schatten norm of a Hermitian matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.trace.html#freealg.trace" title="freealg.trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.trace</span></code></a>(A[, N])</p></td>
+<td><p>Estimate the trace of a Hermitian matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.slogdet.html#freealg.slogdet" title="freealg.slogdet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.slogdet</span></code></a>(A[, N])</p></td>
+<td><p>Estimate the sign and logarithm of the determinant of a Hermitian matrix.</p></td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="distributions">
 <h2>Distributions<a class="headerlink" href="#distributions" title="Permalink to this heading">#</a></h2>
+<p>The following classes define classical random ennobles.</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.distributions.MarchenkoPastur.html#freealg.distributions.MarchenkoPastur" title="freealg.distributions.MarchenkoPastur"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.MarchenkoPastur</span></code></a>(lam)</p></td>

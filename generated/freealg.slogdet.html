@@ -7,16 +7,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<meta property="og:title" content="freealg.cond" />
+<meta property="og:title" content="freealg.slogdet" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://ameli.github.io/generated/freealg.cond.html" />
+<meta property="og:url" content="https://ameli.github.io/generated/freealg.slogdet.html" />
 <meta property="og:site_name" content="FreeAlg" />
 <meta property="og:image" content="https://raw.githubusercontent.com/sameli/freealg/main/docs/source/_static/images/icons/logo-freealg-light.svg" />
 <meta property="og:image:alt" content="FreeAlg" />
 <meta property="og:title" content="freealg">
 <meta property="og:description" content="FreeAlg is a python package for applying free probability on large matrices.">
 
-    <title>freealg.cond &#8212; freealg Manual</title>
+    <title>freealg.slogdet &#8212; freealg Manual</title>
 <script>
   document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
   document.documentElement.dataset.theme = localStorage.getItem("theme") || "light"
@@ -62,8 +62,8 @@
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="freealg.norm" href="freealg.norm.html" />
-    <link rel="prev" title="freealg.eigh" href="freealg.eigh.html" />
+    <link rel="next" title="freealg.distributions.MarchenkoPastur" href="freealg.distributions.MarchenkoPastur.html" />
+    <link rel="prev" title="freealg.trace" href="freealg.trace.html" />
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-RCTBMM27GH"></script>
@@ -210,8 +210,8 @@
    freealg.eigh
   </a>
  </li>
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.cond.html">
    freealg.cond
   </a>
  </li>
@@ -225,8 +225,8 @@
    freealg.trace
   </a>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="freealg.slogdet.html">
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
    freealg.slogdet
   </a>
  </li>
@@ -288,10 +288,10 @@
 <nav id="bd-toc-nav">
     <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#freealg.cond">
+  <a class="reference internal nav-link" href="#freealg.slogdet">
    <code class="docutils literal notranslate">
     <span class="pre">
-     cond()
+     slogdet()
     </span>
    </code>
   </a>
@@ -305,7 +305,7 @@
       
 
 <div class="tocsection editthispage">
-    <a href="https://github.com/sameli/freealg/edit/main/docs/source/generated/freealg.cond.rst">
+    <a href="https://github.com/sameli/freealg/edit/main/docs/source/generated/freealg.slogdet.rst">
         <i class="fas fa-pencil-alt"></i> Edit this page
     </a>
 </div>
@@ -322,15 +322,14 @@
               
               <article class="bd-article" role="main">
                 
-  <section id="freealg-cond">
-<h1>freealg.cond<a class="headerlink" href="#freealg-cond" title="Permalink to this heading">#</a></h1>
+  <section id="freealg-slogdet">
+<h1>freealg.slogdet<a class="headerlink" href="#freealg-slogdet" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="freealg.cond">
-<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">cond</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.cond" title="Permalink to this definition">#</a></dt>
-<dd><p>Estimate the condition number of a Hermitian positive-definite matrix.</p>
-<p>This function estimates the condition number of the matrix
-<span class="math notranslate nohighlight">\(\mathbf{A}\)</span> or a larger matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>
-using free decompression.</p>
+<dt class="sig sig-object py" id="freealg.slogdet">
+<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">slogdet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.slogdet" title="Permalink to this definition">#</a></dt>
+<dd><p>Estimate the sign and logarithm of the determinant of a Hermitian matrix.</p>
+<p>This function estimates the <em>slogdet</em> of the matrix <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> or
+a larger matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> using free decompression.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -346,7 +345,9 @@ eigenvalues of. If None, returns estimates of the eigenvalues of
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>c</strong><span class="classifier">float</span></dt><dd><p>Condition number</p>
+<dt><strong>sign</strong><span class="classifier">float</span></dt><dd><p>Sign of determinant</p>
+</dd>
+<dt><strong>ld</strong><span class="classifier">float</span></dt><dd><p>natural logarithm of the absolute value of the determinant</p>
 </dd>
 </dl>
 </dd>
@@ -355,20 +356,20 @@ eigenvalues of. If None, returns estimates of the eigenvalues of
 <p class="admonition-title">See also</p>
 <dl class="simple">
 <dt><a class="reference internal" href="freealg.eigh.html#freealg.eigh" title="freealg.eigh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eigh</span></code></a></dt><dd></dd>
-<dt><a class="reference internal" href="freealg.norm.html#freealg.norm" title="freealg.norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm</span></code></a></dt><dd></dd>
-<dt><a class="reference internal" href="freealg.slogdet.html#freealg.slogdet" title="freealg.slogdet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slogdet</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.cond.html#freealg.cond" title="freealg.cond"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cond</span></code></a></dt><dd></dd>
 <dt><a class="reference internal" href="freealg.trace.html#freealg.trace" title="freealg.trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.norm.html#freealg.norm" title="freealg.norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm</span></code></a></dt><dd></dd>
 </dl>
 </div>
 <p class="rubric">Notes</p>
 <p>This is a convenience function using <a class="reference internal" href="freealg.eigh.html#freealg.eigh" title="freealg.eigh"><code class="xref py py-func docutils literal notranslate"><span class="pre">freealg.eigh()</span></code></a>.</p>
 <p class="rubric">Examples</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg</span><span class="w"> </span><span class="kn">import</span> <span class="n">cond</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarchenkoPastur</span>
 
 <span class="gp">&gt;&gt;&gt; </span><span class="n">mp</span> <span class="o">=</span> <span class="n">MarchenkoPastur</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">50</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">A</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">matrix</span><span class="p">(</span><span class="mi">3000</span><span class="p">)</span>
-<span class="hll"><span class="gp">&gt;&gt;&gt; </span><span class="n">cond</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+<span class="hll"><span class="gp">&gt;&gt;&gt; </span><span class="n">sign</span><span class="p">,</span> <span class="n">ld</span> <span class="o">=</span> <span class="n">slogdet</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="mi">100_000</span><span class="p">)</span>
 </span></pre></div>
 </div>
 </dd></dl>
@@ -383,17 +384,17 @@ eigenvalues of. If None, returns estimates of the eigenvalues of
               <footer class="bd-footer-article">
                   <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="freealg.eigh.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="freealg.trace.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">freealg.eigh</p>
+          <p class="prev-next-title">freealg.trace</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="freealg.norm.html" title="next page">
+  <a class='right-next' id="next-link" href="freealg.distributions.MarchenkoPastur.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">freealg.norm</p>
+      <p class="prev-next-title">freealg.distributions.MarchenkoPastur</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
