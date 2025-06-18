@@ -165,7 +165,7 @@ def main(argv):
         description=description,
         long_description=long_description,
         long_description_content_type='text/x-rst',
-        keywords="""leaderboard bot chat""",
+        keywords="""linalg, free-probability""",
         platforms=['Linux', 'OSX', 'Windows'],
         packages=setuptools.find_packages(exclude=[
             'tests.*',

@@ -46,7 +46,7 @@ smaller Wishart matrix.
     >>> import freealg as fa
     >>> mp = fa.distributions.MarchenkoPastur(1/50) # Wishart matrices with aspect ratio 1/50
     >>> A = mp.matrix(1000)                         # Sample a 1000 x 1000 Wishart matrix
-    >>> eigs = fa.eigfree(A, 100_000)               # Estimate the eigenvalues of 100000 x 100000
+    >>> eigs = fa.eigh(A, 100_000)                  # Estimate the eigenvalues of 100000 x 100000
 
 For more details on how to interface with *freealg* check out the `Quick Start Guide <https://github.com/ameli/freealg/blob/main/notebooks/quick_start.ipynb>`__.
 
