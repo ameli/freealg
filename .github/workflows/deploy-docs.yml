@@ -41,13 +41,23 @@ jobs:
                 touch docs/build/html/.nojekyll
                 echo 'Visit [Documentation](https://ameli.github.io/freealg/index.html).' > docs/build/html/README.md
 
+            # - name: Build JupyterLite
+            #   run: |
+            #     pip install jupyterlite jupyter-server jupyterlite-pyodide-kernel
+            #     jupyter lite build \
+            #       --contents notebooks \
+            #       --output-dir docs/build/html/jlite \
+            #       --requirements jlite-requirements.txt
+
             - name: Build JupyterLite
               run: |
-                pip install jupyterlite jupyter-server jupyterlite-pyodide-kernel
+                pip install jupyterlite jupyterlite-pyodide-kernel jupyter-server wheel
+                mkdir -p wheels
+                pip download --no-deps --only-binary=:all: --dest wheels freealg
                 jupyter lite build \
                   --contents notebooks \
                   --output-dir docs/build/html/jlite \
-                  --requirements jlite-requirements.txt
+                  --piplite-wheels wheels/*.whl
 
             # Deploy to github pages
             - name: Deploy
