@@ -52,12 +52,17 @@ jobs:
             - name: Build JupyterLite
               run: |
                 pip install jupyterlite jupyterlite-pyodide-kernel jupyter-server wheel
-                mkdir -p wheels
-                pip download --no-deps --only-binary=:all: --dest wheels freealg
+                # mkdir -p wheels
+                # pip download --no-deps --only-binary=:all: --dest wheels freealg
+                # pip download --no-deps --dest wheels freealg
+                pip install build
+                python -m build --sdist --wheel --outdir wheels .
+                ls -l wheels      # debug
                 jupyter lite build \
                   --contents notebooks \
                   --output-dir docs/build/html/jlite \
-                  --piplite-wheels wheels/*.whl
+                  --piplite-wheels $(ls wheels/*)
+                  # --piplite-wheels wheels/*.whl
 
             # Deploy to github pages
             - name: Deploy
