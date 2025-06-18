@@ -41,6 +41,11 @@ jobs:
                 touch docs/build/html/.nojekyll
                 echo 'Visit [Documentation](https://ameli.github.io/freealg/index.html).' > docs/build/html/README.md
 
+            - name: Build JupyterLite
+              run: |
+                pip install jupyterlite
+                jupyter lite build --output-dir docs/build/html/jlite
+
             # Deploy to github pages
             - name: Deploy
               uses: JamesIves/github-pages-deploy-action@v4
