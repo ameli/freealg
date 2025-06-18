@@ -47,7 +47,6 @@ jobs:
                 jupyter lite build \
                   --contents notebooks \
                   --output-dir docs/build/html/jlite \
-                  --piplite \
                   --requirements jlite-requirements.txt
 
             # Deploy to github pages
