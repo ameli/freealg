@@ -127,7 +127,7 @@ def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
         * ``'interior'``: estimates a support assuming the range overestimates;
             uses quantiles (p, 1-p).
         * ``'interior_smooth'``: same as ``'interior'`` but using kernel
-            density estimation, from [2].
+            density estimation, from [2]_.
 
     k : int, default = None
         Number of extreme order statistics to use for ``method='regression'``.

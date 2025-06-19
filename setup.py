@@ -158,6 +158,12 @@ def main(argv):
     # Description
     description = 'Free probability for large matrices'
 
+    # URLs
+    url = 'https://github.com/ameli/freealg'
+    download_url = url + '/archive/main.zip'
+    documentation_url = url + '/blob/main/README.rst'
+    tracker_url = url + '/issues'
+
     # Inputs to setup
     metadata = dict(
         name=package_name,
@@ -166,6 +172,13 @@ def main(argv):
         long_description=long_description,
         long_description_content_type='text/x-rst',
         keywords="""linalg, free-probability""",
+        url=url,
+        download_url=download_url,
+        project_urls={
+            "Documentation": documentation_url,
+            "Source": url,
+            "Tracker": tracker_url,
+        },
         platforms=['Linux', 'OSX', 'Windows'],
         packages=setuptools.find_packages(exclude=[
             'tests.*',

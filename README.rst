@@ -6,7 +6,7 @@
 `Paper <https://arxiv.org/abs/2506.11994>`__ |
 `Slides <https://www.dropbox.com/scl/fi/03gjuyz17k9yhsqy0isoz/free_decomporession_slides.pdf?rlkey=8f82mhciyl2ju02l7hv1md5li&st=26xmhjga&dl=0>`__ |
 `Docs <https://ameli.github.io/freealg>`__ |
-`Live Demo <https://ameli.github.io/freealg/jlite/lab/index.html?path=quick_start.ipynb>`__
+`Live Demo <https://colab.research.google.com/github/ameli/freealg/blob/main/notebooks/quick_start.ipynb>`__
 
 .. `Slides <https://ameli.github.io/freealg/_static/data/slides.pdf>`__ |
 
