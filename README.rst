@@ -80,7 +80,7 @@ requests and bug reports.
 How to Cite
 ===========
 
-If you use this work, please cite the `arXiv paper <https://arxiv.org/abs/2506.11994>`__.
+If you use this work, please cite our `arXiv paper <https://arxiv.org/abs/2506.11994>`__.
 
   .. code::
 
