@@ -40,7 +40,7 @@
         :class-card: custom-card-link
 
     .. grid-item-card:: Live Demo
-        :link: https://ameli.github.io/freealg/jlite/lab/index.html?path=quick_start.ipynb
+        :link: https://colab.research.google.com/github/ameli/freealg/blob/main/notebooks/quick_start.ipynb
         :text-align: center
         :class-card: custom-card-link
 
