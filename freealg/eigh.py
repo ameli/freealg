@@ -193,7 +193,7 @@ def cond(A, N=None):
         >>> cond(A)
     """
 
-    eigs = eigh(A, N)
+    eigs = eigh(A, N, psd=True)
     return eigs.max() / eigs.min()
 
 

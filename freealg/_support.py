@@ -127,7 +127,7 @@ def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
         * ``'interior'``: estimates a support assuming the range overestimates;
             uses quantiles (p, 1-p).
         * ``'interior_smooth'``: same as ``'interior'`` but using kernel
-            density estimation.
+            density estimation, from [2].
 
     k : int, default = None
         Number of extreme order statistics to use for ``method='regression'``.
@@ -142,10 +142,12 @@ def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
     References
     ----------
 
-    .. [1] Quenouille, M. H. (1949, July). Approximate tests of correlation in
+    .. [1] Quenouille, M. H. (1949). Approximate tests of correlation in
            time-series. In Mathematical Proceedings of the Cambridge
            Philosophical Society (Vol. 45, No. 3, pp. 483-484). Cambridge
            University Press.
+    .. [2] Cuevas, A., & Fraiman, R. (1997). A plug-in approach to support
+           estimation. The Annals of Statistics, 2300-2312.
     """
 
     if method == 'range':
