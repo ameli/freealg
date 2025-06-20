@@ -1,11 +1,11 @@
-.. image:: https://raw.githubusercontent.com/ameli/freealg/refs/heads/main/docs/source/_static/images/icons/logo-freealg-light.png
+.. .. image:: https://raw.githubusercontent.com/ameli/freealg/refs/heads/main/docs/source/_static/images/icons/logo-freealg-light.png
+..     :align: left
+..     :width: 240
+..     :class: custom-dark
+
+.. figure:: https://raw.githubusercontent.com/ameli/freealg/refs/heads/main/docs/source/_static/images/icons/logo-freealg-light.png
     :align: left
     :width: 240
-    :class: custom-dark
-
-.. raw:: html
-
-   <div style="clear: both;"></div>
 
 `Paper <https://arxiv.org/abs/2506.11994>`__ |
 `Slides <https://www.dropbox.com/scl/fi/03gjuyz17k9yhsqy0isoz/free_decomporession_slides.pdf?rlkey=8f82mhciyl2ju02l7hv1md5li&st=26xmhjga&dl=0>`__ |
