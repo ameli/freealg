@@ -1,24 +1,24 @@
 {
   "freealg": {
     "releases": {
-      "0.3.2": [
+      "0.3.3": [
         {
           "comment_text": "",
           "digests": {
-            "md5": "b80fbf541ef621d82b3a9aa110855d81",
-            "sha256": "f7fbfcafc80b67a5d730f6da569eaecf093765ff6e940eaf39f25de8461775ee"
+            "md5": "3acd407f7df69fb7200c1a4d164c3185",
+            "sha256": "b9455ad50b01d826c94ea51fffba9b77fe912d35d8168287846dd8459cd0fd53"
           },
           "downloads": -1,
-          "filename": "freealg-0.3.2-py3-none-any.whl",
+          "filename": "freealg-0.3.3-py3-none-any.whl",
           "has_sig": false,
-          "md5_digest": "b80fbf541ef621d82b3a9aa110855d81",
+          "md5_digest": "3acd407f7df69fb7200c1a4d164c3185",
           "packagetype": "bdist_wheel",
           "python_version": "py3",
           "requires_python": ">=3.9",
-          "size": 61024,
-          "upload_time": "2025-06-20T15:48:29.234370Z",
-          "upload_time_iso_8601": "2025-06-20T15:48:29.234370Z",
-          "url": "./freealg-0.3.2-py3-none-any.whl",
+          "size": 61073,
+          "upload_time": "2025-06-20T23:27:53.568869Z",
+          "upload_time_iso_8601": "2025-06-20T23:27:53.568869Z",
+          "url": "./freealg-0.3.3-py3-none-any.whl",
           "yanked": false,
           "yanked_reason": null
         }
