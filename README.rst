@@ -1,8 +1,3 @@
-.. .. image:: https://raw.githubusercontent.com/ameli/freealg/refs/heads/main/docs/source/_static/images/icons/logo-freealg-light.png
-..     :align: left
-..     :width: 240
-..     :class: custom-dark
-
 .. figure:: https://raw.githubusercontent.com/ameli/freealg/refs/heads/main/docs/source/_static/images/icons/logo-freealg-light.png
     :align: left
     :width: 240
