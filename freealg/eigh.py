@@ -17,6 +17,33 @@ from .freeform import FreeForm
 __all__ = ['eigh', 'cond', 'norm', 'trace', 'slogdet']
 
 
+def _subsample_apply(f, A, output_array=False):
+    """Compute f(A_n) over subsamples A_n of A. If the output of
+    f is an array (e.g. eigvals), specify output_array to be True."""
+
+    if A.ndim != 2 or A.shape[0] != A.shape[1]:
+        raise RuntimeError("Only square matrices are permitted.")
+    n = A.shape[0]
+
+    # Size of sample matrix
+    n_s = int(80*(1 + numpy.log(n)))
+    # If matrix is not large enough, return eigenvalues
+    if n < n_s:
+        return f(A), n, n
+    # Number of samples
+    num_samples = int(10 * (n / n_s)**0.5)
+
+    # Collect eigenvalue samples
+    samples = []
+    for _ in range(num_samples):
+        indices = numpy.random.choice(n, n_s, replace=False)
+        samples.append(f(A[numpy.ix_(indices, indices)]))
+    if output_array:
+        return numpy.concatenate(samples).ravel(), n, n_s
+
+    return numpy.array(samples), n, n_s
+
+
 # ====
 # eigh
 # ====
@@ -86,28 +113,10 @@ def eigh(A, N=None, psd=None, plots=False):
         >>> A = mp.matrix(3000)
         >>> eigs = eigh(A)
     """
-
-    if A.ndim != 2 or A.shape[0] != A.shape[1]:
-        raise RuntimeError("Only square matrices are permitted.")
-    n = A.shape[0]
+    samples, n, n_s = _subsample_apply(compute_eig, A, output_array=True)
 
     if N is None:
         N = n
-
-    # Size of sample matrix
-    n_s = int(80*(1 + numpy.log(n)))
-    # If matrix is not large enough, return eigenvalues
-    if n < n_s:
-        return compute_eig(A)
-    # Number of samples
-    num_samples = int(10 * (n / n_s)**0.5)
-
-    # Collect eigenvalue samples
-    samples = []
-    for _ in range(num_samples):
-        indices = numpy.random.choice(n, n_s, replace=False)
-        samples.append(compute_eig(A[numpy.ix_(indices, indices)]))
-    samples = numpy.concatenate(samples).ravel()
 
     # If all eigenvalues are positive, set PSD flag
     if psd is None:
@@ -224,7 +233,7 @@ def norm(A, N=None, order=None):
     order : {float, ``''inf``, ``'-inf'``, ``'fro'``, ``'nuc'``}, default=2
         Order of the norm.
 
-        * float :math:`p`: Schtten p-norm.
+        * float :math:`p`: Schatten p-norm.
         * ``'inf'``: Largest absolute eigenvalue
           :math:`\\max \\vert \\lambda_i \\vert)`
         * ``'-inf'``: Smallest absolute eigenvalue
@@ -300,25 +309,29 @@ def norm(A, N=None, order=None):
 # trace
 # =====
 
-def trace(A, N=None):
+def trace(A, N=None, p=1.0):
     """
-    Estimate the trace of a Hermitian matrix.
+    Estimate the trace of a power of a Hermitian matrix.
 
-    This function estimates the trace of the matrix :math:`\\mathbf{A}` or a
-    larger matrix containing :math:`\\mathbf{A}` using free decompression.
+    This function estimates the trace of the matrix power :math:`\\mathbf{A}^p`
+    or that of a larger matrix containing :math:`\\mathbf{A}`.
 
     Parameters
     ----------
 
     A : numpy.ndarray
-        The symmetric real-valued matrix :math:`\\mathbf{A}` whose condition
-        number (or that of a matrix containing :math:`\\mathbf{A}`) are to be
+        The symmetric real-valued matrix :math:`\\mathbf{A}` whose trace of
+        a power (or that of a matrix containing :math:`\\mathbf{A}`) is to be
         computed.
 
     N : int, default=None
         The size of the matrix containing :math:`\\mathbf{A}` to estimate
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
+
+    p : float, default=1.0
+        The exponent :math:`p` in :math:`\\mathbf{A}^p`.
+
 
     Returns
     -------
@@ -337,7 +350,9 @@ def trace(A, N=None):
     Notes
     -----
 
-    This is a convenience function using :func:`freealg.eigh`.
+    The trace is highly amenable to subsampling: under free decompression
+    the average eigenvalue is assumed constant, so the trace increases
+    linearly. Traces of powers fall back to :func:`freealg.eigh`.
 
     Examples
     --------
@@ -352,11 +367,14 @@ def trace(A, N=None):
         >>> A = mp.matrix(3000)
         >>> trace(A, 100_000)
     """
+    if numpy.isclose(p, 1.0):
+        samples, n, n_s = _subsample_apply(numpy.trace, A, output_array=False)
+        if N is None:
+            N = n
+        return numpy.mean(samples) * (N / n_s)
 
-    eigs = eigh(A, N)
-    trace_ = numpy.sum(eigs)
-
-    return trace_
+    eig = eigh(A, N)
+    return numpy.sum(eig ** p)
 
 
 # =======
