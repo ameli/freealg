@@ -3,6 +3,12 @@
     :width: 240
     :class: custom-dark
 
+.. raw:: html
+
+   <div style="clear: both;"></div>
+
+`GitHub <https://github.com/ameli/freealg>`__ |
+`PyPi <https://pypi.org/project/freealg/>`__ |
 `Paper <https://arxiv.org/abs/2506.11994>`__ |
 `Slides <https://www.dropbox.com/scl/fi/03gjuyz17k9yhsqy0isoz/free_decomporession_slides.pdf?rlkey=8f82mhciyl2ju02l7hv1md5li&st=26xmhjga&dl=0>`__ |
 `Docs <https://ameli.github.io/freealg>`__ |

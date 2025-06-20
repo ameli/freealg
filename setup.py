@@ -161,7 +161,7 @@ def main(argv):
     # URLs
     url = 'https://github.com/ameli/freealg'
     download_url = url + '/archive/main.zip'
-    documentation_url = url + '/blob/main/README.rst'
+    documentation_url = 'https://ameli.github.io/freealg'
     tracker_url = url + '/issues'
 
     # Inputs to setup
