@@ -142,7 +142,8 @@ extensions = [
     'sphinx_gallery.load_style',
     "sphinxext.opengraph",
     'sphinxarg.ext',
-    "sphinxcontrib.youtube",
+    'sphinxcontrib.youtube',
+    'sphinx_sitemap',
 ]
 
 # Copy button settings
@@ -210,7 +211,7 @@ html_theme = 'pydata_sphinx_theme'
 
 # Options for theme
 html_theme_options = {
-    "github_url": "https://github.com/suquark/arenaranking",
+    "github_url": "https://github.com/ameli/freealg",
     "navbar_end": [
         "theme-switcher",
         "search-field.html",
@@ -239,7 +240,7 @@ html_theme_options = {
 html_context = {
     "default_mode": "auto",
     "github_url": "https://github.com",
-    "github_user": "sameli",
+    "github_user": "ameli",
     "github_repo": "freealg",
     "github_version": "main",
     "doc_path": "docs/source",
@@ -253,6 +254,9 @@ html_sidebars = {
 # html_css_files = [
 #     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
 # ]
+
+# For sitemap
+html_baseurl = "https://ameli.github.io/freealg/"
 
 html_title = f"{project} Manual"
 html_last_updated_fmt = '%b %d, %Y'
@@ -293,8 +297,8 @@ html_favicon = '_static/images/icons/favicon.ico'
 
 # Open Graph cards for sharing the documentation on social media
 ogp_site_url = 'https://ameli.github.io/freealg'
-ogp_image = 'https://raw.githubusercontent.com/sameli/freealg/main/' + \
-        'docs/source/_static/images/icons/logo-freealg-light.svg'
+ogp_image = 'https://raw.githubusercontent.com/ameli/freealg/main/docs/' + \
+            'source/_static/images/icons/logo-freealg-light.svg'
 ogp_site_name = 'FreeAlg'
 ogp_description_length = 300
 ogp_type = "website"

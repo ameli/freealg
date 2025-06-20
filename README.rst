@@ -7,8 +7,6 @@
 
    <div style="clear: both;"></div>
 
-`GitHub <https://github.com/ameli/freealg>`__ |
-`PyPi <https://pypi.org/project/freealg/>`__ |
 `Paper <https://arxiv.org/abs/2506.11994>`__ |
 `Slides <https://www.dropbox.com/scl/fi/03gjuyz17k9yhsqy0isoz/free_decomporession_slides.pdf?rlkey=8f82mhciyl2ju02l7hv1md5li&st=26xmhjga&dl=0>`__ |
 `Docs <https://ameli.github.io/freealg>`__ |
@@ -16,10 +14,11 @@
 
 .. `Slides <https://ameli.github.io/freealg/_static/data/slides.pdf>`__ |
 
-*freealg* is a Python package that employs **free** probability to evaluate the spectral
-densities of large matrix **form**\ s. The fundamental algorithm employed by *freealg* is
-**free decompression**, which extrapolates from the empirical spectral densities of small 
-submatrices to infer the eigenspectrum of extremely large matrices. 
+*freealg* is a Python package that employs **free** probability to evaluate the
+spectral densities of large matrix **form**\ s. The fundamental algorithm
+employed by *freealg* is **free decompression**, which extrapolates from the
+empirical spectral densities of small  submatrices to infer the eigenspectrum
+of extremely large matrices. 
 
 Install
 =======
@@ -45,8 +44,8 @@ Documentation is available at `ameli.github.io/freealg <https://ameli.github.io/
 Quick Usage
 ===========
 
-The following code estimates the eigenvalues of a very large Wishart matrix using a much
-smaller Wishart matrix.
+The following code estimates the eigenvalues of a very large Wishart matrix
+using a much smaller Wishart matrix.
 
 .. code-block:: python
 
@@ -55,7 +54,8 @@ smaller Wishart matrix.
     >>> A = mp.matrix(1000)                         # Sample a 1000 x 1000 Wishart matrix
     >>> eigs = fa.eigfree(A, 100_000)               # Estimate the eigenvalues of 100000 x 100000
 
-For more details on how to interface with *freealg* check out the `Quick Start Guide <https://github.com/ameli/freealg/blob/main/notebooks/quick_start.ipynb>`__.
+For more details on how to interface with *freealg* check out the 
+`Quick Start Guide <https://github.com/ameli/freealg/blob/main/notebooks/quick_start.ipynb>`__.
 
 
 Test
@@ -79,9 +79,9 @@ How to Contribute
 =================
 
 We welcome contributions via GitHub's pull request. Developers should review
-our [Contributing Guidelines](CONTRIBUTING.rst) before submitting their code.
-If you do not feel comfortable modifying the code, we also welcome feature
-requests and bug reports.
+our [Contributing Guidelines](https://github.com/ameli/freealg/blob/main/CONTRIBUTING.rst)
+before submitting their code. If you do not feel comfortable modifying the
+code, we also welcome feature requests and bug reports.
 
 How to Cite
 ===========

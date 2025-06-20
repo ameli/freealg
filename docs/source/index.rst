@@ -1,3 +1,6 @@
+.. meta::
+   :description: freealg is a Python package that employs free probability to evaluate the spectral densities of large matrix forms.
+
 .. module:: freealg
 
 |project| Documentation
@@ -44,10 +47,10 @@
         :text-align: center
         :class-card: custom-card-link
 
-    .. .. grid-item-card:: Slides
-    ..     :link: _static/data/slides.pdf
-    ..     :text-align: center
-    ..     :class-card: custom-card-link
+.. .. grid-item-card:: Slides
+..     :link: _static/data/slides.pdf
+..     :text-align: center
+..     :class-card: custom-card-link
 
 
 Install

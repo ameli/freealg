@@ -17,12 +17,19 @@ from .freeform import FreeForm
 __all__ = ['eigh', 'cond', 'norm', 'trace', 'slogdet']
 
 
+# ===============
+# subsample apply
+# ===============
+
 def _subsample_apply(f, A, output_array=False):
-    """Compute f(A_n) over subsamples A_n of A. If the output of
-    f is an array (e.g. eigvals), specify output_array to be True."""
+    """
+    Compute f(A_n) over subsamples A_n of A. If the output of
+    f is an array (e.g. eigvals), specify output_array to be True.
+    """
 
     if A.ndim != 2 or A.shape[0] != A.shape[1]:
         raise RuntimeError("Only square matrices are permitted.")
+
     n = A.shape[0]
 
     # Size of sample matrix
@@ -30,6 +37,7 @@ def _subsample_apply(f, A, output_array=False):
     # If matrix is not large enough, return eigenvalues
     if n < n_s:
         return f(A), n, n
+
     # Number of samples
     num_samples = int(10 * (n / n_s)**0.5)
 
@@ -38,6 +46,7 @@ def _subsample_apply(f, A, output_array=False):
     for _ in range(num_samples):
         indices = numpy.random.choice(n, n_s, replace=False)
         samples.append(f(A[numpy.ix_(indices, indices)]))
+
     if output_array:
         return numpy.concatenate(samples).ravel(), n, n_s
 
@@ -113,6 +122,7 @@ def eigh(A, N=None, psd=None, plots=False):
         >>> A = mp.matrix(3000)
         >>> eigs = eigh(A)
     """
+
     samples, n, n_s = _subsample_apply(compute_eig, A, output_array=True)
 
     if N is None:
@@ -367,6 +377,7 @@ def trace(A, N=None, p=1.0):
         >>> A = mp.matrix(3000)
         >>> trace(A, 100_000)
     """
+
     if numpy.isclose(p, 1.0):
         samples, n, n_s = _subsample_apply(numpy.trace, A, output_array=False)
         if N is None:

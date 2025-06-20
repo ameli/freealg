@@ -15,3 +15,4 @@ sphinx-gallery
 sphinxcontrib-youtube
 sphinxext-opengraph
 sphinx-argparse
+sphinx-sitemap
