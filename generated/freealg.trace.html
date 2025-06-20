@@ -326,20 +326,22 @@
 <h1>freealg.trace<a class="headerlink" href="#freealg-trace" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="freealg.trace">
-<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.trace" title="Permalink to this definition">#</a></dt>
-<dd><p>Estimate the trace of a Hermitian matrix.</p>
-<p>This function estimates the trace of the matrix <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> or a
-larger matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> using free decompression.</p>
+<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.trace" title="Permalink to this definition">#</a></dt>
+<dd><p>Estimate the trace of a power of a Hermitian matrix.</p>
+<p>This function estimates the trace of the matrix power <span class="math notranslate nohighlight">\(\mathbf{A}^p\)</span>
+or that of a larger matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>A</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>The symmetric real-valued matrix <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> whose condition
-number (or that of a matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>) are to be
+<dt><strong>A</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>The symmetric real-valued matrix <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> whose trace of
+a power (or that of a matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>) is to be
 computed.</p>
 </dd>
 <dt><strong>N</strong><span class="classifier">int, default=None</span></dt><dd><p>The size of the matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> to estimate
 eigenvalues of. If None, returns estimates of the eigenvalues of
 <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> itself.</p>
+</dd>
+<dt><strong>p</strong><span class="classifier">float, default=1.0</span></dt><dd><p>The exponent <span class="math notranslate nohighlight">\(p\)</span> in <span class="math notranslate nohighlight">\(\mathbf{A}^p\)</span>.</p>
 </dd>
 </dl>
 </dd>
@@ -360,7 +362,9 @@ eigenvalues of. If None, returns estimates of the eigenvalues of
 </dl>
 </div>
 <p class="rubric">Notes</p>
-<p>This is a convenience function using <a class="reference internal" href="freealg.eigh.html#freealg.eigh" title="freealg.eigh"><code class="xref py py-func docutils literal notranslate"><span class="pre">freealg.eigh()</span></code></a>.</p>
+<p>The trace is highly amenable to subsampling: under free decompression
+the average eigenvalue is assumed constant, so the trace increases
+linearly. Traces of powers fall back to <a class="reference internal" href="freealg.eigh.html#freealg.eigh" title="freealg.eigh"><code class="xref py py-func docutils literal notranslate"><span class="pre">freealg.eigh()</span></code></a>.</p>
 <p class="rubric">Examples</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarchenkoPastur</span>
