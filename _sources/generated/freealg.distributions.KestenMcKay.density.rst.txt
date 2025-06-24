@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.KestenMcKay.density
-=========================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: KestenMcKay.density

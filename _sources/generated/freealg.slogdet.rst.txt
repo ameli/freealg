@@ -1,6 +1,0 @@
-﻿freealg.slogdet
-===============
-
-.. currentmodule:: freealg
-
-.. autofunction:: slogdet

@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.KestenMcKay.matrix
-========================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: KestenMcKay.matrix

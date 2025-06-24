@@ -1,6 +1,0 @@
-﻿freealg.norm
-============
-
-.. currentmodule:: freealg
-
-.. autofunction:: norm

@@ -1,6 +1,0 @@
-﻿freealg.trace
-=============
-
-.. currentmodule:: freealg
-
-.. autofunction:: trace

@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.FreeForm.density
-========================
-
-.. currentmodule:: freealg
-
-.. automethod:: FreeForm.density

@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.Wachter.sample
-====================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: Wachter.sample

@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.FreeForm.hilbert
-========================
-
-.. currentmodule:: freealg
-
-.. automethod:: FreeForm.hilbert

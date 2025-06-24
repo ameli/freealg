@@ -1,6 +1,0 @@
-﻿freealg.eigh
-============
-
-.. currentmodule:: freealg
-
-.. autofunction:: eigh

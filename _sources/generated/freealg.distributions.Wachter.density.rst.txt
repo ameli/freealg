@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.Wachter.density
-=====================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: Wachter.density

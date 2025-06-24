@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.KestenMcKay.sample
-========================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: KestenMcKay.sample

@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.FreeForm.decompress
-===========================
-
-.. currentmodule:: freealg
-
-.. automethod:: FreeForm.decompress

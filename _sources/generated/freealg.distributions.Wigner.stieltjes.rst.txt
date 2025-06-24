@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.Wigner.stieltjes
-======================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: Wigner.stieltjes

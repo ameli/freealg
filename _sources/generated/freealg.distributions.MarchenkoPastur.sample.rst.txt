@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.MarchenkoPastur.sample
-============================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: MarchenkoPastur.sample

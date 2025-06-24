@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.KestenMcKay.stieltjes
-===========================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: KestenMcKay.stieltjes

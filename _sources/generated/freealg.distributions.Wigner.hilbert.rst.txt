@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.Wigner.hilbert
-====================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: Wigner.hilbert

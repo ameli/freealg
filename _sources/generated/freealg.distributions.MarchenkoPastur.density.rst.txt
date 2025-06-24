@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.MarchenkoPastur.density
-=============================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: MarchenkoPastur.density
