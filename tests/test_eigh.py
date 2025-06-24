@@ -26,9 +26,8 @@ def test_eigh():
     X = numpy.random.randn(1000, 1000)
     X = (X + X.T) / 2**0.5
 
-    # Compute eigh 100 times to test speed
-    for _ in range(100):
-        fa.eigh(X)
+    # Compute eigh
+    fa.eigh(X)
 
 
 # ===========

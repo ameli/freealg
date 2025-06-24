@@ -411,6 +411,19 @@ class FreeForm(object):
     # density
     # =======
 
+    def _grid(self, scale, extend=1.0, N=500):
+        """
+        Return a grid of points to evaluate density / Hilbert / Stieltjes
+        transforms.
+        """
+        radius = 0.5 * (self.lam_p - self.lam_m)
+        center = 0.5 * (self.lam_p + self.lam_m)
+        x_min = numpy.floor(extend * (center - extend * radius * scale))
+        x_max = numpy.ceil(extend * (center + extend * radius * scale))
+        x_min /= extend
+        x_max /= extend
+        return numpy.linspace(x_min, x_max, N)
+
     def density(self, x=None, plot=False, latex=False, save=False):
         """
         Evaluate density.
@@ -459,12 +472,7 @@ class FreeForm(object):
 
         # Create x if not given
         if x is None:
-            radius = 0.5 * (self.lam_p - self.lam_m)
-            center = 0.5 * (self.lam_p + self.lam_m)
-            scale = 1.25
-            x_min = numpy.floor(center - radius * scale)
-            x_max = numpy.ceil(center + radius * scale)
-            x = numpy.linspace(x_min, x_max, 500)
+            x = self._grid(1.25)
 
         # Preallocate density to zero
         rho = numpy.zeros_like(x)
@@ -554,12 +562,7 @@ class FreeForm(object):
 
         # Create x if not given
         if x is None:
-            radius = 0.5 * (self.lam_p - self.lam_m)
-            center = 0.5 * (self.lam_p + self.lam_m)
-            scale = 1.25
-            x_min = numpy.floor(center - radius * scale)
-            x_max = numpy.ceil(center + radius * scale)
-            x = numpy.linspace(x_min, x_max, 500)
+            x = self._grid(1.25)
 
         # if (numpy.min(x) > self.lam_m) or (numpy.max(x) < self.lam_p):
         #     raise ValueError('"x" does not encompass support interval.')
@@ -683,12 +686,7 @@ class FreeForm(object):
 
         # Create x if not given
         if x is None:
-            radius = 0.5 * (self.lam_p - self.lam_m)
-            center = 0.5 * (self.lam_p + self.lam_m)
-            scale = 2.0
-            x_min = numpy.floor(2.0 * (center - 2.0 * radius * scale)) / 2.0
-            x_max = numpy.ceil(2.0 * (center + 2.0 * radius * scale)) / 2.0
-            x = numpy.linspace(x_min, x_max, 500)
+            x = self._grid(2.0, extend=2.0)
             if not cartesian:
                 # Evaluate slightly above the real line
                 x = x.astype(complex)
@@ -803,7 +801,7 @@ class FreeForm(object):
     # ==========
 
     def decompress(self, size, x=None, max_iter=500, eigvals=True,
-                   tolerance=1e-9, seed=None, plot=False,
+                   tolerance=1e-9, plot=False,
                    latex=False, save=False):
         """
         Free decompression of spectral density.
@@ -890,8 +888,249 @@ class FreeForm(object):
             plot_density(x, rho, support=(lb, ub),
                          label='Decompression', latex=latex, save=save)
 
-        if eigvals:
-            eigs = numpy.sort(qmc_sample(x, rho, size, seed=seed))
-            return x, rho, eigs
+        return x, rho
+
+    def eigvalsh(self, size=None, seed=None, **kwargs):
+        """
+        Estimate the eigenvalues.
+
+        This function estimates the eigenvalues of the freeform matrix
+        or a larger matrix containing it using free decompression.
+
+        Parameters
+        ----------
+
+        size : int, default=None
+            The size of the matrix containing :math:`\\mathbf{A}` to estimate
+            eigenvalues of. If None, returns estimates of the eigenvalues of
+            :math:`\\mathbf{A}` itself.
+
+        seed : int, default=None
+            The seed for the Quasi-Monte Carlo sampler.
+
+        Returns
+        -------
+
+        eigs : numpy.array
+            Eigenvalues of decompressed matrix
+
+        See Also
+        --------
+
+        decompress
+
+        Notes
+        -----
+
+        All arguments to the `.decompress()` procedure can be provided.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 6
+
+            >>> ...
+        """
+        if size is None:
+            x = self._grid(1.25)
+            rho = self.density(x)
+            size = self.n
         else:
-            return x, rho
+            x, rho = self.decompress(size, **kwargs)
+        eigs = numpy.sort(qmc_sample(x, rho, size, seed=seed))
+        return eigs
+
+    def trace(self, size=None, p=1.0, seed=None, **kwargs):
+        """
+        Estimate the trace of a power :math:`\\mathbf{A}^p`.
+
+        This function estimates the trace of the matrix power of the
+        freeform or that of a larger matrix containing it.
+
+        Parameters
+        ----------
+
+        size : int, default=None
+            The size of the matrix containing :math:`\\mathbf{A}` to estimate
+            eigenvalues of. If None, returns estimates of the eigenvalues of
+            :math:`\\mathbf{A}` itself.
+
+        p : float, default=1.0
+            The exponent :math:`p` in :math:`\\mathbf{A}^p`.
+
+        seed : int, default=None
+            The seed for the Quasi-Monte Carlo sampler.
+
+
+        Returns
+        -------
+
+        trace : float
+            matrix trace
+
+        See Also
+        --------
+
+        eigh
+        cond
+        slogdet
+        norm
+
+        Notes
+        -----
+
+        The trace is highly amenable to subsampling: under free decompression
+        the average eigenvalue is assumed constant, so the trace increases
+        linearly. Traces of powers fall back to :func:`eigvalsh`.
+        All arguments to the `.decompress()` procedure can be provided.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 6
+
+            >>> ...
+        """
+        if numpy.isclose(p, 1.0):
+            return numpy.mean(self.eig) * (size / self.n)
+
+        eig = self.eigvalsh(size, seed)
+        return numpy.sum(eig ** p)
+
+    def slogdet(self, size, seed=None, **kwargs):
+        """
+        Estimate the sign and logarithm of the determinant.
+
+        This function estimates the *slogdet* of the freeform or that of
+        a larger matrix containing it using free decompression.
+
+        Parameters
+        ----------
+
+        size : int, default=None
+            The size of the matrix containing :math:`\\mathbf{A}` to estimate
+            eigenvalues of. If None, returns estimates of the eigenvalues of
+            :math:`\\mathbf{A}` itself.
+
+        seed : int, default=None
+            The seed for the Quasi-Monte Carlo sampler.
+
+        Returns
+        -------
+
+        sign : float
+            Sign of determinant
+
+        ld : float
+            natural logarithm of the absolute value of the determinant
+
+        See Also
+        --------
+
+        eigh
+        cond
+        trace
+        norm
+
+        Notes
+        -----
+
+        All arguments to the `.decompress()` procedure can be provided.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 6
+
+            >>> ...
+        """
+        eigs = self.eigvalsh(size, seed)
+        sign = numpy.prod(numpy.sign(eigs))
+        ld = numpy.sum(numpy.log(numpy.abs(eigs)))
+        return sign, ld
+
+    def norm(self, size=None, order=2, seed=None, **kwargs):
+        """
+        Estimate the Schatten norm of a Hermitian matrix.
+
+        This function estimates the norm of the freeform or a larger
+        matrix containing it using free decompression.
+
+        Parameters
+        ----------
+
+        size : int, default=None
+            The size of the matrix containing :math:`\\mathbf{A}` to estimate
+            eigenvalues of. If None, returns estimates of the eigenvalues of
+            :math:`\\mathbf{A}` itself.
+
+        order : {float, ``''inf``, ``'-inf'``, ``'fro'``, ``'nuc'``}, default=2
+            Order of the norm.
+
+            * float :math:`p`: Schatten p-norm.
+            * ``'inf'``: Largest absolute eigenvalue
+            :math:`\\max \\vert \\lambda_i \\vert)`
+            * ``'-inf'``: Smallest absolute eigenvalue
+            :math:`\\min \\vert \\lambda_i \\vert)`
+            * ``'fro'``: Frobenius norm corresponding to :math:`p=2`
+            * ``'nuc'``: Nuclear (or trace) norm corresponding to :math:`p=1`
+
+        Returns
+        -------
+
+        norm : float
+            matrix norm
+
+        See Also
+        --------
+
+        eigh
+        cond
+        slogdet
+        trace
+
+        Notes
+        -----
+
+        Thes Schatten :math:`p`-norm is defined by
+
+        .. math::
+
+            \\Vert \\mathbf{A} \\Vert_p = \\left(
+            \\sum_{i=1}^N \\vert \\lambda_i \\vert^p \\right)^{1/p}.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 6
+
+            >>> ...
+        """
+        eigs = self.eigvalsh(size, seed=seed, **kwargs)
+
+        if (order == 'inf') or numpy.isinf(order):
+            norm_ = max(numpy.abs(eigs))
+
+        elif (order == '-inf') or numpy.isneginf(order):
+            norm_ = min(numpy.abs(eigs))
+
+        elif (order == 'nuc') or (order == 1.0):
+            norm_ = numpy.sum(numpy.abs(eigs))
+
+        elif (order == 'fro') or (order == 2.0):
+            norm_2 = numpy.sum(numpy.abs(eigs)**2)
+            norm_ = numpy.sqrt(norm_2)
+
+        elif isinstance(order, (int, float, numpy.integer, numpy.floating)) \
+                and not isinstance(order, (bool, numpy.bool_)):
+            norm_q = numpy.sum(numpy.abs(eigs)**order)
+            norm_ = norm_q**(1.0 / order)
+
+        else:
+            raise ValueError('"order" is invalid.')
+
+        return norm_

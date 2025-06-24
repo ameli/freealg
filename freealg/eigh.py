@@ -145,7 +145,7 @@ def eigh(A, N=None, psd=None, plots=False):
         ff.density(plot=True)
         ff.stieltjes(plot=True)
 
-    _, _, eigs = ff.decompress(N, plot=plots)
+    eigs = ff.eigvalsh(N, plot=plots)
 
     if psd:
         eigs = numpy.abs(eigs)

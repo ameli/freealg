@@ -57,7 +57,7 @@ def test_freeform():
     # Create freeform object
     ff = FreeForm(eig, support=(mp.lam_m, mp.lam_p))
 
-    # Fir density
+    # Fit density
     _ = ff.fit(method='chebyshev', K=10, alpha=2, beta=2, reg=0,
                damp='jackson', force=True, plot=True, latex=latex,
                save='qs_fit' + ext)
