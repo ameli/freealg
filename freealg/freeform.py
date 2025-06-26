@@ -108,6 +108,18 @@ class FreeForm(object):
     decompress
         Free decompression of spectral density
 
+    eigvalsh
+        Estimate the eigenvalues
+
+    trace
+        Estimate the trace of a matrix power
+
+    slogdet
+        Estimate the sign and logarithm of the determinant
+
+    norm
+        Estimate the Schatten norm
+
     Examples
     --------
 
@@ -416,17 +428,25 @@ class FreeForm(object):
         Return a grid of points to evaluate density / Hilbert / Stieltjes
         transforms.
         """
+
         radius = 0.5 * (self.lam_p - self.lam_m)
         center = 0.5 * (self.lam_p + self.lam_m)
+
         x_min = numpy.floor(extend * (center - extend * radius * scale))
         x_max = numpy.ceil(extend * (center + extend * radius * scale))
+
         x_min /= extend
         x_max /= extend
+
         return numpy.linspace(x_min, x_max, N)
+
+    # =======
+    # density
+    # =======
 
     def density(self, x=None, plot=False, latex=False, save=False):
         """
-        Evaluate density.
+        Evaluate spectral density.
 
         Parameters
         ----------
@@ -687,6 +707,7 @@ class FreeForm(object):
         # Create x if not given
         if x is None:
             x = self._grid(2.0, extend=2.0)
+
             if not cartesian:
                 # Evaluate slightly above the real line
                 x = x.astype(complex)
@@ -826,9 +847,6 @@ class FreeForm(object):
             Tolerance for the solution obtained by the Newton solver. Also
             used for the finite difference approximation to the derivative.
 
-        seed : int, default=None
-            Seed for random number generator. Used for QMC sampling.
-
         plot : bool, default=False
             If `True`, density is plotted.
 
@@ -890,6 +908,10 @@ class FreeForm(object):
 
         return x, rho
 
+    # ========
+    # eigvalsh
+    # ========
+
     def eigvalsh(self, size=None, seed=None, **kwargs):
         """
         Estimate the eigenvalues.
@@ -928,10 +950,11 @@ class FreeForm(object):
         --------
 
         .. code-block:: python
-            :emphasize-lines: 6
+            :emphasize-lines: 1
 
-            >>> ...
+            >>> from freealg import FreeForm
         """
+
         if size is None:
             x = self._grid(1.25)
             rho = self.density(x)
@@ -941,12 +964,17 @@ class FreeForm(object):
         eigs = numpy.sort(qmc_sample(x, rho, size, seed=seed))
         return eigs
 
+    # =====
+    # trace
+    # =====
+
     def trace(self, size=None, p=1.0, seed=None, **kwargs):
         """
-        Estimate the trace of a power :math:`\\mathbf{A}^p`.
+        Estimate the trace of a power.
 
-        This function estimates the trace of the matrix power of the
-        freeform or that of a larger matrix containing it.
+        This function estimates the trace of the matrix power
+        :math:`\\mathbf{A}^p` of the freeform or that of a larger matrix
+        containing it.
 
         Parameters
         ----------
@@ -962,7 +990,6 @@ class FreeForm(object):
         seed : int, default=None
             The seed for the Quasi-Monte Carlo sampler.
 
-
         Returns
         -------
 
@@ -972,10 +999,10 @@ class FreeForm(object):
         See Also
         --------
 
-        eigh
-        cond
-        slogdet
-        norm
+        FreeForm.eigh
+        FreeForm.cond
+        FreeForm.slogdet
+        FreeForm.norm
 
         Notes
         -----
@@ -998,6 +1025,10 @@ class FreeForm(object):
 
         eig = self.eigvalsh(size, seed)
         return numpy.sum(eig ** p)
+
+    # =======
+    # slogdet
+    # =======
 
     def slogdet(self, size, seed=None, **kwargs):
         """
@@ -1029,10 +1060,10 @@ class FreeForm(object):
         See Also
         --------
 
-        eigh
-        cond
-        trace
-        norm
+        FreeForm.eigh
+        FreeForm.cond
+        FreeForm.trace
+        FreeForm.norm
 
         Notes
         -----
@@ -1047,14 +1078,19 @@ class FreeForm(object):
 
             >>> ...
         """
+
         eigs = self.eigvalsh(size, seed)
         sign = numpy.prod(numpy.sign(eigs))
         ld = numpy.sum(numpy.log(numpy.abs(eigs)))
         return sign, ld
 
+    # ====
+    # norm
+    # ====
+
     def norm(self, size=None, order=2, seed=None, **kwargs):
         """
-        Estimate the Schatten norm of a Hermitian matrix.
+        Estimate the Schatten norm.
 
         This function estimates the norm of the freeform or a larger
         matrix containing it using free decompression.
@@ -1087,10 +1123,10 @@ class FreeForm(object):
         See Also
         --------
 
-        eigh
-        cond
-        slogdet
-        trace
+        FreeForm.eigh
+        FreeForm.cond
+        FreeForm.slogdet
+        FreeForm.trace
 
         Notes
         -----
@@ -1110,6 +1146,7 @@ class FreeForm(object):
 
             >>> ...
         """
+
         eigs = self.eigvalsh(size, seed=seed, **kwargs)
 
         if (order == 'inf') or numpy.isinf(order):

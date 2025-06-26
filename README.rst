@@ -74,7 +74,7 @@ How to Contribute
 =================
 
 We welcome contributions via GitHub's pull request. Developers should review
-our [Contributing Guidelines](https://github.com/ameli/freealg/blob/main/CONTRIBUTING.rst)
+our `Contributing Guidelines <https://github.com/ameli/freealg/blob/main/CONTRIBUTING.rst>`__
 before submitting their code. If you do not feel comfortable modifying the
 code, we also welcome feature requests and bug reports.
 
