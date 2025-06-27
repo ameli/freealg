@@ -18,7 +18,7 @@ of extremely large matrices.
 Install
 =======
 
-|build-linux| |pypi|
+|pypi|
 
 Install with ``pip``:
 
@@ -59,6 +59,8 @@ For more details on how to interface with *freealg* check out the
 
 Test
 ====
+
+|build-linux| 
 
 You may test the package with `tox <https://tox.wiki/>`__:
 

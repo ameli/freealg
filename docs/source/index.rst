@@ -56,7 +56,7 @@
 Install
 =======
 
-|build-linux| |pypi|
+|pypi|
 
 Install with ``pip``:
 
@@ -171,6 +171,8 @@ usage, options, and examples.
 
 Test
 ====
+
+|build-linux|
 
 You may test the package with `tox <https://tox.wiki/>`__:
 
