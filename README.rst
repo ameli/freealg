@@ -18,6 +18,8 @@ of extremely large matrices.
 Install
 =======
 
+|build-linux| |pypi|
+
 Install with ``pip``:
 
 .. code-block::
@@ -33,6 +35,8 @@ Alternatively, clone the source code and install with
 
 Documentation
 =============
+
+|deploy-docs|
 
 Documentation is available at `ameli.github.io/freealg <https://ameli.github.io/freealg>`__.
 
@@ -102,5 +106,11 @@ License
 
 |license|
 
+.. |build-linux| image:: https://img.shields.io/github/actions/workflow/status/ameli/freealg/build-linux.yml
+   :target: https://github.com/ameli/freealg/actions?query=workflow%3Abuild-linux 
+.. |deploy-docs| image:: https://img.shields.io/github/actions/workflow/status/ameli/freealg/deploy-docs.yml?label=docs
+   :target: https://github.com/ameli/freealg/actions?query=workflow%3Adeploy-docs
+.. |pypi| image:: https://img.shields.io/pypi/v/freealg
+   :target: https://pypi.org/project/freealg/
 .. |license| image:: https://img.shields.io/github/license/ameli/freealg
    :target: https://opensource.org/licenses/BSD-3-Clause

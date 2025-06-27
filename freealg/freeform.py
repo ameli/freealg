@@ -1078,10 +1078,11 @@ class FreeForm(object):
         --------
 
         .. code-block:: python
-            :emphasize-lines: 6
+            :emphasize-lines: 1
 
-            >>> ...
+            >>> from freealg import FreeForm
         """
+
         if numpy.isclose(p, 1.0):
             return numpy.mean(self.eig) * (size / self.n)
 
@@ -1136,9 +1137,9 @@ class FreeForm(object):
         --------
 
         .. code-block:: python
-            :emphasize-lines: 6
+            :emphasize-lines: 1
 
-            >>> ...
+            >>> from freealg import FreeForm
         """
 
         eigs = self.eigvalsh(size=size, seed=seed, **kwargs)
@@ -1170,9 +1171,9 @@ class FreeForm(object):
 
             * float :math:`p`: Schatten p-norm.
             * ``'inf'``: Largest absolute eigenvalue
-            :math:`\\max \\vert \\lambda_i \\vert)`
+              :math:`\\max \\vert \\lambda_i \\vert)`
             * ``'-inf'``: Smallest absolute eigenvalue
-            :math:`\\min \\vert \\lambda_i \\vert)`
+              :math:`\\min \\vert \\lambda_i \\vert)`
             * ``'fro'``: Frobenius norm corresponding to :math:`p=2`
             * ``'nuc'``: Nuclear (or trace) norm corresponding to :math:`p=1`
 
@@ -1211,9 +1212,9 @@ class FreeForm(object):
         --------
 
         .. code-block:: python
-            :emphasize-lines: 6
+            :emphasize-lines: 1
 
-            >>> ...
+            >>> from freealg import FreeForm
         """
 
         eigs = self.eigvalsh(size, seed=seed, **kwargs)

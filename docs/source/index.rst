@@ -56,6 +56,8 @@
 Install
 =======
 
+|build-linux| |pypi|
+
 Install with ``pip``:
 
 .. prompt:: bash
@@ -200,12 +202,17 @@ License
 
 |license|
 
+.. |build-linux| image:: https://img.shields.io/github/actions/workflow/status/ameli/freealg/build-linux.yml
+   :target: https://github.com/ameli/freealg/actions?query=workflow%3Abuild-linux 
+.. |deploy-docs| image:: https://img.shields.io/github/actions/workflow/status/ameli/freealg/deploy-docs.yml?label=docs
+   :target: https://github.com/ameli/freealg/actions?query=workflow%3Adeploy-docs
+.. |pypi| image:: https://img.shields.io/pypi/v/freealg
+   :target: https://pypi.org/project/freealg/
 .. |license| image:: https://img.shields.io/github/license/ameli/freealg
    :target: https://opensource.org/licenses/BSD-3-Clause
-.. |pypi| image:: https://img.shields.io/pypi/v/freealg
-.. |traceflows-light| image:: _static/images/icons/logo-freealg-light.svg
+.. |freealg-light| image:: _static/images/icons/logo-freealg-light.svg
    :height: 23
    :class: only-light
-.. |traceflows-dark| image:: _static/images/icons/logo-freealg-dark.svg
+.. |freealg-dark| image:: _static/images/icons/logo-freealg-dark.svg
    :height: 23
    :class: only-dark
