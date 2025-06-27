@@ -111,6 +111,9 @@ class FreeForm(object):
     eigvalsh
         Estimate the eigenvalues
 
+    cond
+        Estimate the condition number
+
     trace
         Estimate the trace of a matrix power
 
@@ -930,6 +933,10 @@ class FreeForm(object):
         seed : int, default=None
             The seed for the Quasi-Monte Carlo sampler.
 
+        **kwargs : dict, optional
+            Pass additional options to the underlying
+            :func:`FreeForm.decompress` function.
+
         Returns
         -------
 
@@ -939,7 +946,8 @@ class FreeForm(object):
         See Also
         --------
 
-        decompress
+        FreeForm.decompress
+        FreeForm.cond
 
         Notes
         -----
@@ -963,6 +971,56 @@ class FreeForm(object):
             x, rho = self.decompress(size, **kwargs)
         eigs = numpy.sort(qmc_sample(x, rho, size, seed=seed))
         return eigs
+
+    # ====
+    # cond
+    # ====
+
+    def cond(self, size=None, seed=None, **kwargs):
+        """
+        Estimate the condition number.
+
+        This function estimates the condition number of the matrix
+        :math:`\\mathbf{A}` or a larger matrix containing :math:`\\mathbf{A}`
+        using free decompression.
+
+        Parameters
+        ----------
+
+        size : int, default=None
+            The size of the matrix containing :math:`\\mathbf{A}` to estimate
+            eigenvalues of. If None, returns estimates of the eigenvalues of
+            :math:`\\mathbf{A}` itself.
+
+        **kwargs : dict, optional
+            Pass additional options to the underlying
+            :func:`FreeForm.decompress` function.
+
+        Returns
+        -------
+
+        c : float
+            Condition number
+
+        See Also
+        --------
+
+        FreeForm.eigvalsh
+        FreeForm.norm
+        FreeForm.slogdet
+        FreeForm.trace
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 1
+
+            >>> from freealg import FreeForm
+        """
+
+        eigs = self.eigvalsh(size=size, **kwargs)
+        return eigs.max() / eigs.min()
 
     # =====
     # trace
@@ -990,6 +1048,10 @@ class FreeForm(object):
         seed : int, default=None
             The seed for the Quasi-Monte Carlo sampler.
 
+        **kwargs : dict, optional
+            Pass additional options to the underlying
+            :func:`FreeForm.decompress` function.
+
         Returns
         -------
 
@@ -999,7 +1061,7 @@ class FreeForm(object):
         See Also
         --------
 
-        FreeForm.eigh
+        FreeForm.eigvalsh
         FreeForm.cond
         FreeForm.slogdet
         FreeForm.norm
@@ -1023,14 +1085,14 @@ class FreeForm(object):
         if numpy.isclose(p, 1.0):
             return numpy.mean(self.eig) * (size / self.n)
 
-        eig = self.eigvalsh(size, seed)
+        eig = self.eigvalsh(size=size, seed=seed, **kwargs)
         return numpy.sum(eig ** p)
 
     # =======
     # slogdet
     # =======
 
-    def slogdet(self, size, seed=None, **kwargs):
+    def slogdet(self, size=None, seed=None, **kwargs):
         """
         Estimate the sign and logarithm of the determinant.
 
@@ -1060,7 +1122,7 @@ class FreeForm(object):
         See Also
         --------
 
-        FreeForm.eigh
+        FreeForm.eigvalsh
         FreeForm.cond
         FreeForm.trace
         FreeForm.norm
@@ -1079,7 +1141,7 @@ class FreeForm(object):
             >>> ...
         """
 
-        eigs = self.eigvalsh(size, seed)
+        eigs = self.eigvalsh(size=size, seed=seed, **kwargs)
         sign = numpy.prod(numpy.sign(eigs))
         ld = numpy.sum(numpy.log(numpy.abs(eigs)))
         return sign, ld
@@ -1114,6 +1176,13 @@ class FreeForm(object):
             * ``'fro'``: Frobenius norm corresponding to :math:`p=2`
             * ``'nuc'``: Nuclear (or trace) norm corresponding to :math:`p=1`
 
+        seed : int, default=None
+            The seed for the Quasi-Monte Carlo sampler.
+
+        **kwargs : dict, optional
+            Pass additional options to the underlying
+            :func:`FreeForm.decompress` function.
+
         Returns
         -------
 
@@ -1123,7 +1192,7 @@ class FreeForm(object):
         See Also
         --------
 
-        FreeForm.eigh
+        FreeForm.eigvalsh
         FreeForm.cond
         FreeForm.slogdet
         FreeForm.trace
@@ -1149,25 +1218,30 @@ class FreeForm(object):
 
         eigs = self.eigvalsh(size, seed=seed, **kwargs)
 
-        if (order == 'inf') or numpy.isinf(order):
+        # Check order type and convert to float
+        if order == 'nuc':
+            order = 1
+        elif order == 'fro':
+            order = 2
+        elif order == 'inf':
+            order = float('inf')
+        elif order == '-inf':
+            order = -float('inf')
+        elif not isinstance(order,
+                            (int, float, numpy.integer, numpy.floating)) \
+                and not isinstance(order, (bool, numpy.bool_)):
+            raise ValueError('"order" is invalid.')
+
+        # Compute norm
+        if numpy.isinf(order) and not numpy.isneginf(order):
             norm_ = max(numpy.abs(eigs))
 
-        elif (order == '-inf') or numpy.isneginf(order):
+        elif numpy.isneginf(order):
             norm_ = min(numpy.abs(eigs))
-
-        elif (order == 'nuc') or (order == 1.0):
-            norm_ = numpy.sum(numpy.abs(eigs))
-
-        elif (order == 'fro') or (order == 2.0):
-            norm_2 = numpy.sum(numpy.abs(eigs)**2)
-            norm_ = numpy.sqrt(norm_2)
 
         elif isinstance(order, (int, float, numpy.integer, numpy.floating)) \
                 and not isinstance(order, (bool, numpy.bool_)):
             norm_q = numpy.sum(numpy.abs(eigs)**order)
             norm_ = norm_q**(1.0 / order)
-
-        else:
-            raise ValueError('"order" is invalid.')
 
         return norm_

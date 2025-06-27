@@ -14,7 +14,7 @@ import numpy
 from ._util import compute_eig
 from .freeform import FreeForm
 
-__all__ = ['eigh', 'cond', 'norm', 'trace', 'slogdet']
+__all__ = ['eigvalsh', 'cond', 'norm', 'trace', 'slogdet']
 
 
 # ===============
@@ -53,11 +53,11 @@ def _subsample_apply(f, A, output_array=False):
     return numpy.array(samples), n, n_s
 
 
-# ====
-# eigh
-# ====
+# ========
+# eigvalsh
+# ========
 
-def eigh(A, N=None, psd=None, plots=False):
+def eigvalsh(A, size=None, psd=None, seed=None, plot=False, **kwargs):
     """
     Estimate the eigenvalues of a matrix.
 
@@ -72,7 +72,7 @@ def eigh(A, N=None, psd=None, plots=False):
         (or those of a matrix containing :math:`\\mathbf{A}`) are to be
         computed.
 
-    N : int, default=None
+    size : int, default=None
         The size of the matrix containing :math:`\\mathbf{A}` to estimate
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
@@ -82,8 +82,15 @@ def eigh(A, N=None, psd=None, plots=False):
         eigenvalues are non-negative). If `None`, the matrix is considered PSD
         if all sampled eigenvalues are positive.
 
-    plots : bool, default=False
+    seed : int, default=None
+        The seed for the Quasi-Monte Carlo sampler.
+
+    plot : bool, default=False
         Print out all relevant plots for diagnosing eigenvalue accuracy.
+
+    **kwargs : dict, optional
+        Pass additional options to the underlying
+        :func:`FreeForm.decompress` function.
 
     Returns
     -------
@@ -101,7 +108,7 @@ def eigh(A, N=None, psd=None, plots=False):
 
     This is a convenience function for the :class:`freealg.FreeForm` class with
     some effective defaults that work well for common random matrix ensembles.
-    For improved performance and plotting utilites, consider fine-tuning
+    For improved performance and plotting utilities, consider fine-tuning
     parameters using the FreeForm class.
 
     References
@@ -120,13 +127,13 @@ def eigh(A, N=None, psd=None, plots=False):
 
         >>> mp = MarchenkoPastur(1/50)
         >>> A = mp.matrix(3000)
-        >>> eigs = eigh(A)
+        >>> eigs = eigvalsh(A)
     """
 
     samples, n, n_s = _subsample_apply(compute_eig, A, output_array=True)
 
-    if N is None:
-        N = n
+    if size is None:
+        size = n
 
     # If all eigenvalues are positive, set PSD flag
     if psd is None:
@@ -137,15 +144,15 @@ def eigh(A, N=None, psd=None, plots=False):
     ff.n = n_s
 
     # Perform fit and estimate eigenvalues
-    order = 1 + int(len(samples)**.2)
+    order = 1 + int(len(samples)**0.2)
     ff.fit(method='chebyshev', K=order, projection='sample',
            force=True, plot=False, latex=False, save=False)
 
-    if plots:
+    if plot:
         ff.density(plot=True)
         ff.stieltjes(plot=True)
 
-    eigs = ff.eigvalsh(N, plot=plots)
+    eigs = ff.eigvalsh(size, seed=seed, plot=plot, **kwargs)
 
     if psd:
         eigs = numpy.abs(eigs)
@@ -158,7 +165,7 @@ def eigh(A, N=None, psd=None, plots=False):
 # cond
 # ====
 
-def cond(A, N=None):
+def cond(A, size=None, seed=None, **kwargs):
     """
     Estimate the condition number of a Hermitian positive-definite matrix.
 
@@ -174,10 +181,17 @@ def cond(A, N=None):
         number (or that of a matrix containing :math:`\\mathbf{A}`) are to be
         computed.
 
-    N : int, default=None
+    size : int, default=None
         The size of the matrix containing :math:`\\mathbf{A}` to estimate
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
+
+    seed : int, default=None
+        The seed for the Quasi-Monte Carlo sampler.
+
+    **kwargs : dict, optional
+        Pass additional options to the underlying
+        :func:`FreeForm.decompress` function.
 
     Returns
     -------
@@ -188,7 +202,7 @@ def cond(A, N=None):
     See Also
     --------
 
-    eigh
+    eigvalsh
     norm
     slogdet
     trace
@@ -196,7 +210,7 @@ def cond(A, N=None):
     Notes
     -----
 
-    This is a convenience function using :func:`freealg.eigh`.
+    This is a convenience function using :func:`freealg.eigvalsh`.
 
     Examples
     --------
@@ -212,7 +226,7 @@ def cond(A, N=None):
         >>> cond(A)
     """
 
-    eigs = eigh(A, N, psd=True)
+    eigs = eigvalsh(A, size=size, psd=True, seed=seed, **kwargs)
     return eigs.max() / eigs.min()
 
 
@@ -220,7 +234,7 @@ def cond(A, N=None):
 # norm
 # ====
 
-def norm(A, N=None, order=None):
+def norm(A, size=None, order=2, seed=None, **kwargs):
     """
     Estimate the Schatten norm of a Hermitian matrix.
 
@@ -235,7 +249,7 @@ def norm(A, N=None, order=None):
         number (or that of a matrix containing :math:`\\mathbf{A}`) are to be
         computed.
 
-    N : int, default=None
+    size : int, default=None
         The size of the matrix containing :math:`\\mathbf{A}` to estimate
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
@@ -251,6 +265,13 @@ def norm(A, N=None, order=None):
         * ``'fro'``: Frobenius norm corresponding to :math:`p=2`
         * ``'nuc'``: Nuclear (or trace) norm corresponding to :math:`p=1`
 
+    seed : int, default=None
+        The seed for the Quasi-Monte Carlo sampler.
+
+    **kwargs : dict, optional
+        Pass additional options to the underlying
+        :func:`FreeForm.decompress` function.
+
     Returns
     -------
 
@@ -260,7 +281,7 @@ def norm(A, N=None, order=None):
     See Also
     --------
 
-    eigh
+    eigvalsh
     cond
     slogdet
     trace
@@ -289,28 +310,33 @@ def norm(A, N=None, order=None):
         >>> norm(A, 100_000, order='fro')
     """
 
-    eigs = eigh(A, N)
+    eigs = eigvalsh(A, size=size, seed=seed, **kwargs)
 
-    if (order == 'inf') or numpy.isinf(order):
+    # Check order type and convert to float
+    if order == 'nuc':
+        order = 1
+    elif order == 'fro':
+        order = 2
+    elif order == 'inf':
+        order = float('inf')
+    elif order == '-inf':
+        order = -float('inf')
+    elif not isinstance(order,
+                        (int, float, numpy.integer, numpy.floating)) \
+            and not isinstance(order, (bool, numpy.bool_)):
+        raise ValueError('"order" is invalid.')
+
+    # Compute norm
+    if numpy.isinf(order) and not numpy.isneginf(order):
         norm_ = max(numpy.abs(eigs))
 
-    elif (order == '-inf') or numpy.isneginf(order):
+    elif numpy.isneginf(order):
         norm_ = min(numpy.abs(eigs))
 
-    elif (order == 'nuc') or (order == 1.0):
-        norm_ = numpy.sum(numpy.abs(eigs))
-
-    elif (order == 'fro') or (order == 2.0):
-        norm_2 = numpy.sum(numpy.abs(eigs)**2)
-        norm_ = numpy.sqrt(norm_2)
-
-    elif isinstance(order, (int, float, numpy.integer, numpy.floating)) and \
-            not isinstance(order, (bool, numpy.bool_)):
+    elif isinstance(order, (int, float, numpy.integer, numpy.floating)) \
+            and not isinstance(order, (bool, numpy.bool_)):
         norm_q = numpy.sum(numpy.abs(eigs)**order)
         norm_ = norm_q**(1.0 / order)
-
-    else:
-        raise ValueError('"order" is invalid.')
 
     return norm_
 
@@ -319,7 +345,7 @@ def norm(A, N=None, order=None):
 # trace
 # =====
 
-def trace(A, N=None, p=1.0):
+def trace(A, N=None, p=1.0, seed=None, **kwargs):
     """
     Estimate the trace of a power of a Hermitian matrix.
 
@@ -334,7 +360,7 @@ def trace(A, N=None, p=1.0):
         a power (or that of a matrix containing :math:`\\mathbf{A}`) is to be
         computed.
 
-    N : int, default=None
+    size : int, default=None
         The size of the matrix containing :math:`\\mathbf{A}` to estimate
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
@@ -342,6 +368,12 @@ def trace(A, N=None, p=1.0):
     p : float, default=1.0
         The exponent :math:`p` in :math:`\\mathbf{A}^p`.
 
+    seed : int, default=None
+        The seed for the Quasi-Monte Carlo sampler.
+
+    **kwargs : dict, optional
+        Pass additional options to the underlying
+        :func:`FreeForm.decompress` function.
 
     Returns
     -------
@@ -352,7 +384,7 @@ def trace(A, N=None, p=1.0):
     See Also
     --------
 
-    eigh
+    eigvalsh
     cond
     slogdet
     norm
@@ -362,7 +394,7 @@ def trace(A, N=None, p=1.0):
 
     The trace is highly amenable to subsampling: under free decompression
     the average eigenvalue is assumed constant, so the trace increases
-    linearly. Traces of powers fall back to :func:`freealg.eigh`.
+    linearly. Traces of powers fall back to :func:`freealg.eigvalsh`.
 
     Examples
     --------
@@ -381,10 +413,10 @@ def trace(A, N=None, p=1.0):
     if numpy.isclose(p, 1.0):
         samples, n, n_s = _subsample_apply(numpy.trace, A, output_array=False)
         if N is None:
-            N = n
-        return numpy.mean(samples) * (N / n_s)
+            size = n
+        return numpy.mean(samples) * (size / n_s)
 
-    eig = eigh(A, N)
+    eig = eigvalsh(A, size=size, seed=seed, **kwargs)
     return numpy.sum(eig ** p)
 
 
@@ -392,7 +424,7 @@ def trace(A, N=None, p=1.0):
 # slogdet
 # =======
 
-def slogdet(A, N=None):
+def slogdet(A, size=None, seed=None, **kwargs):
     """
     Estimate the sign and logarithm of the determinant of a Hermitian matrix.
 
@@ -407,10 +439,17 @@ def slogdet(A, N=None):
         number (or that of a matrix containing :math:`\\mathbf{A}`) are to be
         computed.
 
-    N : int, default=None
+    size : int, default=None
         The size of the matrix containing :math:`\\mathbf{A}` to estimate
         eigenvalues of. If None, returns estimates of the eigenvalues of
         :math:`\\mathbf{A}` itself.
+
+    seed : int, default=None
+        The seed for the Quasi-Monte Carlo sampler.
+
+    **kwargs : dict, optional
+        Pass additional options to the underlying
+        :func:`FreeForm.decompress` function.
 
     Returns
     -------
@@ -424,7 +463,7 @@ def slogdet(A, N=None):
     See Also
     --------
 
-    eigh
+    eigvalsh
     cond
     trace
     norm
@@ -432,7 +471,7 @@ def slogdet(A, N=None):
     Notes
     -----
 
-    This is a convenience function using :func:`freealg.eigh`.
+    This is a convenience function using :func:`freealg.eigvalsh`.
 
     Examples
     --------
@@ -448,7 +487,7 @@ def slogdet(A, N=None):
         >>> sign, ld = slogdet(A, 100_000)
     """
 
-    eigs = eigh(A, N)
+    eigs = eigvalsh(A, size=size, seed=seed, **kwargs)
     sign = numpy.prod(numpy.sign(eigs))
     ld = numpy.sum(numpy.log(numpy.abs(eigs)))
 

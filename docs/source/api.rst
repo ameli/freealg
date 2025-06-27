@@ -27,7 +27,7 @@ The followings are the free version of some of the common `linalg` functions.
     :recursive:
     :template: autosummary/member.rst
 
-    freealg.eigh
+    freealg.eigvalsh
     freealg.cond
     freealg.norm
     freealg.trace

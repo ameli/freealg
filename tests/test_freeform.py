@@ -35,6 +35,7 @@ def remove_file(filename):
     for filename in filenames:
         if os.path.exists(filename):
             os.remove(filename)
+            print(f'Removed {filename}.', flush=True)
 
 
 # =============
@@ -72,8 +73,25 @@ def test_freeform():
     # Stieltjes transform
     x = numpy.linspace(mp.lam_m-1.5, mp.lam_p+1.5, 300)
     y = numpy.linspace(-1.5, 1.5, 200)
-    _, _ = ff.stieltjes(x, y, p=2, q=2, plot=True, plot_glue=False,
-                        latex=latex, save='qs_stieltjes' + ext)
+    _, _ = ff.stieltjes(x, y, plot=True, latex=latex,
+                        save='qs_stieltjes' + ext)
+
+    # Decompression
+    N = 2 * A.shape[0]
+    _, _ = ff.decompress(N, x=None, max_iter=500, eigvals=True, tolerance=1e-9,
+                         plot=True, latex=latex, save='qs_decompress' + ext)
+
+    # Linalg methods
+    _ = ff.eigvalsh(size=N, seed=None)
+    _ = ff.trace(size=N, p=1.0, seed=None)
+    _ = ff.trace(size=N, p=2.0, seed=None)
+    _, _ = ff.slogdet(size=N, seed=None)
+    _ = ff.norm(size=N, order=2, seed=None)
+    _ = ff.norm(size=N, order=numpy.inf, seed=None)
+    _ = ff.norm(size=N, order=-numpy.inf, seed=None)
+    _ = ff.norm(size=N, order='fro', seed=None)
+    _ = ff.norm(size=N, order='nuc', seed=None)
+    _ = ff.cond(size=N, seed=None)
 
     remove_file('qs_*.pdf')
 
