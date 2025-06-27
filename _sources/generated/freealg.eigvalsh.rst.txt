@@ -1,0 +1,6 @@
+﻿freealg.eigvalsh
+================
+
+.. currentmodule:: freealg
+
+.. autofunction:: eigvalsh

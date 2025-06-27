@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Meixner.hilbert
+=====================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Meixner.hilbert

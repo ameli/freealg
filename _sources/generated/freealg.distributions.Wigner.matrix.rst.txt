@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Wigner.matrix
+===================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Wigner.matrix

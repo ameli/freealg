@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Meixner.sample
+====================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Meixner.sample

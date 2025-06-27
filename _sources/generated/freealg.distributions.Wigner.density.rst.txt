@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Wigner.density
+====================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Wigner.density

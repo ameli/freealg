@@ -208,8 +208,8 @@
 </p>
 <ul class="current nav bd-sidenav">
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.eigh.html">
-   freealg.eigh
+  <a class="reference internal" href="freealg.eigvalsh.html">
+   freealg.eigvalsh
   </a>
  </li>
  <li class="toctree-l1">
@@ -305,6 +305,13 @@
     
     <div class="toc-item">
       
+
+<div class="tocsection editthispage">
+    <a href="https://github.com/ameli/freealg/edit/main/docs/source/generated/freealg.norm.rst">
+        <i class="fas fa-pencil-alt"></i> Edit this page
+    </a>
+</div>
+
     </div>
     
   
@@ -321,7 +328,7 @@
 <h1>freealg.norm<a class="headerlink" href="#freealg-norm" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="freealg.norm">
-<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">norm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.norm" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">norm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.norm" title="Permalink to this definition">#</a></dt>
 <dd><p>Estimate the Schatten norm of a Hermitian matrix.</p>
 <p>This function estimates the norm of the matrix <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> or a
 larger matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> using free decompression.</p>
@@ -332,7 +339,7 @@ larger matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}
 number (or that of a matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>) are to be
 computed.</p>
 </dd>
-<dt><strong>N</strong><span class="classifier">int, default=None</span></dt><dd><p>The size of the matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> to estimate
+<dt><strong>size</strong><span class="classifier">int, default=None</span></dt><dd><p>The size of the matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> to estimate
 eigenvalues of. If None, returns estimates of the eigenvalues of
 <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> itself.</p>
 </dd>
@@ -347,6 +354,11 @@ eigenvalues of. If None, returns estimates of the eigenvalues of
 <li><p><code class="docutils literal notranslate"><span class="pre">'nuc'</span></code>: Nuclear (or trace) norm corresponding to <span class="math notranslate nohighlight">\(p=1\)</span></p></li>
 </ul>
 </dd>
+<dt><strong>seed</strong><span class="classifier">int, default=None</span></dt><dd><p>The seed for the Quasi-Monte Carlo sampler.</p>
+</dd>
+<dt><strong>**kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Pass additional options to the underlying
+<a class="reference internal" href="freealg.FreeForm.decompress.html#freealg.FreeForm.decompress" title="freealg.FreeForm.decompress"><code class="xref py py-func docutils literal notranslate"><span class="pre">FreeForm.decompress()</span></code></a> function.</p>
+</dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -359,7 +371,7 @@ eigenvalues of. If None, returns estimates of the eigenvalues of
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <dl class="simple">
-<dt><a class="reference internal" href="freealg.eigh.html#freealg.eigh" title="freealg.eigh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eigh</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.eigvalsh.html#freealg.eigvalsh" title="freealg.eigvalsh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eigvalsh</span></code></a></dt><dd></dd>
 <dt><a class="reference internal" href="freealg.cond.html#freealg.cond" title="freealg.cond"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cond</span></code></a></dt><dd></dd>
 <dt><a class="reference internal" href="freealg.slogdet.html#freealg.slogdet" title="freealg.slogdet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slogdet</span></code></a></dt><dd></dd>
 <dt><a class="reference internal" href="freealg.trace.html#freealg.trace" title="freealg.trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code></a></dt><dd></dd>

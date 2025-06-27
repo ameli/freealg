@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Meixner.density
+=====================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Meixner.density

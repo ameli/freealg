@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Wigner.sample
+===================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Wigner.sample

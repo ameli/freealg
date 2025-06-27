@@ -208,8 +208,8 @@
 </p>
 <ul class="current nav bd-sidenav">
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.eigh.html">
-   freealg.eigh
+  <a class="reference internal" href="freealg.eigvalsh.html">
+   freealg.eigvalsh
   </a>
  </li>
  <li class="toctree-l1">
@@ -305,6 +305,13 @@
     
     <div class="toc-item">
       
+
+<div class="tocsection editthispage">
+    <a href="https://github.com/ameli/freealg/edit/main/docs/source/generated/freealg.slogdet.rst">
+        <i class="fas fa-pencil-alt"></i> Edit this page
+    </a>
+</div>
+
     </div>
     
   
@@ -321,7 +328,7 @@
 <h1>freealg.slogdet<a class="headerlink" href="#freealg-slogdet" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="freealg.slogdet">
-<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">slogdet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.slogdet" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">slogdet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.slogdet" title="Permalink to this definition">#</a></dt>
 <dd><p>Estimate the sign and logarithm of the determinant of a Hermitian matrix.</p>
 <p>This function estimates the <em>slogdet</em> of the matrix <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> or
 a larger matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> using free decompression.</p>
@@ -332,9 +339,14 @@ a larger matrix containing <span class="math notranslate nohighlight">\(\mathbf{
 number (or that of a matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>) are to be
 computed.</p>
 </dd>
-<dt><strong>N</strong><span class="classifier">int, default=None</span></dt><dd><p>The size of the matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> to estimate
+<dt><strong>size</strong><span class="classifier">int, default=None</span></dt><dd><p>The size of the matrix containing <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> to estimate
 eigenvalues of. If None, returns estimates of the eigenvalues of
 <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> itself.</p>
+</dd>
+<dt><strong>seed</strong><span class="classifier">int, default=None</span></dt><dd><p>The seed for the Quasi-Monte Carlo sampler.</p>
+</dd>
+<dt><strong>**kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Pass additional options to the underlying
+<a class="reference internal" href="freealg.FreeForm.decompress.html#freealg.FreeForm.decompress" title="freealg.FreeForm.decompress"><code class="xref py py-func docutils literal notranslate"><span class="pre">FreeForm.decompress()</span></code></a> function.</p>
 </dd>
 </dl>
 </dd>
@@ -350,14 +362,14 @@ eigenvalues of. If None, returns estimates of the eigenvalues of
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <dl class="simple">
-<dt><a class="reference internal" href="freealg.eigh.html#freealg.eigh" title="freealg.eigh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eigh</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.eigvalsh.html#freealg.eigvalsh" title="freealg.eigvalsh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eigvalsh</span></code></a></dt><dd></dd>
 <dt><a class="reference internal" href="freealg.cond.html#freealg.cond" title="freealg.cond"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cond</span></code></a></dt><dd></dd>
 <dt><a class="reference internal" href="freealg.trace.html#freealg.trace" title="freealg.trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code></a></dt><dd></dd>
 <dt><a class="reference internal" href="freealg.norm.html#freealg.norm" title="freealg.norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm</span></code></a></dt><dd></dd>
 </dl>
 </div>
 <p class="rubric">Notes</p>
-<p>This is a convenience function using <a class="reference internal" href="freealg.eigh.html#freealg.eigh" title="freealg.eigh"><code class="xref py py-func docutils literal notranslate"><span class="pre">freealg.eigh()</span></code></a>.</p>
+<p>This is a convenience function using <a class="reference internal" href="freealg.eigvalsh.html#freealg.eigvalsh" title="freealg.eigvalsh"><code class="xref py py-func docutils literal notranslate"><span class="pre">freealg.eigvalsh()</span></code></a>.</p>
 <p class="rubric">Examples</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarchenkoPastur</span>

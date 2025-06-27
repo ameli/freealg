@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.FreeForm.trace
+======================
+
+.. currentmodule:: freealg
+
+.. automethod:: FreeForm.trace

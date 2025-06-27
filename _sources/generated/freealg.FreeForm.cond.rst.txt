@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.FreeForm.cond
+=====================
+
+.. currentmodule:: freealg
+
+.. automethod:: FreeForm.cond

@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Wachter.stieltjes
+=======================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Wachter.stieltjes
