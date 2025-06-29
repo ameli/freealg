@@ -6,6 +6,12 @@
 |project| Documentation
 ***********************
 
+*freealg* is a Python package that employs **free** probability to evaluate the
+spectral densities of large matrix **form**\ s. The fundamental algorithm
+employed by *freealg* is **free decompression**, which extrapolates from the
+empirical spectral densities of small  submatrices to infer the eigenspectrum
+of extremely large matrices. 
+
 .. grid:: 4
 
     .. grid-item-card:: GitHub
