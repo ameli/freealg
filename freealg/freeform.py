@@ -234,11 +234,11 @@ class FreeForm(object):
             If `True`, it forces the density to have unit mass and to be
             strictly positive.
 
-        continuation : {``'pade'``, ``wynn``}, default= ``'pade'``
+        continuation : {``'pade'``, ``'wynn'``}, default= ``'pade'``
             Method of analytic continuation to construct the second branch of
             Steltjes transform in the lower-half complex plane:
 
-            * ``'pade'``: using Reimann-Hilbert problem witth Pade
+            * ``'pade'``: using Riemann-Hilbert problem with Pade
               approximation.
             * ``'wynn'``: Wynn's epsilon algorithm.
 

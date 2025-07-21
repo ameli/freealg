@@ -20,7 +20,7 @@ import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
 
 __all__ = ['plot_fit', 'plot_density', 'plot_hilbert', 'plot_stieltjes',
-           'plot_stieltjes_on_disk']
+           'plot_stieltjes_on_disk', 'plot_samples']
 
 
 # ========

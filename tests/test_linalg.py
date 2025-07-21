@@ -27,7 +27,7 @@ def test_linalg():
     """
 
     X = numpy.random.randn(1000, 1000)
-    X = (X + X.T) / 2**0.5
+    X = (X + X.T) / (2.0**0.5)
 
     n = 2 * X.shape[0]
     _ = fa.eigvalsh(X, size=n, psd=False, plot=False, seed=None)

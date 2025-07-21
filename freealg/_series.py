@@ -89,13 +89,13 @@ def wynn_epsilon(Sn):
     # N: number of partial sums, d: vector size
     N, d = Sn.shape
 
-    eps = numpy.zeros((N+1, N, d), dtype=Sn.dtype)
+    eps = numpy.zeros((N, N, d), dtype=Sn.dtype)
     eps[0, :, :] = Sn
 
     tol = numpy.finfo(float).eps
 
     # Wynn's epsilon algorithm
-    for k in range(1, N+1):
+    for k in range(1, N):
         Nk = N - k
 
         delta = eps[k-1, 1:N-k+1, :] - eps[k-1, :Nk, :]
@@ -117,7 +117,7 @@ def wynn_epsilon(Sn):
         if k > 1:
             eps[k, :Nk, :] += eps[k-2, 1:Nk+1, :]
 
-    k_even = 2 * (N // 2)
+    k_even = 2 * ((N - 1) // 2)
     series = eps[k_even, 0, :]
 
     return series

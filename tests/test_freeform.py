@@ -60,8 +60,8 @@ def test_freeform():
 
     # Fit density
     _ = ff.fit(method='chebyshev', K=10, alpha=2, beta=2, reg=0,
-               damp='jackson', force=True, plot=True, latex=latex,
-               save='qs_fit' + ext)
+               damp='jackson', force=True, continuation='pade', plot=True,
+               latex=latex, save='qs_fit' + ext)
 
     # Estimate Density
     x = numpy.linspace(mp.lam_m-2, mp.lam_p+2, 300)
