@@ -28,7 +28,7 @@ from ._decompress import decompress
 from ._sample import qmc_sample
 from ._support import detect_support
 
-# Fallback to previous API
+# Fallback to previous numpy API
 if not hasattr(numpy, 'trapezoid'):
     numpy.trapezoid = numpy.trapz
 
@@ -142,7 +142,7 @@ class FreeForm(object):
 
         self.A = None
         self.eig = None
-        self.delta = delta
+        self.delta = delta    # Offset above real axis to apply Plemelj formula
 
         # Eigenvalues
         if A.ndim == 1:
@@ -167,20 +167,21 @@ class FreeForm(object):
         self.support = (self.lam_m, self.lam_p)
 
         # Initialize
-        self.method = None
-        self.psi = None
-        self.alpha = None
-        self.beta = None
-        self._pade_sol = None
+        self.method = None                 # fitting rho: jacobi, chebyshev
+        self.continuation = None           # analytic continuation: pade, wynn
+        self._pade_sol = None              # result of pade approximation
+        self.psi = None                    # coefficients of estimating rho
+        self.alpha = None                  # Jacobi polynomials alpha parameter
+        self.beta = None                   # Jacobi polynomials beta parameter
 
     # ===
     # fit
     # ===
 
     def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0.0,
-            projection='gaussian', kernel_bw=None, damp=None, force=False,
-            pade_p=0, pade_q=1, odd_side='left', pade_reg=0.0, optimizer='ls',
-            plot=False, latex=False, save=False):
+            projection='gaussian', kernel_bw=0.001, damp=None, force=False,
+            continuation='pade', pade_p=0, pade_q=1, odd_side='left',
+            pade_reg=0.0, optimizer='ls', plot=False, latex=False, save=False):
         """
         Fit model to eigenvalues.
 
@@ -233,12 +234,22 @@ class FreeForm(object):
             If `True`, it forces the density to have unit mass and to be
             strictly positive.
 
+        continuation : {``'pade'``, ``wynn``}, default= ``'pade'``
+            Method of analytic continuation to construct the second branch of
+            Steltjes transform in the lower-half complex plane:
+
+            * ``'pade'``: using Reimann-Hilbert problem witth Pade
+              approximation.
+            * ``'wynn'``: Wynn's epsilon algorithm.
+
         pade_p : int, default=0
             Degree of polynomial :math:`P(z)` is :math:`q+p` where :math:`p`
-            can only be ``-1``, ``0``, or ``1``. See notes below.
+            can only be ``-1``, ``0``, or ``1``. See notes below. This option
+            is applicable if ``continuation='pade'``.
 
         pade_q : int, default=1
             Degree of polynomial :math:`Q(z)` is :math:`q`. See notes below.
+            This option is applicable if ``continuation='pade'``.
 
         odd_side : {``'left'``, ``'right'``}, default= ``'left'``
             In case of odd number of poles (when :math:`q` is odd), the extra
@@ -246,10 +257,12 @@ class FreeForm(object):
             while all other poles are split in half to the left and right. Note
             that this is only for the initialization of the poles. The
             optimizer will decide best location by moving them to the left or
-            right of the support.
+            right of the support. This option is applicable if
+            ``continuation='pade'``.
 
         pade_reg : float, default=0.0
-            Regularization for Pade approximation.
+            Regularization for Pade approximation. This option is applicable if
+            ``continuation='pade'``.
 
         optimizer : {``'ls'``, ``'de'``}, default= ``'ls'``
             Optimizer for Pade approximation, including:
@@ -257,9 +270,11 @@ class FreeForm(object):
             * ``'ls'``: least square (local, fast)
             * ``'de'``: differential evolution (global, slow)
 
+            This option is applicable if ``continuation='pade'``.
+
         plot : bool, default=False
             If `True`, the approximation coefficients and Pade approximation to
-            the Hilbert transform are plotted.
+            the Hilbert transform (if applicable) are plotted.
 
         latex : bool, default=False
             If `True`, the plot is rendered using LaTeX. This option is
@@ -332,7 +347,6 @@ class FreeForm(object):
                 #       adaptive=True)
                 # pdf = k.evaluate(xs)
 
-                # TEST
                 # import matplotlib.pyplot as plt
                 # plt.plot(xs, pdf)
                 # plt.grid(True)
@@ -365,7 +379,7 @@ class FreeForm(object):
                 psi = chebyshev_kernel_proj(xs, pdf, support=self.support,
                                             K=K, reg=reg)
         else:
-            raise ValueError('"method" is invalid.')
+            raise NotImplementedError('"method" is invalid.')
 
         # Damping
         if damp is not None:
@@ -404,8 +418,14 @@ class FreeForm(object):
         self.alpha = alpha
         self.beta = beta
 
-        # Fit a pade approximation
-        if method != 'chebyshev' or projection != 'sample':
+        # Analytic continuation
+        if continuation not in ['pade', 'wynn']:
+            raise NotImplementedError('"continuation" method is invalid.')
+
+        self.continuation = continuation
+
+        if self.continuation == 'pade':
+
             # For holomorphic continuation for the lower half-plane
             x_supp = numpy.linspace(self.lam_m, self.lam_p, 1000)
             g_supp = 2.0 * numpy.pi * self.hilbert(x_supp)
@@ -414,21 +434,36 @@ class FreeForm(object):
                                       pade_reg=pade_reg, safety=1.0,
                                       max_outer=40, xtol=1e-12, ftol=1e-12,
                                       optimizer=optimizer, verbose=0)
+        else:
+            # Do nothing. Make sure _pade_sol is still None
+            self._pade_sol = None
+
+            if method != 'chebyshev':
+                raise NotImplementedError(
+                    'Up to the current version, the analytic continuation ' +
+                    'using "wynn" is only implemented for "chebyshev" ' +
+                    'estimation method.')
 
         if plot:
-            g_supp_approx = eval_pade(x_supp[None, :], self._pade_sol)[0, :]
+            if self._pade_sol is not None:
+                g_supp_approx = eval_pade(x_supp[None, :],
+                                          self._pade_sol)[0, :]
+            else:
+                x_supp = None
+                g_supp = None
+                g_supp_approx = None
             plot_fit(psi, x_supp, g_supp, g_supp_approx, support=self.support,
                      latex=latex, save=save)
 
         return self.psi
 
-    # =======
-    # density
-    # =======
+    # =============
+    # generate grid
+    # =============
 
-    def _grid(self, scale, extend=1.0, N=500):
+    def _generate_grid(self, scale, extend=1.0, N=500):
         """
-        Return a grid of points to evaluate density / Hilbert / Stieltjes
+        Generate a grid of points to evaluate density / Hilbert / Stieltjes
         transforms.
         """
 
@@ -490,12 +525,12 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using ' +
-                               'the .fit() function.')
+            raise RuntimeError('The model needs to be fit using the .fit() ' +
+                               'function.')
 
         # Create x if not given
         if x is None:
-            x = self._grid(1.25)
+            x = self._generate_grid(1.25)
 
         # Preallocate density to zero
         rho = numpy.zeros_like(x)
@@ -580,12 +615,12 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using ' +
-                               'the .fit() function.')
+            raise RuntimeError('The model needs to be fit using the .fit() ' +
+                               'function.')
 
         # Create x if not given
         if x is None:
-            x = self._grid(1.25)
+            x = self._generate_grid(1.25)
 
         # if (numpy.min(x) > self.lam_m) or (numpy.max(x) < self.lam_p):
         #     raise ValueError('"x" does not encompass support interval.')
@@ -626,10 +661,23 @@ class FreeForm(object):
     # ====
 
     def _glue(self, z):
-        # Glue function
+        """
+        Glue function.
+
+        Notes
+        -----
+
+        This function needs self._pade_sol to be initialized in .fit()
+        function. This only works when continuation method is set to "pade".
+        """
+
         if self._pade_sol is None:
-            return numpy.zeros_like(z)
+            raise RuntimeError('"_glue" is called but "_pade_sol" is not' +
+                               'initialized. This is likely a ' +
+                               'development bug.')
+
         g = eval_pade(z, self._pade_sol)
+
         return g
 
     # =========
@@ -700,30 +748,25 @@ class FreeForm(object):
         """
 
         if self.psi is None:
-            raise RuntimeError('The spectral density needs to be fit using ' +
-                               'the .fit() function.')
-
-        # Determine whether the Stieltjes transform is to be computed on a
-        # Cartesian grid
-        cartesian = plot | (y is not None)
+            raise RuntimeError('The model needs to be fit using the .fit() ' +
+                               'function.')
 
         # Create x if not given
         if x is None:
-            x = self._grid(2.0, extend=2.0)
-
-            if not cartesian:
-                # Evaluate slightly above the real line
-                x = x.astype(complex)
-                x += self.delta * 1j
+            x = self._generate_grid(2.0, extend=2.0)
 
         # Create y if not given
-        if cartesian:
+        if (plot is False) and (y is None):
+            # Do no tuse a Cartesian grid. Create a 1D array z slightly above
+            # the real line.
+            y = self.delta * 1j
+            z = x.astype(complex) + y             # shape (Nx,)
+        else:
+            # Use a Cartesian grid
             if y is None:
                 y = numpy.linspace(-1, 1, 400)
             x_grid, y_grid = numpy.meshgrid(x.real, y.real)
             z = x_grid + 1j * y_grid              # shape (Ny, Nx)
-        else:
-            z = x
 
         m1, m2 = self._eval_stieltjes(z, branches=True)
 
@@ -752,7 +795,6 @@ class FreeForm(object):
             transform. The default ``branches=False`` will return only
             the secondary branch.
 
-
         Returns
         -------
 
@@ -764,7 +806,8 @@ class FreeForm(object):
             The Stieltjes transform continued to the secondary branch.
         """
 
-        assert self.psi is not None, "The fit function has not been called."
+        if self.psi is None:
+            raise RuntimeError('"fit" the model first.')
 
         # Allow for arbitrary input shapes
         z = numpy.asarray(z)
@@ -783,9 +826,17 @@ class FreeForm(object):
             stieltjes = partial(jacobi_stieltjes, psi=self.psi,
                                 support=self.support, alpha=self.alpha,
                                 beta=self.beta)  # n_base = n_base
+
         elif self.method == 'chebyshev':
+
+            if self.continuation == 'wynn':
+                use_wynn_epsilon = True
+            else:
+                use_wynn_epsilon = False
+
             stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
-                                support=self.support)
+                                support=self.support,
+                                use_wynn_epsilon=use_wynn_epsilon)
 
         mask_p = z.imag >= 0.0
         mask_m = z.imag < 0.0
@@ -793,7 +844,7 @@ class FreeForm(object):
         m1 = numpy.zeros_like(z)
         m2 = numpy.zeros_like(z)
 
-        if self._pade_sol is not None:
+        if self.continuation == 'pade':
             # Upper half-plane
             m1[mask_p] = stieltjes(z[mask_p].reshape(-1, 1)).ravel()
 
@@ -806,47 +857,55 @@ class FreeForm(object):
             m2[mask_m] = -m1[mask_m] + self._glue(
                 z[mask_m].reshape(-1, 1)).ravel()
 
-        else:
+        elif self.continuation == 'wynn':
             m2[:] = stieltjes(z.reshape(-1, 1)).reshape(*m2.shape)
             if branches:
                 m1[mask_p] = m2[mask_p]
-                m1[mask_m] = numpy.conjugate(
-                    stieltjes(numpy.conjugate(z[mask_m].reshape(-1, 1)))
-                ).ravel()
+                z_conj = numpy.conjugate(z[mask_m].reshape(-1, 1))
+                m1[mask_m] = numpy.conjugate(stieltjes(z_conj)).ravel()
+
+        else:
+            raise NotImplementedError('Invalid continuation method.')
 
         if not branches:
             return m2.reshape(*shape)
         else:
-            m1, m2 = m1.reshape(*shape), m2.reshape(*shape)
+            m1 = m1.reshape(*shape)
+            m2 = m2.reshape(*shape)
             return m1, m2
 
     # ==========
     # decompress
     # ==========
 
-    def decompress(self, size, x=None, max_iter=500, eigvals=True,
-                   tolerance=1e-9, plot=False,
-                   latex=False, save=False):
+    def decompress(self, size, x=None, method='newton', max_iter=500,
+                   step_size=0.1, tolerance=1e-4, plot=False, latex=False,
+                   save=False, plot_diagnostics=False):
         """
         Free decompression of spectral density.
 
         Parameters
         ----------
 
-        size : int
-            Size of the decompressed matrix.
+        size : int or array_like
+            Size(s) of the decompressed matrix. This can be a scalar or an
+            array of sizes. For each matrix size in ``size`` array, a density
+            is produced.
 
         x : numpy.array, default=None
             Positions where density to be evaluated at. If `None`, an interval
             slightly larger than the support interval will be used.
 
+        method : {``'newton'``, ``'secant'``}, default= ``'newton'``
+            Root-finding method.
+
         max_iter: int, default=500
-            Maximum number of secant method iterations.
+            Maximum number of root-finding method iterations.
 
-        eigvals: bool, default=True
-            Return estimated (sampled) eigenvalues as well as the density.
+        step_size: float, default=0.1
+            Step size for Newton iterations.
 
-        tolerance: float, default=1e-9
+        tolerance: float, default=1e-4
             Tolerance for the solution obtained by the Newton solver. Also
             used for the finite difference approximation to the derivative.
 
@@ -862,18 +921,25 @@ class FreeForm(object):
             assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
 
+        plot_diagnostics : bool, default=False
+            Plots diagnostics including convergence and number of iterations
+            of root finding method.
+
         Returns
         -------
 
+        rho : numpy.array or numpy.ndarray
+            Estimated spectral density at locations x. ``rho`` can be a 1D or
+            2D array output:
+
+            * If ``size`` is a scalar, ``rho`` is a 1D array od the same size
+              as ``x``.
+            * If ``size`` is an array of size `n`, ``rho`` is a 2D array with
+              `n` rows, where each row corresponds to decompression to a size.
+              Number of columns of ``rho`` is the same as the size of ``x``.
+
         x : numpy.array
             Locations where the spectral density is estimated
-
-        rho : numpy.array
-            Estimated spectral density at locations x
-
-        eigs : numpy.array
-            Estimated eigenvalues as low-discrepancy samples of the estimated
-            spectral density. Only returns if ``eigvals=True``.
 
         See Also
         --------
@@ -899,17 +965,69 @@ class FreeForm(object):
             >>> from freealg import FreeForm
         """
 
-        size = int(size)
+        # Check size argument
+        if numpy.isscalar(size):
+            size = int(size)
+        else:
+            # Check monotonic increment (either all increasing or decreasing)
+            diff = numpy.diff(size)
+            if not (numpy.all(diff >= 0) or numpy.all(diff <= 0)):
+                raise ValueError('"size" increment should be monotonic.')
 
-        rho, x, (lb, ub) = decompress(self, size, x=x, delta=self.delta,
-                                      max_iter=max_iter, tolerance=tolerance)
-        x, rho = x.ravel(), rho.ravel()
+        # Decompression ratio equal to e^{t}.
+        alpha = numpy.atleast_1d(size) / self.n
 
+        # Lower and upper bound on new support
+        m = self._eval_stieltjes
+        hilb_lb = (1.0 / m(self.lam_m + self.delta * 1j).item()).real
+        hilb_ub = (1.0 / m(self.lam_p + self.delta * 1j).item()).real
+        lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
+        ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
+
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (ub - lb)
+            center = 0.5 * (ub + lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 500)
+        else:
+            x = numpy.asarray(x)
+
+        if (alpha.size > 8) and plot_diagnostics:
+            raise RuntimeError(
+                'Too many diagnostic plots for %d sizes.' % alpha.size)
+
+        # Decompress to each alpha
+        rho = numpy.zeros((alpha.size, x.size), dtype=float)
+        for i in range(alpha.size):
+
+            # Initial guess for roots (only for the first iteration)
+            # if i == 0:
+            #     roots = numpy.full(x.shape, numpy.mean(self.support) - 0.1j,
+            #                        dtype=numpy.complex128)
+            roots = None
+
+            rho[i, :], roots = decompress(
+                self, alpha[i], x, roots_init=roots, method=method,
+                delta=self.delta, max_iter=max_iter, step_size=step_size,
+                tolerance=tolerance, plot_diagnostics=plot_diagnostics)
+
+        # If the input size was only a scalar, return a 1D rho, otherwise 2D.
+        if numpy.isscalar(size):
+            rho = numpy.squeeze(rho)
+
+        # Plot only the last size
         if plot:
-            plot_density(x, rho, support=(lb, ub),
+            if numpy.isscalar(size):
+                rho_last = rho
+            else:
+                rho_last = rho[-1, :]
+            plot_density(x, rho_last, support=(lb, ub),
                          label='Decompression', latex=latex, save=save)
 
-        return x, rho
+        return rho, x
 
     # ========
     # eigvalsh
@@ -964,12 +1082,11 @@ class FreeForm(object):
         """
 
         if size is None:
-            x = self._grid(1.25)
-            rho = self.density(x)
             size = self.n
-        else:
-            x, rho = self.decompress(size, **kwargs)
+
+        rho, x = self.decompress(size, **kwargs)
         eigs = numpy.sort(qmc_sample(x, rho, size, seed=seed))
+
         return eigs
 
     # ====

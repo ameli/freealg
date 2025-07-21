@@ -502,9 +502,6 @@ class KestenMcKay(object):
             :class: custom-dark
         """
 
-        if seed is not None:
-            numpy.random.seed(seed)
-
         if x_min is None:
             x_min = self.lam_m
 
@@ -523,14 +520,17 @@ class KestenMcKay(object):
         inv_cdf = interp1d(cdf, xs, bounds_error=False,
                            fill_value=(x_min, x_max))
 
+        # Random generator
+        rng = numpy.random.default_rng(seed)
+
         # Draw from uniform distribution
         if method == 'mc':
-            u = numpy.random.rand(size)
+            u = rng.random(size)
         elif method == 'qmc':
-            engine = qmc.Halton(d=1)
+            engine = qmc.Halton(d=1, rng=rng)
             u = engine.random(size)
         else:
-            raise ValueError('"method" is invalid.')
+            raise NotImplementedError('"method" is invalid.')
 
         # Draw from distribution by mapping from inverse CDF
         samples = inv_cdf(u).ravel()

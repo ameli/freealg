@@ -61,7 +61,7 @@ def beta_kde(eig, xs, lam_m, lam_p, h):
     if span <= 0:
         raise ValueError("lam_p must be larger than lam_m")
 
-    # map samples and grid to [0,1]
+    # map samples and grid to [0, 1]
     u = (eig - lam_m) / span
     t = (xs - lam_m) / span
 

@@ -115,6 +115,16 @@ rst_epilog = '''
 #     'table': 'Table %s'
 # }
 
+# Package sphinx-prompt changed how they call the package since version 1.10.0
+from pkg_resources import get_distribution                         # noqa: E402
+from packaging.version import Version                              # noqa: E402
+
+installed_version = Version(get_distribution("sphinx-prompt").version)
+if installed_version >= Version("1.10.0"):
+    sphinx_prompt = 'sphinx_prompt'
+else:
+    sphinx_prompt = 'sphinx-prompt'
+
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -136,7 +146,7 @@ extensions = [
     'numpydoc',                               # either use napoleon or numpydoc
     'sphinx_design',
     # 'sphinx_multitoc_numbering',
-    'sphinx_prompt',
+    sphinx_prompt,                            # See code above
     'sphinx_copybutton',
     'nbsphinx',
     'sphinx_gallery.load_style',

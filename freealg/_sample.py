@@ -27,10 +27,12 @@ def _quantile_func(x, rho, clamp=1e-4, eps=1e-8):
     Construct a quantile function from evaluations of an estimated density
     on a grid (x, rho(x)).
     """
+
     rho_clamp = rho.copy()
     rho_clamp[rho < clamp] = eps
     cdf = cumulative_trapezoid(rho_clamp, x, initial=0)
     cdf /= cdf[-1]
+
     return PchipInterpolator(cdf, x, extrapolate=False)
 
 
@@ -45,6 +47,7 @@ def qmc_sample(x, rho, num_pts, seed=None):
 
     Parameters
     ----------
+
     x : numpy.array, shape (n,)
         Sorted abscissae at which the density has been evaluated.
 
@@ -72,23 +75,27 @@ def qmc_sample(x, rho, num_pts, seed=None):
 
     Examples
     --------
+
     .. code-block:: python
 
         >>> import numpy
-        >>> from your_module import qmc_sample
+        >>> from freealg import qmc_sample
+
+        >>> # density of Beta(3,1) on [0,1]
         >>> x = numpy.linspace(0, 1, 200)
-        >>> rho = 3 * x**2                    # density of Beta(3,1) on [0,1]
+        >>> rho = 3 * x**2
+
         >>> samples = qmc_sample(x, rho, num_pts=1000)
         >>> assert samples.shape == (1000,)
+
         >>> # Empirical mean should be close to 3/4
         >>> numpy.allclose(samples.mean(), 0.75, atol=0.02)
     """
 
-    if seed is not None:
-        numpy.random.rand(seed)
-
+    rng = numpy.random.default_rng(seed)
     quantile = _quantile_func(x, rho)
-    engine = qmc.Halton(d=1)
+    engine = qmc.Halton(d=1, rng=rng)
     u = engine.random(num_pts)
     samples = quantile(u)
+
     return samples.ravel()

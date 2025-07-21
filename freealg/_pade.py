@@ -12,7 +12,6 @@
 # =======
 
 import numpy
-import numba
 from numpy.linalg import lstsq
 from itertools import product
 from scipy.optimize import least_squares, differential_evolution
@@ -237,64 +236,6 @@ def _eval_rational(z, c, D, poles, resid):
     return c + D * z + term
 
 
-# =========
-# Wynn pade
-# =========
-
-@numba.jit(nopython=True, parallel=True)
-def wynn_pade(coeffs, x):
-    """
-    Given the coefficients of a power series
-        f(x) = sum_{n=0}^∞ coeffs[n] * x^n,
-    returns a function handle that computes the Pade approximant at any x
-    using Wynn's epsilon algorithm.
-
-    Parameters
-    ----------
-
-    coeffs (list or array):
-        Coefficients [a0, a1, a2, ...] of the power series.
-
-    Returns
-    -------
-
-    function:
-        A function approximant(x) that returns the approximated value f(x).
-    """
-
-    # Number of coefficients
-    xn = x.ravel()
-    d = len(xn)
-    N = len(coeffs)
-
-    # Compute the partial sums s_n = sum_{i=0}^n a_i * x^i for n=0,...,N-1
-    eps = numpy.zeros((N+1, N, d), dtype=numpy.complex128)
-    for i in numba.prange(d):
-        partial_sum = 0.0
-        for n in range(N):
-            partial_sum += coeffs[n] * (xn[i] ** n)
-            eps[0, n, i] = partial_sum
-
-    for i in numba.prange(d):
-        for k in range(1, N+1):
-            for j in range(N - k):
-                delta = eps[k-1, j+1, i] - eps[k-1, j, i]
-                if delta == 0:
-                    rec_delta = numpy.inf
-                elif numpy.isinf(delta) or numpy.isnan(delta):
-                    rec_delta = 0.0
-                else:
-                    rec_delta = 1.0 / delta
-                eps[k, j, i] = rec_delta
-                if k > 1:
-                    eps[k, j, i] += eps[k-2, j+1, i]
-
-    if (N % 2) == 0:
-        N -= 1
-
-    return eps[N-1, 0, :].reshape(x.shape)
-
-
 # ========
 # fit pade
 # ========
@@ -432,6 +373,8 @@ def eval_pade(z, pade_sol):
 def fit_pade_old(x, f, lam_m, lam_p, p, q, delta=1e-8, B=numpy.inf,
                  S=numpy.inf, B_default=10.0, S_factor=2.0, maxiter_de=200):
     """
+    Deprecated.
+
     Fit a [p/q] rational P/Q of the form:
       P(x) = s * prod_{i=0..p-1}(x - a_i)
       Q(x) = prod_{j=0..q-1}(x - b_j)
@@ -538,6 +481,7 @@ def fit_pade_old(x, f, lam_m, lam_p, p, q, delta=1e-8, B=numpy.inf,
 
 def eval_pade_old(z, s, a, b):
     """
+    Deprecated.
     """
 
     Pz = s * numpy.prod([z - aj for aj in a], axis=0)

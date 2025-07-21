@@ -268,7 +268,7 @@ class MarchenkoPastur(object):
     def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
         """
         Stieltjes transform (principal or secondary branch)
-        for Marchenko–Pastur distribution on upper half-plane.
+        for Marchenko-Pastur distribution on upper half-plane.
         """
 
         sigma = 1.0
@@ -509,9 +509,6 @@ class MarchenkoPastur(object):
             :class: custom-dark
         """
 
-        if seed is not None:
-            numpy.random.seed(seed)
-
         if x_min is None:
             x_min = self.lam_m
 
@@ -530,14 +527,17 @@ class MarchenkoPastur(object):
         inv_cdf = interp1d(cdf, xs, bounds_error=False,
                            fill_value=(x_min, x_max))
 
+        # Random generator
+        rng = numpy.random.default_rng(seed)
+
         # Draw from uniform distribution
         if method == 'mc':
-            u = numpy.random.rand(size)
+            u = rng.random(size)
         elif method == 'qmc':
-            engine = qmc.Halton(d=1)
+            engine = qmc.Halton(d=1, rng=rng)
             u = engine.random(size)
         else:
-            raise ValueError('"method" is invalid.')
+            raise NotImplementedError('"method" is invalid.')
 
         # Draw from distribution by mapping from inverse CDF
         samples = inv_cdf(u).ravel()
@@ -587,14 +587,12 @@ class MarchenkoPastur(object):
             >>> A = mp.matrix(2000)
         """
 
-        if seed is not None:
-            numpy.random.seed(seed)
-
         # Parameters
         m = int(size / self.lam)
 
         # Generate random matrix X (n x m) with i.i.d. standard normal entries.
-        X = numpy.random.randn(size, m)
+        rng = numpy.random.default_rng(seed)
+        X = rng.standard_normal((size, m))
 
         # Form the sample covariance matrix A = (1/m)*XX^T.
         A = X @ X.T / m

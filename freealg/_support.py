@@ -109,6 +109,7 @@ def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
 
     Parameters
     ----------
+
     method : {``'range'``, ``'asymp'``, ``'jackknife'``, ``'regression'``,
                 ``'interior'``, ``'interior_smooth'``}, \
             default= ``'asymp'``
@@ -146,6 +147,7 @@ def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
            time-series. In Mathematical Proceedings of the Cambridge
            Philosophical Society (Vol. 45, No. 3, pp. 483-484). Cambridge
            University Press.
+
     .. [2] Cuevas, A., & Fraiman, R. (1997). A plug-in approach to support
            estimation. The Annals of Statistics, 2300-2312.
     """

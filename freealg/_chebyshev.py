@@ -13,7 +13,7 @@
 
 import numpy
 from scipy.special import eval_chebyu
-from ._pade import wynn_pade
+from ._series import partial_sum, wynn_epsilon
 
 __all__ = ['chebyshev_sample_proj', 'chebyshev_kernel_proj',
            'chebyshev_approx', 'chebyshev_stieltjes']
@@ -29,7 +29,7 @@ def chebyshev_sample_proj(eig, support, K=10, reg=0.0):
 
         \\rho(x) = w(t) \\sum_{k=0}^K \\psi_k U_k(t),
 
-    where t = (2x–(\\lambda_{-} + \\lambda_{+}))/ (\\lambda_{+} - \\lambda_{-})
+    where t = (2x-(\\lambda_{-} + \\lambda_{+}))/ (\\lambda_{+} - \\lambda_{-})
     in [-1, 1] and w(t) = \\sqrt{(1 - t^2}.
 
     Parameters
@@ -164,7 +164,7 @@ def chebyshev_approx(x, psi, support):
 # chebushev stieltjes
 # ===================
 
-def chebyshev_stieltjes(z, psi, support):
+def chebyshev_stieltjes(z, psi, support, use_wynn_epsilon=False):
     """
     Compute the Stieltjes transform m(z) for a Chebyshev‐II expansion
 
@@ -197,6 +197,9 @@ def chebyshev_stieltjes(z, psi, support):
     support : tuple
         The support interval of the original density.
 
+    use_wynn_epsilon : bool, default=False
+        Use Wynn epsilon, otherwise assumes Pade is used.
+
     Returns
     -------
 
@@ -209,22 +212,41 @@ def chebyshev_stieltjes(z, psi, support):
     span = lam_p - lam_m
     center = 0.5 * (lam_m + lam_p)
 
-    # map z -> u in the standard [-1,1] domain
+    # Map z -> u in the standard [-1,1] domain
     u = (2.0 * (z - center)) / span
 
-    # inverse-Joukowski: pick branch sqrt with +Im
-    root = numpy.sqrt(u*u - 1)
+    # Inverse-Joukowski: pick branch sqrt with +Im
+    root = numpy.sqrt(u*u - 1.0)
     Jm = u - root
     Jp = u + root
 
     # Make sure J is Herglotz
-    J = numpy.zeros_like(Jm)
-    J = numpy.where(root.imag < 0, Jp, Jm)
+    J = numpy.zeros_like(Jp)
+    J = numpy.where(Jp.imag > 0, Jm, Jp)
 
-    psi_zero = numpy.concatenate([[0], psi])
-    S = wynn_pade(psi_zero, J)
+    # This depends on the method of analytic continuation
+    if use_wynn_epsilon:
+        # Flatten J before passing to Wynn method.
+        psi_zero = numpy.concatenate([[0], psi])
+        Sn = partial_sum(psi_zero, J.ravel())
+        S = wynn_epsilon(Sn)
+        S = S.reshape(J.shape)
 
-    # assemble m(z)
-    m_z = -2 / span * numpy.pi * S
+    else:
+        # Build powers J^(k+1) for k = 0, ..., K
+        K = len(psi) - 1
+        Jpow = J[..., None] ** numpy.arange(1, K+2)  # shape: (..., K+1)
+
+        # Summing psi_k * J^(k+1)
+        S = numpy.sum(psi * Jpow, axis=-1)
+
+    # Assemble m(z)
+    m_z = -(2.0 / span) * numpy.pi * S
+
+    # Check nan or inf
+    if numpy.any(numpy.isinf(m_z)):
+        raise RuntimeError('"m" is nan.')
+    elif numpy.any(numpy.isnan(numpy.abs(m_z))):
+        raise RuntimeError('"m" is inf.')
 
     return m_z

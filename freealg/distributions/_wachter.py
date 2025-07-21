@@ -509,9 +509,6 @@ class Wachter(object):
             :class: custom-dark
         """
 
-        if seed is not None:
-            numpy.random.seed(seed)
-
         if x_min is None:
             x_min = self.lam_m
 
@@ -530,14 +527,17 @@ class Wachter(object):
         inv_cdf = interp1d(cdf, xs, bounds_error=False,
                            fill_value=(x_min, x_max))
 
+        # Random generator
+        rng = numpy.random.default_rng(seed)
+
         # Draw from uniform distribution
         if method == 'mc':
-            u = numpy.random.rand(size)
+            u = rng.random(size)
         elif method == 'qmc':
-            engine = qmc.Halton(d=1)
+            engine = qmc.Halton(d=1, rng=rng)
             u = engine.random(size)
         else:
-            raise ValueError('"method" is invalid.')
+            raise NotImplementedError('"method" is invalid.')
 
         # Draw from distribution by mapping from inverse CDF
         samples = inv_cdf(u).ravel()
@@ -590,15 +590,13 @@ class Wachter(object):
             >>> A = wa.matrix(2000)
         """
 
-        if seed is not None:
-            numpy.random.seed(seed)
-
         n = size
         m1 = int(self.a * n)
         m2 = int(self.b * n)
 
-        X = numpy.random.randn(n, m1)
-        Y = numpy.random.randn(n, m2)
+        rng = numpy.random.default_rng(seed)
+        X = rng.standard_normal((n, m1))
+        Y = rng.standard_normal((n, m2))
 
         Sx = X @ X.T
         Sy = Y @ Y.T

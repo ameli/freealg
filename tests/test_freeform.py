@@ -77,21 +77,22 @@ def test_freeform():
                         save='qs_stieltjes' + ext)
 
     # Decompression
-    N = 2 * A.shape[0]
-    _, _ = ff.decompress(N, x=None, max_iter=500, eigvals=True, tolerance=1e-9,
-                         plot=True, latex=latex, save='qs_decompress' + ext)
+    n = 2 * A.shape[0]
+    _, _ = ff.decompress(n, x=None, method='newton', max_iter=500,
+                         step_size=0.1, tolerance=1e-4, plot=True, latex=latex,
+                         save='qs_decompress' + ext, plot_diagnostics=False)
 
     # Linalg methods
-    _ = ff.eigvalsh(size=N, seed=None)
-    _ = ff.trace(size=N, p=1.0, seed=None)
-    _ = ff.trace(size=N, p=2.0, seed=None)
-    _, _ = ff.slogdet(size=N, seed=None)
-    _ = ff.norm(size=N, order=2, seed=None)
-    _ = ff.norm(size=N, order=numpy.inf, seed=None)
-    _ = ff.norm(size=N, order=-numpy.inf, seed=None)
-    _ = ff.norm(size=N, order='fro', seed=None)
-    _ = ff.norm(size=N, order='nuc', seed=None)
-    _ = ff.cond(size=N, seed=None)
+    _ = ff.eigvalsh(size=n, seed=None)
+    _ = ff.trace(size=n, p=1.0, seed=None)
+    _ = ff.trace(size=n, p=2.0, seed=None)
+    _, _ = ff.slogdet(size=n, seed=None)
+    _ = ff.norm(size=n, order=2, seed=None)
+    _ = ff.norm(size=n, order=numpy.inf, seed=None)
+    _ = ff.norm(size=n, order=-numpy.inf, seed=None)
+    _ = ff.norm(size=n, order='fro', seed=None)
+    _ = ff.norm(size=n, order='nuc', seed=None)
+    _ = ff.cond(size=n, seed=None)
 
     remove_file('qs_*.pdf')
 

@@ -21,19 +21,20 @@ __all__ = ['eigvalsh', 'cond', 'norm', 'trace', 'slogdet']
 # subsample apply
 # ===============
 
-def _subsample_apply(f, A, output_array=False):
+def _subsample_apply(f, A, output_array=False, seed=None):
     """
     Compute f(A_n) over subsamples A_n of A. If the output of
     f is an array (e.g. eigvals), specify output_array to be True.
     """
 
-    if A.ndim != 2 or A.shape[0] != A.shape[1]:
+    if (A.ndim != 2) or (A.shape[0] != A.shape[1]):
         raise RuntimeError("Only square matrices are permitted.")
 
     n = A.shape[0]
 
     # Size of sample matrix
-    n_s = int(80*(1 + numpy.log(n)))
+    n_s = int(80.0 * (1.0 + numpy.log(n)))
+
     # If matrix is not large enough, return eigenvalues
     if n < n_s:
         return f(A), n, n
@@ -43,14 +44,15 @@ def _subsample_apply(f, A, output_array=False):
 
     # Collect eigenvalue samples
     samples = []
+    rng = numpy.random.default_rng(seed=seed)
     for _ in range(num_samples):
-        indices = numpy.random.choice(n, n_s, replace=False)
+        indices = rng.choice(n, n_s, replace=False)
         samples.append(f(A[numpy.ix_(indices, indices)]))
 
     if output_array:
-        return numpy.concatenate(samples).ravel(), n, n_s
-
-    return numpy.array(samples), n, n_s
+        return numpy.concatenate(samples), n, n_s
+    else:
+        return numpy.array(samples), n, n_s
 
 
 # ========
@@ -83,7 +85,8 @@ def eigvalsh(A, size=None, psd=None, seed=None, plot=False, **kwargs):
         if all sampled eigenvalues are positive.
 
     seed : int, default=None
-        The seed for the Quasi-Monte Carlo sampler.
+        The seed for sampling rows/columns of matirx as well as the Quasi-Monte
+        Carlo sampler for eigenvalues from density.
 
     plot : bool, default=False
         Print out all relevant plots for diagnosing eigenvalue accuracy.
@@ -130,7 +133,8 @@ def eigvalsh(A, size=None, psd=None, seed=None, plot=False, **kwargs):
         >>> eigs = eigvalsh(A)
     """
 
-    samples, n, n_s = _subsample_apply(compute_eig, A, output_array=True)
+    samples, n, n_s = _subsample_apply(compute_eig, A, output_array=True,
+                                       seed=seed)
 
     if size is None:
         size = n
@@ -140,17 +144,27 @@ def eigvalsh(A, size=None, psd=None, seed=None, plot=False, **kwargs):
         psd = samples.min() > 0
 
     ff = FreeForm(samples)
+
     # Since we are resampling, we need to provide the correct matrix size
     ff.n = n_s
 
     # Perform fit and estimate eigenvalues
     order = 1 + int(len(samples)**0.2)
     ff.fit(method='chebyshev', K=order, projection='sample',
-           force=True, plot=False, latex=False, save=False)
+           continuation='wynn', force=True, plot=False, latex=False,
+           save=False)
 
     if plot:
         ff.density(plot=True)
         ff.stieltjes(plot=True)
+
+    # Sampling method using Pade seems to need a lower tolerance to properly
+    # work. Here we set defaults unless user provides otherwise. Note that the
+    # default of tolerance in ff._decompress is much larger (1e-4) for other
+    # methods (Newton, and non-sampling projections such as Gaussian and beta)
+    # to work properly.
+    kwargs.setdefault('tolerance', 1e-9)
+    kwargs.setdefault('method', 'secant')
 
     eigs = ff.eigvalsh(size, seed=seed, plot=plot, **kwargs)
 

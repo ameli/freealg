@@ -34,7 +34,17 @@ def plot_fit(psi, x_supp, g_supp, g_supp_approx, support, latex=False,
 
     with texplot.theme(use_latex=latex):
 
-        fig, ax = plt.subplots(figsize=(9, 3), ncols=2)
+        if g_supp is None:
+            figsize = (4.5, 3)
+            ncols = 1
+        else:
+            figsize = (9, 3)
+            ncols = 2
+
+        fig, ax = plt.subplots(figsize=figsize, ncols=ncols)
+
+        if g_supp is None:
+            ax = [ax]
 
         # Plot psi
         n = numpy.arange(1, 1+psi.size)
@@ -46,22 +56,24 @@ def plot_fit(psi, x_supp, g_supp, g_supp_approx, support, latex=False,
         ax[0].set_yscale('log')
 
         # Plot pade
-        lam_m, lam_p = support
-        g_supp_min = numpy.min(g_supp)
-        g_supp_max = numpy.max(g_supp)
-        g_supp_dif = g_supp_max - g_supp_min
-        g_min = g_supp_min - g_supp_dif * 1.1
-        g_max = g_supp_max + g_supp_dif * 1.1
+        if g_supp is not None:
+            lam_m, lam_p = support
+            g_supp_min = numpy.min(g_supp)
+            g_supp_max = numpy.max(g_supp)
+            g_supp_dif = g_supp_max - g_supp_min
+            g_min = g_supp_min - g_supp_dif * 1.1
+            g_max = g_supp_max + g_supp_dif * 1.1
 
-        ax[1].plot(x_supp, g_supp, color='firebrick',
-                   label=r'$2 \pi \times $ Hilbert Transform')
-        ax[1].plot(x_supp, g_supp_approx, color='black', label='Pade estimate')
-        ax[1].legend(fontsize='small')
-        ax[1].set_xlim([lam_m, lam_p])
-        ax[1].set_ylim([g_min, g_max])
-        ax[1].set_title('Approximation of Glue Function')
-        ax[1].set_xlabel(r'$x$')
-        ax[1].set_ylabel(r'$G(x)$')
+            ax[1].plot(x_supp, g_supp, color='firebrick',
+                       label=r'$2 \pi \times $ Hilbert Transform')
+            ax[1].plot(x_supp, g_supp_approx, color='black',
+                       label='Pade estimate')
+            ax[1].legend(fontsize='small')
+            ax[1].set_xlim([lam_m, lam_p])
+            ax[1].set_ylim([g_min, g_max])
+            ax[1].set_title('Approximation of Glue Function')
+            ax[1].set_xlabel(r'$x$')
+            ax[1].set_ylabel(r'$G(x)$')
 
         plt.tight_layout()
 
@@ -129,7 +141,7 @@ def _auto_bins(array, method='scott', factor=5):
         num_bins = int(numpy.ceil(numpy.log2(len(array)) + 1))
 
     else:
-        raise ValueError('"method" is invalid.')
+        raise NotImplementedError('"method" is invalid.')
 
     return num_bins * factor
 
