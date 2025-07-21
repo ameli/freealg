@@ -187,7 +187,7 @@ def main(argv):
             'docs']
         ),
         install_requires=requirements,
-        python_requires='>=3.9',
+        python_requires='>=3.10',
         setup_requires=[
             'setuptools'
             ],
