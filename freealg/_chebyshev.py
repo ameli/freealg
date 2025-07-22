@@ -16,7 +16,7 @@ from scipy.special import eval_chebyu
 from ._series import partial_sum, wynn_epsilon
 
 __all__ = ['chebyshev_sample_proj', 'chebyshev_kernel_proj',
-           'chebyshev_approx', 'chebyshev_stieltjes']
+           'chebyshev_density', 'chebyshev_stieltjes']
 
 
 # =====================
@@ -115,11 +115,11 @@ def chebyshev_kernel_proj(xs, pdf, support, K=10, reg=0.0):
     return psi
 
 
-# ================
-# chebyshev approx
-# ================
+# =================
+# chebyshev density
+# =================
 
-def chebyshev_approx(x, psi, support):
+def chebyshev_density(x, psi, support):
     """
     Given \\psi_k, evaluate the approximate density \\rho(x).
 

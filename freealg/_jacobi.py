@@ -14,8 +14,9 @@
 import numpy
 from scipy.special import eval_jacobi, roots_jacobi
 from scipy.special import gammaln, beta as Beta
+from ._series import wynn_epsilon
 
-__all__ = ['jacobi_sample_proj', 'jacobi_kernel_proj', 'jacobi_approx',
+__all__ = ['jacobi_sample_proj', 'jacobi_kernel_proj', 'jacobi_density',
            'jacobi_stieltjes']
 
 
@@ -108,13 +109,13 @@ def jacobi_kernel_proj(xs, pdf, support, K=10, alpha=0.0, beta=0.0, reg=0.0):
     return psi
 
 
-# =============
-# jacobi approx
-# =============
+# ==============
+# jacobi density
+# ==============
 
-def jacobi_approx(x, psi, support, alpha=0.0, beta=0.0):
+def jacobi_density(x, psi, support, alpha=0.0, beta=0.0):
     """
-    Reconstruct Jacobi approximation.
+    Reconstruct Jacobi approximation of density.
 
     Parameters
     ----------
@@ -144,8 +145,8 @@ def jacobi_approx(x, psi, support, alpha=0.0, beta=0.0):
     w = (1 - t)**alpha * (1 + t)**beta
     P = numpy.vstack([eval_jacobi(k, alpha, beta, t) for k in range(len(psi))])
 
-    rho_t = w * (psi @ P)                            # density in t–variable
-    rho_x = rho_t * (2.0 / (lam_p - lam_m))          # back to x–variable
+    rho_t = w * (psi @ P)                            # density in t-variable
+    rho_x = rho_t * (2.0 / (lam_p - lam_m))          # back to x-variable
 
     return rho_x
 
@@ -154,7 +155,8 @@ def jacobi_approx(x, psi, support, alpha=0.0, beta=0.0):
 # jacobi stieltjes
 # ================
 
-def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40):
+def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
+                     use_wynn_epsilon=False):
     """
     Compute m(z) = sum_k psi_k * m_k(z) where
 
@@ -178,21 +180,32 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40):
         Minimum quadrature size.  For degree-k polynomial we use
         n_quad = max(n_base, k+1).
 
+    use_wynn_epsilon : bool, default=False
+        Use Wynn epsilon, otherwise assumes Pade is used.
+
     Returns
     -------
 
-    m1 : ndarray  (same shape as z)
+    m1 : ndarray
+        Same shape as z
 
-    m12 : ndarray  (same shape as z)
+    m2 : ndarray
+        Same shape as z
     """
 
     z = numpy.asarray(z, dtype=numpy.complex128)
     lam_minus, lam_plus = support
     span = lam_plus - lam_minus
     centre = 0.5 * (lam_plus + lam_minus)
-    u_z = (2.0 / span) * (z - centre)          # map z -> u
+
+    # Map z -> u in the standard [-1,1] domain
+    u = (2.0 / span) * (z - centre)
 
     m_total = numpy.zeros_like(z, dtype=numpy.complex128)
+
+    if use_wynn_epsilon:
+        # Stores  m with the ravel size of z.
+        m_partial = numpy.zeros((psi.size, z.size), dtype=numpy.complex128)
 
     for k, psi_k in enumerate(psi):
         # Select quadrature size tailored to this P_k
@@ -205,14 +218,43 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40):
         # Integrand values at nodes: w_nodes already include the weight
         integrand = w_nodes * P_k_nodes                      # (n_quad,)
 
-        # Broadcast over z: shape (n_quad, ...) / ...
-        diff = u_z[None, ...] - t_nodes[:, None, None]       # (n_quad, Ny, Nx)
-        m_k = (integrand[:, None, None] / diff).sum(axis=0)
+        # Evaluate jacobi polynomals of the second kind, Q_k using quadrature
+        diff = t_nodes[:, None, None] - u[None, ...]         # (n_quad, Ny, Nx)
+        Q_k = (integrand[:, None, None] / diff).sum(axis=0)
+
+        # Principal branch
+        m_k = (2.0 / span) * Q_k
+
+        # Compute secondary branch from the principal branch
+        if use_wynn_epsilon:
+
+            # Compute analytic extension of rho(z) to lower-half plane for
+            # when rho is just the k-th Jacobi basis: w(z) P_k(z). FOr this,
+            # we create a psi array (called unit_psi_j), with all zeros, except
+            # its k-th element is one. Ten we call jacobi_density.
+            unit_psi_k = numpy.zeros_like(psi)
+            unit_psi_k[k] = 1.0
+
+            # Only lower-half plane
+            mask_m = z.imag <= 0
+            z_m = z[mask_m]
+
+            # Dnesity here is rho = w(z) P_k
+            rho_k = jacobi_density(z_m.ravel(), unit_psi_k, support,
+                                   alpha=alpha, beta=beta).reshape(z_m.shape)
+
+            # Secondary branch is principal branch + 2 \pi i rho, using Plemelj
+            # (in fact, Riemann-Hirbert jump).
+            m_k[mask_m] = m_k[mask_m] + 2.0 * numpy.pi * 1j * rho_k
 
         # Accumulate with factor 2/span
-        m_total += psi_k * (2.0 / span) * m_k
+        m_total += psi_k * m_k
 
-    # We use a negative sign convention
-    m_total = -m_total
+        if use_wynn_epsilon:
+            m_partial[k, :] = m_total.ravel()
+
+    if use_wynn_epsilon:
+        S = wynn_epsilon(m_partial)
+        m_total = S.reshape(z.shape)
 
     return m_total

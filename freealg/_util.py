@@ -89,7 +89,7 @@ def beta_kde(eig, xs, lam_m, lam_p, h):
 # force density
 # =============
 
-def force_density(psi0, support, approx, grid, alpha=0.0, beta=0.0):
+def force_density(psi0, support, density, grid, alpha=0.0, beta=0.0):
     """
     Starting from psi0 (raw projection), solve
       min  0.5 ||psi - psi0||^2
@@ -113,26 +113,26 @@ def force_density(psi0, support, approx, grid, alpha=0.0, beta=0.0):
 
     # Enforce positivity
     constraints.append({'type': 'ineq',
-                        'fun': lambda psi: approx(grid, psi)})
+                        'fun': lambda psi: density(grid, psi)})
 
     # Enforce unit mass
     constraints.append({
         'type': 'eq',
-        'fun': lambda psi: numpy.trapz(approx(grid, psi), grid) - 1.0
+        'fun': lambda psi: numpy.trapz(density(grid, psi), grid) - 1.0
     })
 
     # Enforce zero at left edge
     if beta <= 0.0 and beta > -0.5:
         constraints.append({
             'type': 'eq',
-            'fun': lambda psi: approx(numpy.array([lam_m]), psi)[0]
+            'fun': lambda psi: density(numpy.array([lam_m]), psi)[0]
         })
 
     # Enforce zero at right edge
     if alpha <= 0.0 and alpha > -0.5:
         constraints.append({
             'type': 'eq',
-            'fun': lambda psi: approx(numpy.array([lam_p]), psi)[0]
+            'fun': lambda psi: density(numpy.array([lam_p]), psi)[0]
         })
 
     # Solve a small quadratic programming
@@ -146,7 +146,7 @@ def force_density(psi0, support, approx, grid, alpha=0.0, beta=0.0):
 
     # Normalize first mode to unit mass
     x = numpy.linspace(lam_m, lam_p, 1000)
-    rho = approx(x, psi)
+    rho = density(x, psi)
     mass = numpy.trapezoid(rho, x)
     psi[0] = psi[0] / mass
 

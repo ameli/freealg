@@ -16,10 +16,10 @@ from scipy.stats import gaussian_kde
 # from statsmodels.nonparametric.kde import KDEUnivariate
 from functools import partial
 from ._util import compute_eig, beta_kde, force_density
-from ._jacobi import jacobi_sample_proj, jacobi_kernel_proj, jacobi_approx, \
+from ._jacobi import jacobi_sample_proj, jacobi_kernel_proj, jacobi_density, \
     jacobi_stieltjes
 from ._chebyshev import chebyshev_sample_proj, chebyshev_kernel_proj, \
-    chebyshev_approx, chebyshev_stieltjes
+    chebyshev_density, chebyshev_stieltjes
 from ._damp import jackson_damping, lanczos_damping, fejer_damping, \
     exponential_damping, parzen_damping
 from ._plot_util import plot_fit, plot_density, plot_hilbert, plot_stieltjes
@@ -401,15 +401,15 @@ class FreeForm(object):
             grid = numpy.linspace(self.lam_m, self.lam_p, 500)
 
             if method == 'jacobi':
-                approx = partial(jacobi_approx, support=self.support,
-                                 alpha=alpha, beta=beta)
+                density = partial(jacobi_density, support=self.support,
+                                  alpha=alpha, beta=beta)
             elif method == 'chebyshev':
-                approx = partial(chebyshev_approx, support=self.support)
+                density = partial(chebyshev_density, support=self.support)
             else:
                 raise RuntimeError('"method" is invalid.')
 
             # Enforce positivity, unit mass, and zero at edges
-            psi = force_density(psi, support=self.support, approx=approx,
+            psi = force_density(psi, support=self.support, density=density,
                                 grid=grid, alpha=alpha, beta=beta)
 
         # Update attributes
@@ -437,12 +437,6 @@ class FreeForm(object):
         else:
             # Do nothing. Make sure _pade_sol is still None
             self._pade_sol = None
-
-            if method != 'chebyshev':
-                raise NotImplementedError(
-                    'Up to the current version, the analytic continuation ' +
-                    'using "wynn" is only implemented for "chebyshev" ' +
-                    'estimation method.')
 
         if plot:
             if self._pade_sol is not None:
@@ -539,10 +533,10 @@ class FreeForm(object):
         mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
 
         if self.method == 'jacobi':
-            rho[mask] = jacobi_approx(x[mask], self.psi, self.support,
-                                      self.alpha, self.beta)
+            rho[mask] = jacobi_density(x[mask], self.psi, self.support,
+                                       self.alpha, self.beta)
         elif self.method == 'chebyshev':
-            rho[mask] = chebyshev_approx(x[mask], self.psi, self.support)
+            rho[mask] = chebyshev_density(x[mask], self.psi, self.support)
         else:
             raise RuntimeError('"method" is invalid.')
 
@@ -821,19 +815,20 @@ class FreeForm(object):
         #                              z.real <= self.lam_p)
         # n_base = 2 * numpy.sum(mask_sup)
 
+        if self.continuation == 'wynn':
+            use_wynn_epsilon = True
+        else:
+            use_wynn_epsilon = False
+
         # Stieltjes function
         if self.method == 'jacobi':
             stieltjes = partial(jacobi_stieltjes, psi=self.psi,
                                 support=self.support, alpha=self.alpha,
-                                beta=self.beta)  # n_base = n_base
+                                beta=self.beta,
+                                use_wynn_epsilon=use_wynn_epsilon)
+            # n_base = n_base
 
         elif self.method == 'chebyshev':
-
-            if self.continuation == 'wynn':
-                use_wynn_epsilon = True
-            else:
-                use_wynn_epsilon = False
-
             stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
                                 support=self.support,
                                 use_wynn_epsilon=use_wynn_epsilon)

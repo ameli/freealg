@@ -84,6 +84,28 @@ def wynn_epsilon(Sn):
     S : numpy.array
         A 1D array of the size (d,) which is the accelerated value of the
         series at each vector element.
+
+    Notes
+    -----
+
+    Given a series of vectors:
+
+    .. math::
+
+        (S_n)_{n=1}^N = (S1, \\dots, S_n)
+
+    this function finds the limit S = \\lim_{n \\to infty} S_n.
+
+    Each :math:`S_i \\in \\mathbb{C}^d` is a vector. However, instead of using
+    the vector version of the Wynn's epsilon algorithm, we use the scalar
+    version on each component of the vector. The reason for this is that in our
+    dataset, each component has its own convergence rate. The convergence rate
+    of vector version of the algorithm is bounded by the worse point, and this
+    potentially stall convergence for all points. As such, vector version is
+    avoided.
+
+    In our dataset, the series is indeed divergent. The Wynn's accelerated
+    method computes the principal value of the convergence series.
     """
 
     # N: number of partial sums, d: vector size
@@ -94,7 +116,7 @@ def wynn_epsilon(Sn):
 
     tol = numpy.finfo(float).eps
 
-    # Wynn's epsilon algorithm
+    # Wynn's triangle table
     for k in range(1, N):
         Nk = N - k
 
@@ -118,6 +140,6 @@ def wynn_epsilon(Sn):
             eps[k, :Nk, :] += eps[k-2, 1:Nk+1, :]
 
     k_even = 2 * ((N - 1) // 2)
-    series = eps[k_even, 0, :]
+    S = eps[k_even, 0, :]
 
-    return series
+    return S
