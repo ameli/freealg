@@ -151,7 +151,7 @@ def eigvalsh(A, size=None, psd=None, seed=None, plot=False, **kwargs):
     # Perform fit and estimate eigenvalues
     order = 1 + int(len(samples)**0.2)
     ff.fit(method='chebyshev', K=order, projection='sample',
-           continuation='wynn', force=True, plot=False, latex=False,
+           continuation='wynn-eps', force=True, plot=False, latex=False,
            save=False)
 
     if plot:
