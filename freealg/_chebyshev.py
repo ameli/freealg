@@ -13,7 +13,8 @@
 
 import numpy
 from scipy.special import eval_chebyu
-from ._series import partial_sum, wynn_epsilon
+from ._series import partial_sum, wynn_epsilon, wynn_rho, levin_u, \
+    weniger_delta, brezinski_theta
 
 __all__ = ['chebyshev_sample_proj', 'chebyshev_kernel_proj',
            'chebyshev_density', 'chebyshev_stieltjes']
@@ -164,7 +165,7 @@ def chebyshev_density(x, psi, support):
 # chebushev stieltjes
 # ===================
 
-def chebyshev_stieltjes(z, psi, support, use_wynn_epsilon=False):
+def chebyshev_stieltjes(z, psi, support, continuation='pade'):
     """
     Compute the Stieltjes transform m(z) for a Chebyshev‐II expansion
 
@@ -197,8 +198,8 @@ def chebyshev_stieltjes(z, psi, support, use_wynn_epsilon=False):
     support : tuple
         The support interval of the original density.
 
-    use_wynn_epsilon : bool, default=False
-        Use Wynn epsilon, otherwise assumes Pade is used.
+    continuation : str, default= ``'pade'``
+        Methof of analytiv continuation.
 
     Returns
     -------
@@ -225,20 +226,33 @@ def chebyshev_stieltjes(z, psi, support, use_wynn_epsilon=False):
     J = numpy.where(Jp.imag > 0, Jm, Jp)
 
     # This depends on the method of analytic continuation
-    if use_wynn_epsilon:
-        # Flatten J before passing to Wynn method.
-        psi_zero = numpy.concatenate([[0], psi])
-        Sn = partial_sum(psi_zero, J.ravel())
-        S = wynn_epsilon(Sn)
-        S = S.reshape(J.shape)
-
-    else:
+    if continuation == 'pade':
         # Build powers J^(k+1) for k = 0, ..., K
         K = len(psi) - 1
         Jpow = J[..., None] ** numpy.arange(1, K+2)  # shape: (..., K+1)
 
         # Summing psi_k * J^(k+1)
         S = numpy.sum(psi * Jpow, axis=-1)
+
+    else:
+        # Flatten J before passing to Wynn method.
+        psi_zero = numpy.concatenate([[0], psi])
+        Sn = partial_sum(psi_zero, J.ravel(), p=0)
+
+        if continuation == 'wynn-eps':
+            S = wynn_epsilon(Sn)
+        elif continuation == 'wynn-rho':
+            S = wynn_rho(Sn)
+        elif continuation == 'levin':
+            S = levin_u(Sn)
+        elif continuation == 'weniger':
+            S = weniger_delta(Sn)
+        elif continuation == 'brezinski':
+            S = brezinski_theta(Sn)
+        else:
+            raise NotImplementedError('"continuation" is invalid.')
+
+        S = S.reshape(J.shape)
 
     # Assemble m(z)
     m_z = -(2.0 / span) * numpy.pi * S

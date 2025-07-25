@@ -14,7 +14,8 @@
 import numpy
 from scipy.special import eval_jacobi, roots_jacobi
 from scipy.special import gammaln, beta as Beta
-from ._series import wynn_epsilon
+from ._series import wynn_epsilon, wynn_rho, levin_u, weniger_delta, \
+    brezinski_theta
 
 __all__ = ['jacobi_sample_proj', 'jacobi_kernel_proj', 'jacobi_density',
            'jacobi_stieltjes']
@@ -156,7 +157,7 @@ def jacobi_density(x, psi, support, alpha=0.0, beta=0.0):
 # ================
 
 def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
-                     use_wynn_epsilon=False):
+                     continuation='pade'):
     """
     Compute m(z) = sum_k psi_k * m_k(z) where
 
@@ -180,8 +181,8 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
         Minimum quadrature size.  For degree-k polynomial we use
         n_quad = max(n_base, k+1).
 
-    use_wynn_epsilon : bool, default=False
-        Use Wynn epsilon, otherwise assumes Pade is used.
+    continuation : str, default= ``'pade'``
+        Methof of analytiv continuation.
 
     Returns
     -------
@@ -203,7 +204,7 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
 
     m_total = numpy.zeros_like(z, dtype=numpy.complex128)
 
-    if use_wynn_epsilon:
+    if continuation != 'pade':
         # Stores  m with the ravel size of z.
         m_partial = numpy.zeros((psi.size, z.size), dtype=numpy.complex128)
 
@@ -226,7 +227,7 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
         m_k = (2.0 / span) * Q_k
 
         # Compute secondary branch from the principal branch
-        if use_wynn_epsilon:
+        if continuation != 'pade':
 
             # Compute analytic extension of rho(z) to lower-half plane for
             # when rho is just the k-th Jacobi basis: w(z) P_k(z). FOr this,
@@ -250,11 +251,22 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
         # Accumulate with factor 2/span
         m_total += psi_k * m_k
 
-        if use_wynn_epsilon:
+        if continuation != 'pade':
             m_partial[k, :] = m_total.ravel()
 
-    if use_wynn_epsilon:
-        S = wynn_epsilon(m_partial)
+    if continuation != 'pade':
+
+        if continuation == 'wynn-eps':
+            S = wynn_epsilon(m_partial)
+        elif continuation == 'wynn-rho':
+            S = wynn_rho(m_partial)
+        elif continuation == 'levin':
+            S = levin_u(m_partial)
+        elif continuation == 'weniger':
+            S = weniger_delta(m_partial)
+        elif continuation == 'brezinski':
+            S = brezinski_theta(m_partial)
+
         m_total = S.reshape(z.shape)
 
     return m_total

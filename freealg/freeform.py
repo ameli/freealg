@@ -234,13 +234,18 @@ class FreeForm(object):
             If `True`, it forces the density to have unit mass and to be
             strictly positive.
 
-        continuation : {``'pade'``, ``'wynn'``}, default= ``'pade'``
+        continuation : {``'pade'``, ``'wynn-eps'``, ``'wynn-rho'``,
+            ``'levin'``, ``'weniger'``, ``'brezinski'``}, default= ``'pade'``
             Method of analytic continuation to construct the second branch of
             Steltjes transform in the lower-half complex plane:
 
             * ``'pade'``: using Riemann-Hilbert problem with Pade
               approximation.
-            * ``'wynn'``: Wynn's epsilon algorithm.
+            * ``'wynn-eps'``: Wynn's :math:`\\epsilon` algorithm.
+            * ``'wynn-rho'``: Wynn's :math:`\\rho` algorithm.
+            * ``'levin'``: Levin's :math:`u` transform.
+            * ``'weniger'``: Weniger's :math:`\\delta^2` algorithm.
+            * ``'brezinski'``: Brezinski's :math:`\\theta` algorithm.
 
         pade_p : int, default=0
             Degree of polynomial :math:`P(z)` is :math:`q+p` where :math:`p`
@@ -419,7 +424,8 @@ class FreeForm(object):
         self.beta = beta
 
         # Analytic continuation
-        if continuation not in ['pade', 'wynn']:
+        if continuation not in ['pade', 'wynn-eps', 'wynn-rho', 'levin',
+                                'weniger', 'brezinski']:
             raise NotImplementedError('"continuation" method is invalid.')
 
         self.continuation = continuation
@@ -815,23 +821,17 @@ class FreeForm(object):
         #                              z.real <= self.lam_p)
         # n_base = 2 * numpy.sum(mask_sup)
 
-        if self.continuation == 'wynn':
-            use_wynn_epsilon = True
-        else:
-            use_wynn_epsilon = False
-
         # Stieltjes function
         if self.method == 'jacobi':
             stieltjes = partial(jacobi_stieltjes, psi=self.psi,
                                 support=self.support, alpha=self.alpha,
-                                beta=self.beta,
-                                use_wynn_epsilon=use_wynn_epsilon)
+                                beta=self.beta, continuation=self.continuation)
             # n_base = n_base
 
         elif self.method == 'chebyshev':
             stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
                                 support=self.support,
-                                use_wynn_epsilon=use_wynn_epsilon)
+                                continuation=self.continuation)
 
         mask_p = z.imag >= 0.0
         mask_m = z.imag < 0.0
@@ -852,7 +852,8 @@ class FreeForm(object):
             m2[mask_m] = -m1[mask_m] + self._glue(
                 z[mask_m].reshape(-1, 1)).ravel()
 
-        elif self.continuation == 'wynn':
+        elif self.continuation in ['wynn-eps', 'wynn-rho', 'levin', 'weniger',
+                                   'brezinski']:
             m2[:] = stieltjes(z.reshape(-1, 1)).reshape(*m2.shape)
             if branches:
                 m1[mask_p] = m2[mask_p]
