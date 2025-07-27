@@ -144,10 +144,22 @@ def jacobi_density(x, psi, support, alpha=0.0, beta=0.0):
     lam_m, lam_p = support
     t = (2 * x - (lam_p + lam_m)) / (lam_p - lam_m)
     w = (1 - t)**alpha * (1 + t)**beta
+
+    # The function eval_jacobi does not accept complex256 type
+    down_cast = False
+    if numpy.issubdtype(t.dtype, numpy.complexfloating) and \
+            t.itemsize > numpy.dtype(numpy.complex128).itemsize:
+        t = t.astype(numpy.complex128)
+        down_cast = True
+
     P = numpy.vstack([eval_jacobi(k, alpha, beta, t) for k in range(len(psi))])
 
     rho_t = w * (psi @ P)                            # density in t-variable
     rho_x = rho_t * (2.0 / (lam_p - lam_m))          # back to x-variable
+
+    # Case up to complex256
+    if down_cast:
+        rho_x = rho_x.astype(t.dtype)
 
     return rho_x
 
@@ -157,13 +169,13 @@ def jacobi_density(x, psi, support, alpha=0.0, beta=0.0):
 # ================
 
 def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
-                     continuation='pade'):
+                     continuation='pade', dtype=numpy.complex128):
     """
     Compute m(z) = sum_k psi_k * m_k(z) where
 
     m_k(z) = \\int w^{(alpha, beta)}(t) P_k^{(alpha, beta)}(t) / (u(z)-t) dt
 
-    Each m_k is evaluated *separately* with a Gauss–Jacobi rule sized
+    Each m_k is evaluated *separately* with a Gauss-Jacobi rule sized
     for that k.  This follows the user's request: 1 quadrature rule per P_k.
 
     Parameters
@@ -184,6 +196,9 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
     continuation : str, default= ``'pade'``
         Methof of analytiv continuation.
 
+    dtype : numpy.type, default=numpy.complex128
+        Data type for compelx arrays. This might enhance series acceleration.
+
     Returns
     -------
 
@@ -194,7 +209,7 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
         Same shape as z
     """
 
-    z = numpy.asarray(z, dtype=numpy.complex128)
+    z = numpy.asarray(z, dtype=dtype)
     lam_minus, lam_plus = support
     span = lam_plus - lam_minus
     centre = 0.5 * (lam_plus + lam_minus)
@@ -202,11 +217,11 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
     # Map z -> u in the standard [-1,1] domain
     u = (2.0 / span) * (z - centre)
 
-    m_total = numpy.zeros_like(z, dtype=numpy.complex128)
+    m_total = numpy.zeros_like(z, dtype=dtype)
 
     if continuation != 'pade':
         # Stores  m with the ravel size of z.
-        m_partial = numpy.zeros((psi.size, z.size), dtype=numpy.complex128)
+        m_partial = numpy.zeros((psi.size, z.size), dtype=dtype)
 
     for k, psi_k in enumerate(psi):
         # Select quadrature size tailored to this P_k
@@ -221,7 +236,7 @@ def jacobi_stieltjes(z, psi, support, alpha=0.0, beta=0.0, n_base=40,
 
         # Evaluate jacobi polynomals of the second kind, Q_k using quadrature
         diff = t_nodes[:, None, None] - u[None, ...]         # (n_quad, Ny, Nx)
-        Q_k = (integrand[:, None, None] / diff).sum(axis=0)
+        Q_k = (integrand[:, None, None] / diff).sum(axis=0).astype(dtype)
 
         # Principal branch
         m_k = (2.0 / span) * Q_k

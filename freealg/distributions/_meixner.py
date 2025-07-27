@@ -83,7 +83,7 @@ class Meixner(object):
 
     .. [1] Saitoh, N. & Yosnida, M. (2001). The infinite divisibility and
            orthogonal polynomials with a constant recursion formula in free
-           probability theory. Probab. Math. Statist., 21, 159–170.
+           probability theory. Probab. Math. Statist., 21, 159-170.
 
     Examples
     --------
@@ -315,7 +315,7 @@ class Meixner(object):
         m1 = (-B + sqrtD) / (2 * A)
         m2 = (-B - sqrtD) / (2 * A)
 
-        # pick correct branch only for non‑masked entries
+        # pick correct branch only for non-masked entries
         upper = z.imag >= 0
         branch = numpy.empty_like(m1)
         branch[upper] = numpy.where(

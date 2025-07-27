@@ -8,9 +8,12 @@
 
 from .freeform import FreeForm
 from ._linalg import eigvalsh, cond, norm, trace, slogdet
+from ._support import supp
+from ._sample import sample
+from ._util import kde
 from . import distributions
 
 __all__ = ['FreeForm', 'distributions', 'eigvalsh', 'cond', 'norm', 'trace',
-           'slogdet']
+           'slogdet', 'supp', 'sample', 'kde']
 
 from .__version__ import __version__                          # noqa: F401 E402

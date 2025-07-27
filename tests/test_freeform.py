@@ -56,7 +56,7 @@ def test_freeform():
     eig = numpy.linalg.eigvalsh(A)
 
     # Create freeform object
-    ff = FreeForm(eig, support=(mp.lam_m, mp.lam_p))
+    ff = FreeForm(eig, support=(mp.lam_m, mp.lam_p), dtype='complex128')
 
     # Fit density
     _ = ff.fit(method='chebyshev', K=10, alpha=2, beta=2, reg=0,

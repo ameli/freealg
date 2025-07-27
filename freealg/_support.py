@@ -14,7 +14,7 @@ import numpy
 import numba
 from scipy.stats import gaussian_kde
 
-__all__ = ['support_from_density', 'detect_support']
+__all__ = ['support_from_density', 'supp']
 
 
 # ====================
@@ -34,26 +34,26 @@ def support_from_density(dx, density):
     n = density.shape[0]
     target = 1.0 / dx
 
-    # 1) compute total_sum once
+    # compute total_sum once
     total_sum = 0.0
     for t in range(n):
         total_sum += density[t]
 
-    # 2) set up our “best‐so‐far” trackers
+    # set up our "best-so-far" trackers
     large = 1e300
     best_nonneg_sum = large
     best_nonneg_idx = -1
     best_nonpos_sum = -large
     best_nonpos_idx = -1
 
-    # 3) seed with first element (i.e. prefix_sum for k=1)
+    # seed with first element (i.e. prefix_sum for k=1)
     prefix_sum = density[0]
     if prefix_sum >= 0.0:
         best_nonneg_sum, best_nonneg_idx = prefix_sum, 1
     else:
         best_nonpos_sum, best_nonpos_idx = prefix_sum, 1
 
-    # 4) sweep j from 2...n–1, updating prefix_sum on the fly
+    # sweep j from 2, ..., n-1, updating prefix_sum on the fly
     optimal_i, optimal_j = 1, 2
     minimal_cost = large
 
@@ -88,7 +88,7 @@ def support_from_density(dx, density):
             minimal_cost = total_cost
             optimal_i, optimal_j = i_cand, j
 
-        # update our prefix‐sum trackers
+        # update our prefix-sum trackers
         if prefix_sum >= 0.0:
             if prefix_sum < best_nonneg_sum:
                 best_nonneg_sum, best_nonneg_idx = prefix_sum, j
@@ -99,36 +99,34 @@ def support_from_density(dx, density):
     return optimal_i, optimal_j
 
 
-# ==============
-# detect support
-# ==============
+# ====
+# supp
+# ====
 
-def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
+def supp(eigs, method='asymp', k=None, p=0.001):
     """
     Estimates the support of the eigenvalue density.
 
     Parameters
     ----------
 
-    method : {``'range'``, ``'asymp'``, ``'jackknife'``, ``'regression'``,
-                ``'interior'``, ``'interior_smooth'``}, \
-            default= ``'asymp'``
+    method : {``'range'``, ``'asymp'``, ``'jackknife'``, ``'regression'``, \
+            ``'interior'``, ``'interior_smooth'``}, default= ``'asymp'``
         The method of support estimation:
 
         * ``'range'``: no estimation; the support is the range of the
-            eigenvalues.
+          eigenvalues.
         * ``'asymp'``: assume the relative error in the min/max estimator is
-            1/n.
-        * ``'jackknife'``: estimates the support using Quenouille's [1]
-            jackknife estimator. Fast and simple, more accurate than the
-            range.
+          :math:`1/n`.
+        * ``'jackknife'``: estimates the support using Quenouille's [1]_
+          jackknife estimator. Fast and simple, more accurate than the range.
         * ``'regression'``: estimates the support by performing a regression
-            under the assumption that the edge behavior is of square-root
-            type. Often most accurate.
+          under the assumption that the edge behavior is of square-root type.
+          Often most accurate.
         * ``'interior'``: estimates a support assuming the range overestimates;
-            uses quantiles (p, 1-p).
+          uses quantiles :math:`(p, 1-p)`.
         * ``'interior_smooth'``: same as ``'interior'`` but using kernel
-            density estimation, from [2]_.
+          density estimation, from [2]_.
 
     k : int, default = None
         Number of extreme order statistics to use for ``method='regression'``.
@@ -139,6 +137,21 @@ def detect_support(eigs, method='asymp', k=None, p=0.001, **kwargs):
         where ``method='interior'`` or ``method='interior_smooth'``.
         This value should be between 0 and 1, ideally a small number close to
         zero.
+
+    Returns
+    -------
+
+    lam_m : float
+        Lower end of support interval :math:`[\\lambda_{-}, \\lambda_{+}]`.
+
+    lam_p : float
+        Upper end of support interval :math:`[\\lambda_{-}, \\lambda_{+}]`.
+
+    See Also
+    --------
+
+    freealg.sample
+    freealg.kde
 
     References
     ----------

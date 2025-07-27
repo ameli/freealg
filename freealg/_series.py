@@ -183,13 +183,13 @@ def wynn_rho(Sn, beta=0.0):
     -------
 
     S : numpy.ndarray
-        A 1D array of shape ``(d,)`` giving the rho‑accelerated estimate
+        A 1D array of shape ``(d,)`` giving the rho-accelerated estimate
         of the series limit for each component.
 
     Notes
     -----
 
-    Let ``S_n`` be the *n*‑th partial sum of the (possibly divergent)
+    Let ``S_n`` be the *n*-th partial sum of the (possibly divergent)
     sequence.  Wynn's rho algorithm builds a triangular table
     ``rho[k, n]`` (row *k*, column *n*) as follows:
 
@@ -200,7 +200,7 @@ def wynn_rho(Sn, beta=0.0):
                     (n + beta + k - 1) / (rho[k-1, n+1] - rho[k-1, n])
 
     Only even rows (k even) provide improved approximants.  As with
-    ``wynn_epsilon``, we apply the scalar recursion component‑wise so that a
+    ``wynn_epsilon``, we apply the scalar recursion component-wise so that a
     slowly converging component does not stall the others.
     """
 
@@ -255,7 +255,7 @@ def wynn_rho(Sn, beta=0.0):
 
 def levin_u(Sn, omega=None, beta=0.0):
     """
-    Levin u‑transform (vector form).
+    Levin u-transform (vector form).
 
     Parameters
     ----------
@@ -339,13 +339,13 @@ def weniger_delta(Sn):
     -------
 
     S : numpy.ndarray
-        Array of shape (d,) giving the Δ²‑accelerated limit estimate for each
-        component.
+        Array of shape (d,) giving the delta2 accelerated limit estimate for
+        each component.
     """
 
     N, d = Sn.shape
 
-    # Need at least three partial sums to form Δ²
+    # Need at least three partial sums to form delta2
     if N < 3:
         return Sn[-1, :].copy()
 
@@ -384,14 +384,14 @@ def brezinski_theta(Sn):
     ----------
 
     Sn : numpy.ndarray
-        A 2‑D array of the size ``(N, d)``, where `N` is the number of partial
+        A 2-D array of the size ``(N, d)``, where `N` is the number of partial
         sums and `d` is the vector size.
 
     Returns
     -------
 
     S : numpy.ndarray
-        A 1‑D array of the size ``(d,)`` – the theta‑accelerated estimate of
+        A 1-D array of the size ``(d,)``. The theta-accelerated estimate of
         the series limit in each vector component.
     """
 

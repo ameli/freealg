@@ -43,10 +43,10 @@ def chebyshev_sample_proj(eig, support, K=10, reg=0.0):
         The assumed compact support of rho.
 
     K : int
-        Highest Chebyshev‐II order.
+        Highest Chebyshev-II order.
 
     reg : float
-        Tikhonov‐style ridge on each coefficient (defaults to 0).
+        Tikhonov-style ridge on each coefficient (defaults to 0).
 
     Returns
     -------
@@ -57,10 +57,10 @@ def chebyshev_sample_proj(eig, support, K=10, reg=0.0):
 
     lam_m, lam_p = support
 
-    # Map to [–1,1] interval
+    # Map to [-1,1] interval
     t = (2 * eig - (lam_m + lam_p)) / (lam_p - lam_m)
 
-    # Inner‐product norm of each U_k under w(t) = sqrt{1–t^2} is \\pi/2
+    # Inner-product norm of each U_k under w(t) = sqrt{1-t^2} is \\pi/2
     norm = numpy.pi / 2
 
     psi = numpy.empty(K+1)
@@ -92,12 +92,12 @@ def chebyshev_kernel_proj(xs, pdf, support, K=10, reg=0.0):
     Projection of a *continuous* density given on a grid (xs, pdf)
     onto the Chebyshev-II basis.
 
-    xs  : 1-D numpy array (original x–axis, not the t-variable)
+    xs  : 1-D numpy array (original x-axis, not the t-variable)
     pdf : same shape as xs, integrates to 1 on xs
     """
 
     lam_m, lam_p = support
-    t = (2.0 * xs - (lam_m + lam_p)) / (lam_p - lam_m)   # map to [−1,1]
+    t = (2.0 * xs - (lam_m + lam_p)) / (lam_p - lam_m)   # map to [-1,1]
 
     norm = numpy.pi / 2.0
     psi = numpy.empty(K + 1)
@@ -140,15 +140,15 @@ def chebyshev_density(x, psi, support):
     -------
 
     rho_x : ndarray, same shape as x
-        Approximated spectral density on the original x‐axis.
+        Approximated spectral density on the original x-axis.
     """
 
     lam_m, lam_p = support
 
-    # Map to [–1,1] interval
+    # Map to [-1,1] interval
     t = (2 * numpy.asarray(x) - (lam_m + lam_p)) / (lam_p - lam_m)
 
-    # Weight sqrt{1–t^2} (clip for numerical safety)
+    # Weight sqrt{1-t^2} (clip for numerical safety)
     w = numpy.sqrt(numpy.clip(1 - t**2, a_min=0, a_max=None))
 
     # Summation approximation
@@ -165,22 +165,23 @@ def chebyshev_density(x, psi, support):
 # chebushev stieltjes
 # ===================
 
-def chebyshev_stieltjes(z, psi, support, continuation='pade'):
+def chebyshev_stieltjes(z, psi, support, continuation='pade',
+                        dtype=numpy.complex128):
     """
-    Compute the Stieltjes transform m(z) for a Chebyshev‐II expansion
+    Compute the Stieltjes transform m(z) for a Chebyshev-II expansion
 
-    rho(x) = (2/(lam_p - lam_m)) * sqrt(1−t(x)^2) * sum_{k=0}^K psi_k U_k(t(x))
+    rho(x) = (2/(lam_p - lam_m)) * sqrt(1-t(x)^2) * sum_{k=0}^K psi_k U_k(t(x))
 
-    via the closed‐form
+    via the closed-form
 
-      \\int_{-1}^1 U_k(t) sqrt(1−t^2)/(u - t) dt = \\pi J(u)^(k+1),
+      \\int_{-1}^1 U_k(t) sqrt(1-t^2)/(u - t) dt = \\pi J(u)^(k+1),
 
     where
 
-      u = (2(z−center))/span,
+      u = (2(z-center))/span,
       center = (lam_p + lam_m)/2,
       span = lam_p - lam_m,
-      J(u) = u − sqrt(u^2−1)
+      J(u) = u - sqrt(u^2-1)
 
     and then
 
@@ -193,13 +194,16 @@ def chebyshev_stieltjes(z, psi, support, continuation='pade'):
         Points in the complex plane.
 
     psi : array_like, shape (K+1,)
-        Chebyshev‐II coefficients \\psi.
+        Chebyshev-II coefficients \\psi.
 
     support : tuple
         The support interval of the original density.
 
     continuation : str, default= ``'pade'``
         Methof of analytiv continuation.
+
+    dtype : numpy.type, default=numpy.complex128
+        Data type for compelx arrays. This might enhance series acceleration.
 
     Returns
     -------
@@ -208,7 +212,8 @@ def chebyshev_stieltjes(z, psi, support, continuation='pade'):
         The Stieltjes transform m(z) on the same shape as z.
     """
 
-    z = numpy.asarray(z, dtype=numpy.complex128)
+    z = numpy.asarray(z, dtype=dtype)
+
     lam_m, lam_p = support
     span = lam_p - lam_m
     center = 0.5 * (lam_m + lam_p)
@@ -236,7 +241,7 @@ def chebyshev_stieltjes(z, psi, support, continuation='pade'):
 
     else:
         # Flatten J before passing to Wynn method.
-        psi_zero = numpy.concatenate([[0], psi])
+        psi_zero = numpy.concatenate([[0.0], psi])
         Sn = partial_sum(psi_zero, J.ravel(), p=0)
 
         if continuation == 'wynn-eps':

@@ -567,7 +567,8 @@ def _newton_method(f, z_init, a, support, enforce_wall=False, tol=1e-4,
 
 def _secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
                     alpha=0.5, max_bt=1, eps=1e-30, step_factor=5.0,
-                    post_smooth=True, jump_tol=10.0, verbose=False):
+                    post_smooth=True, jump_tol=10.0, dtype=numpy.complex128,
+                    verbose=False):
     """
     Solves :math:``f(z) = a`` for many starting points simultaneously using the
     secant method in the complex plane.
@@ -581,7 +582,7 @@ def _secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
         Two initial guesses. ``z1`` may be broadcast to ``z0``.
 
     a : complex or array_like, optional
-        Right‑hand‑side targets (broadcasted to ``z0``). Defaults to ``0+0j``.
+        Right-hand-side targets (broadcasted to ``z0``). Defaults to ``0+0j``.
 
     tol : float, optional
         Convergence criterion on ``|f(z) - a|``. Defaults to ``1e-12``.
@@ -590,10 +591,10 @@ def _secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
         Maximum number of secant iterations. Defaults to ``100``.
 
     alpha : float, optional
-        Back‑tracking shrink factor (``0 < alpha < 1``). Defaults to ``0.5``.
+        Back-tracking shrink factor (``0 < alpha < 1``). Defaults to ``0.5``.
 
     max_bt : int, optional
-        Maximum back‑tracking trials per iteration. Defaults to ``0``.
+        Maximum back-tracking trials per iteration. Defaults to ``0``.
 
     eps : float, optional
         Safeguard added to tiny denominators. Defaults to ``1e-30``.
@@ -606,6 +607,9 @@ def _secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
     jump_tol : float, optional
         Sensitivity of the clean-up pass; larger tolerance implies fewer
         re-solves.
+
+    dtype : {``'complex128'``, ``'complex256'``}, default = ``'complex128'``
+        Data type for inner computations of complex variables.
 
     verbose : bool, optional
         If *True*, prints progress every 10 iterations.
@@ -622,9 +626,9 @@ def _secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
 
     # Broadcast inputs
     z0, z1, a = numpy.broadcast_arrays(
-        numpy.asarray(z0, numpy.complex128),
-        numpy.asarray(z1, numpy.complex128),
-        numpy.asarray(a,  numpy.complex128),
+        numpy.asarray(z0, dtype=dtype),
+        numpy.asarray(z1, dtype=dtype),
+        numpy.asarray(a, dtype=dtype),
     )
     orig_shape = z0.shape
     z0, z1, a = (x.ravel() for x in (z0, z1, a))
@@ -677,7 +681,7 @@ def _secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
                 if not worse.any():
                     break
 
-        # Book‑keeping
+        # Book-keeping
         newly_conv = (numpy.abs(f2) < tol) & active
         converged[newly_conv] = True
         iterations[newly_conv] = k + 1
@@ -691,7 +695,7 @@ def _secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
         if verbose and k % 10 == 0:
             print(f"Iter {k}: {converged.sum()} / {n_points} converged")
 
-    # Non‑converged points
+    # Non-converged points
     remaining = ~converged
     roots[remaining] = z1[remaining]
     residuals[remaining] = numpy.abs(f1[remaining])
@@ -723,7 +727,7 @@ def _secant_complex(f, z0, z1, a=0+0j, tol=1e-12, max_iter=100,
             new_root, new_res, new_iter = _secant_complex(
                 f, z_first, z_second, a[bad], tol=tol, max_iter=max_iter,
                 alpha=alpha, max_bt=max_bt, eps=eps, step_factor=step_factor,
-                post_smooth=False,  # avoid recursion
+                dtype=dtype, post_smooth=False,  # avoid recursion
             )
 
             roots[bad] = new_root
@@ -894,7 +898,7 @@ def decompress(freeform, alpha, x, roots_init=None, method='newton',
     # Initialize roots below the real axis
     if roots_init is None:
         roots_init = numpy.full(x.shape, numpy.mean(freeform.support) - 0.1j,
-                                dtype=numpy.complex128)
+                                dtype=freeform.dtype)
 
     # Finding roots
     if method == 'newton':
@@ -925,11 +929,11 @@ def decompress(freeform, alpha, x, roots_init=None, method='newton',
 
     elif method == 'secant':
         z0 = numpy.full(x.shape, numpy.mean(freeform.support) + 0.1j,
-                        dtype=numpy.complex128)
+                        dtype=freeform.dtype)
         z1 = z0 - 0.2j
 
         roots, _, _ = _secant_complex(_char_z, z0, z1, a=target, tol=tolerance,
-                                      max_iter=max_iter)
+                                      max_iter=max_iter, dtype=freeform.dtype)
     else:
         raise NotImplementedError('"method" is invalid.')
 
@@ -960,7 +964,8 @@ def decompress(freeform, alpha, x, roots_init=None, method='newton',
 # =======================
 
 def reverse_characteristics(freeform, z_inits, T, iterations=500,
-                            step_size=0.1, tolerance=1e-8):
+                            step_size=0.1, tolerance=1e-8,
+                            dtype=numpy.complex128):
     """
     """
 
@@ -975,7 +980,7 @@ def reverse_characteristics(freeform, z_inits, T, iterations=500,
     target_z, target_t = numpy.meshgrid(z_inits, t_eval)
 
     z = numpy.full(target_z.shape, numpy.mean(freeform.support) - 0.1j,
-                   dtype=numpy.complex128)
+                   dtype=dtype)
 
     # Broken Newton steps can produce a lot of warnings. Removing them for now.
     with numpy.errstate(all='ignore'):

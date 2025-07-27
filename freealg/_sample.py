@@ -15,7 +15,7 @@ from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import PchipInterpolator
 from scipy.stats import qmc
 
-__all__ = ['qmc_sample']
+__all__ = ['sample']
 
 
 # =============
@@ -32,60 +32,75 @@ def _quantile_func(x, rho, clamp=1e-4, eps=1e-8):
     rho_clamp[rho < clamp] = eps
     cdf = cumulative_trapezoid(rho_clamp, x, initial=0)
     cdf /= cdf[-1]
+    cdf_inv = PchipInterpolator(cdf, x, extrapolate=False)
 
-    return PchipInterpolator(cdf, x, extrapolate=False)
+    return cdf_inv
 
 
-# ==========
-# qmc sample
-# ==========
+# ======
+# sample
+# ======
 
-def qmc_sample(x, rho, num_pts, seed=None):
+def sample(x, rho, num_pts, method='qmc', seed=None):
     """
-    Low-discrepancy sampling from a univariate density estimate using
-    Quasi-Monte Carlo.
+    Low-discrepancy sampling from density estimate.
 
     Parameters
     ----------
 
-    x : numpy.array, shape (n,)
-        Sorted abscissae at which the density has been evaluated.
+    x : numpy.array
+        Sorted abscissae at which the density has been evaluated. Shape `(n,)`.
 
-    rho : numpy.array, shape (n,)
+    rho : numpy.array
         Density values corresponding to `x`. Must be non-negative and define
         a valid probability density (i.e., integrate to 1 over the support).
+        Shape `(n,)`.
 
     num_pts : int
         Number of sample points to generate from the density estimate.
+
+    method : {``'mc'``, ``'qmc'``}, default= ``'qmc'``
+        Method of drawing samples from uniform distribution:
+
+        * ``'mc'``: Monte Carlo
+        * ``'qmc'``: Quasi Monte Carlo
 
     seed : int, default=None
         Seed for random number generator
 
     Returns
     -------
+
     samples : numpy.array, shape (num_pts,)
         Samples drawn from the estimated density using a one-dimensional Halton
         sequence mapped through the estimated quantile function.
 
     See Also
     --------
-    scipy.stats.qmc.Halton
-        Underlying Quasi-Monte Carlo engine used for generating low-discrepancy
-        points.
+
+    freealg.supp
+    freealg.kde
+
+    Notes
+    -----
+
+    The underlying Quasi-Monte Carlo engine uses ``scipy.stats.qmc.Halton``
+    function for generating low-discrepancy points.
 
     Examples
     --------
 
     .. code-block:: python
+        :emphasize-lines: 8
 
         >>> import numpy
-        >>> from freealg import qmc_sample
+        >>> from freealg import sample
 
         >>> # density of Beta(3,1) on [0,1]
         >>> x = numpy.linspace(0, 1, 200)
         >>> rho = 3 * x**2
 
-        >>> samples = qmc_sample(x, rho, num_pts=1000)
+        >>> samples = sample(x, rho, num_pts=1000, method='qmc')
         >>> assert samples.shape == (1000,)
 
         >>> # Empirical mean should be close to 3/4
@@ -94,8 +109,17 @@ def qmc_sample(x, rho, num_pts, seed=None):
 
     rng = numpy.random.default_rng(seed)
     quantile = _quantile_func(x, rho)
-    engine = qmc.Halton(d=1, rng=rng)
-    u = engine.random(num_pts)
+
+    # Draw from uniform distribution
+    if method == 'mc':
+        u = rng.random(num_pts)
+    elif method == 'qmc':
+        engine = qmc.Halton(d=1, rng=rng)
+        u = engine.random(num_pts)
+    else:
+        raise NotImplementedError('"method" is invalid.')
+
+    # Draw from distribution by mapping from inverse CDF
     samples = quantile(u)
 
     return samples.ravel()

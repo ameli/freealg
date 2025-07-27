@@ -27,8 +27,8 @@ def _default_poles(q, lam_m, lam_p, safety=1.0, odd_side='left'):
     """
     Generate q real poles outside [lam_m, lam_p].
 
-    • even q  : q/2 on each side (Chebyshev-like layout)
-    • odd  q  : (q+1)/2 on the *left*,  (q–1)/2 on the right
+    * even q  : q/2 on each side (Chebyshev-like layout)
+    * odd  q  : (q+1)/2 on the *left*,  (q-1)/2 on the right
                 so q=1 => single pole on whichever side `odd_side` says.
 
     safety >= 1: 1, then poles start half an interval away; >1 pushes them
@@ -73,13 +73,13 @@ def _default_poles(q, lam_m, lam_p, safety=1.0, odd_side='left'):
 
 def _encode_poles(a, lam_m, lam_p):
     """
-    Map real pole a_j → unconstrained s_j,
+    Map real pole a_j => unconstrained s_j,
     so that the default left-of-interval pole stays left.
     """
 
     # half-width of the interval
     d = 0.5 * (lam_p - lam_m)
-    # if a < lam_m, we want s ≥ 0; if a > lam_p, s < 0
+    # if a < lam_m, we want s >= 0; if a > lam_p, s < 0
     return numpy.where(
         a < lam_m,
         numpy.log((lam_m - a) / d),   # zero at a = lam_m - d
@@ -93,13 +93,13 @@ def _encode_poles(a, lam_m, lam_p):
 
 def _decode_poles(s, lam_m, lam_p):
     """
-    Inverse map s_j → real pole a_j outside the interval.
+    Inverse map s_j => real pole a_j outside the interval.
     """
 
     d = 0.5 * (lam_p - lam_m)
     return numpy.where(
         s >= 0,
-        lam_m - d * numpy.exp(s),     # maps s=0 to a=lam_m−d (left)
+        lam_m - d * numpy.exp(s),     # maps s=0 to a=lam_m-d (left)
         lam_p + d * numpy.exp(-s)     # maps s=0 to a=lam_p+d (right)
     )
 
@@ -186,7 +186,7 @@ def _inner_ls(x, f, poles, p=1, pade_reg=0.0):
             else:
                 skip = 0     # all entries are residues
 
-            # add λ only for the residue positions
+            # add lambda only for the residue positions
             n = ATA.shape[0]
             for i in range(skip, n):
                 ATA[i, i] += pade_reg
@@ -343,7 +343,7 @@ def eval_pade(z, pade_sol):
     """
 
     # z_arr = numpy.asanyarray(z)                   # shape=(M,N)
-    # flat = z_arr.ravel()                          # shape=(M·N,)
+    # flat = z_arr.ravel()                          # shape=(M*N,)
     # c, D = pade_sol['c'], pade_sol['D']
     # poles = pade_sol['poles']
     # resid = pade_sol['resid']
@@ -362,7 +362,7 @@ def eval_pade(z, pade_sol):
 
     out = c + D*z
     for bj, rj in zip(poles, resid):
-        out += rj/(z - bj)       # each is an (N,) op, no N×q temp
+        out += rj/(z - bj)       # each is an (N,) op, no N*q temp
     return out
 
 
@@ -384,7 +384,7 @@ def fit_pade_old(x, f, lam_m, lam_p, p, q, delta=1e-8, B=numpy.inf,
       b_j in (-infty, lam_m - delta] cup [lam_p + delta, infty)
 
     Approach:
-      - Brute‐force all 2^q left/right assignments for denominator roots
+      - Brute-force all 2^q left/right assignments for denominator roots
       - Global search with differential_evolution, fallback to zeros if needed
       - Local refinement with least_squares
 

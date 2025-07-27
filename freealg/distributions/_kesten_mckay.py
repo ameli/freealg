@@ -78,7 +78,7 @@ class KestenMcKay(object):
     ----------
 
     .. [1] Kesten, H. (1959). Symmetric random walks on groups. Transactions of
-           the American Mathematical Society, 92(2), 336–354.
+           the American Mathematical Society, 92(2), 336-354.
 
     .. [2] McKay, B. D. (1981). The expected eigenvalue distribution of a large
            regular graph. Linear Algebra and its Applications, 40, 203-216

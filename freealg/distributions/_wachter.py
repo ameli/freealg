@@ -290,7 +290,7 @@ class Wachter(object):
         m1 = (-B + sqrtD) / (2 * A)
         m2 = (-B - sqrtD) / (2 * A)
 
-        # pick correct branch only for non‑masked entries
+        # pick correct branch only for non-masked entries
         upper = z.imag >= 0
         branch = numpy.empty_like(m1)
         branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],

@@ -12,10 +12,8 @@
 # =======
 
 import numpy
-from scipy.stats import gaussian_kde
-# from statsmodels.nonparametric.kde import KDEUnivariate
 from functools import partial
-from ._util import compute_eig, beta_kde, force_density
+from ._util import resolve_complex_dtype, compute_eig, kde, force_density
 from ._jacobi import jacobi_sample_proj, jacobi_kernel_proj, jacobi_density, \
     jacobi_stieltjes
 from ._chebyshev import chebyshev_sample_proj, chebyshev_kernel_proj, \
@@ -25,8 +23,8 @@ from ._damp import jackson_damping, lanczos_damping, fejer_damping, \
 from ._plot_util import plot_fit, plot_density, plot_hilbert, plot_stieltjes
 from ._pade import fit_pade, eval_pade
 from ._decompress import decompress
-from ._sample import qmc_sample
-from ._support import detect_support
+from ._sample import sample
+from ._support import supp
 
 # Fallback to previous numpy API
 if not hasattr(numpy, 'trapezoid'):
@@ -59,8 +57,21 @@ class FreeForm(object):
         Size of perturbations into the upper half plane for Plemelj's
         formula.
 
+    dtype : {``'complex128'``, ``'complex256'``}, default = ``'complex128'``
+        Data type for inner computations of complex variables:
+
+        * ``'complex128'``: 128-bit complex numbers, equivalent of two double
+          precision floating point.
+        * ``'complex256'``: 256-bit complex numbers, equivalent of two long
+          double precision floating point. This optino is only available on
+          Linux machines.
+
+        When using series acceleration methods (such as setting
+        ``continuation`` in :func:`fit` function to ``wynn-eps``), setting a
+        higher precision floating point arithmetics might improve conference.
+
     **kwargs : dict, optional
-        Parameters for the ``detect_support`` function can also be prescribed
+        Parameters for the :func:`supp` function can also be prescribed
         here when ``support=None``.
 
     Notes
@@ -135,7 +146,8 @@ class FreeForm(object):
     # init
     # ====
 
-    def __init__(self, A, support=None, delta=1e-6, **kwargs):
+    def __init__(self, A, support=None, delta=1e-6, dtype='complex128',
+                 **kwargs):
         """
         Initialization.
         """
@@ -143,6 +155,9 @@ class FreeForm(object):
         self.A = None
         self.eig = None
         self.delta = delta    # Offset above real axis to apply Plemelj formula
+
+        # Data type for complex arrays
+        self.dtype = resolve_complex_dtype(dtype)
 
         # Eigenvalues
         if A.ndim == 1:
@@ -160,7 +175,8 @@ class FreeForm(object):
 
         # Support
         if support is None:
-            self.lam_m, self.lam_p = detect_support(self.eig, **kwargs)
+            # Detect support
+            self.lam_m, self.lam_p = supp(self.eig, **kwargs)
         else:
             self.lam_m = support[0]
             self.lam_p = support[1]
@@ -234,7 +250,7 @@ class FreeForm(object):
             If `True`, it forces the density to have unit mass and to be
             strictly positive.
 
-        continuation : {``'pade'``, ``'wynn-eps'``, ``'wynn-rho'``,
+        continuation : {``'pade'``, ``'wynn-eps'``, ``'wynn-rho'``, \
             ``'levin'``, ``'weniger'``, ``'brezinski'``}, default= ``'pade'``
             Method of analytic continuation to construct the second branch of
             Steltjes transform in the lower-half complex plane:
@@ -242,10 +258,12 @@ class FreeForm(object):
             * ``'pade'``: using Riemann-Hilbert problem with Pade
               approximation.
             * ``'wynn-eps'``: Wynn's :math:`\\epsilon` algorithm.
-            * ``'wynn-rho'``: Wynn's :math:`\\rho` algorithm.
-            * ``'levin'``: Levin's :math:`u` transform.
-            * ``'weniger'``: Weniger's :math:`\\delta^2` algorithm.
-            * ``'brezinski'``: Brezinski's :math:`\\theta` algorithm.
+            * ``'wynn-rho'``: Wynn's :math:`\\rho` algorithm (`experimental`).
+            * ``'levin'``: Levin's :math:`u` transform (`experimental`).
+            * ``'weniger'``: Weniger's :math:`\\delta^2` algorithm
+              (`experimental`).
+            * ``'brezinski'``: Brezinski's :math:`\\theta` algorithm
+              (`experimental`).
 
         pade_p : int, default=0
             Degree of polynomial :math:`P(z)` is :math:`q+p` where :math:`p`
@@ -336,53 +354,35 @@ class FreeForm(object):
             if projection == 'sample':
                 psi = jacobi_sample_proj(self.eig, support=self.support, K=K,
                                          alpha=alpha, beta=beta, reg=reg)
-            else:
+            elif projection in ['gaussian', 'beta']:
                 # smooth KDE on a fixed grid
                 xs = numpy.linspace(self.lam_m, self.lam_p, 2000)
 
-                if projection == 'gaussian':
-                    pdf = gaussian_kde(self.eig, bw_method=kernel_bw)(xs)
-                else:
-                    pdf = beta_kde(self.eig, xs, self.lam_m, self.lam_p,
-                                   kernel_bw)
-
-                # Adaptive KDE
-                # k = KDEUnivariate(self.eig)
-                # k.fit(bw="silverman", fft=False, weights=None, gridsize=1024,
-                #       adaptive=True)
-                # pdf = k.evaluate(xs)
-
-                # import matplotlib.pyplot as plt
-                # plt.plot(xs, pdf)
-                # plt.grid(True)
-                # plt.show()
+                pdf = kde(self.eig, xs, self.lam_m, self.lam_p, kernel_bw,
+                          kernel=projection)
 
                 psi = jacobi_kernel_proj(xs, pdf, support=self.support, K=K,
                                          alpha=alpha, beta=beta, reg=reg)
+            else:
+                raise NotImplementedError('"projection" is invalid.')
 
         elif method == 'chebyshev':
 
             if projection == 'sample':
                 psi = chebyshev_sample_proj(self.eig, support=self.support,
                                             K=K, reg=reg)
-            else:
+            elif projection in ['gaussian', 'beta']:
                 # smooth KDE on a fixed grid
                 xs = numpy.linspace(self.lam_m, self.lam_p, 2000)
 
-                if projection == 'gaussian':
-                    pdf = gaussian_kde(self.eig, bw_method=kernel_bw)(xs)
-                else:
-                    pdf = beta_kde(self.eig, xs, self.lam_m, self.lam_p,
-                                   kernel_bw)
-
-                # Adaptive KDE
-                # k = KDEUnivariate(self.eig)
-                # k.fit(bw="silverman", fft=False, weights=None, gridsize=1024,
-                #       adaptive=True)
-                # pdf = k.evaluate(xs)
+                pdf = kde(self.eig, xs, self.lam_m, self.lam_p, kernel_bw,
+                          kernel=projection)
 
                 psi = chebyshev_kernel_proj(xs, pdf, support=self.support,
                                             K=K, reg=reg)
+            else:
+                raise NotImplementedError('"projection" is invalid.')
+
         else:
             raise NotImplementedError('"method" is invalid.')
 
@@ -639,8 +639,8 @@ class FreeForm(object):
         diff = x[:, None] - x_s[None, :]
         D = rho_s[None, :] / diff
 
-        # Principal‐value: wherever t == x_i, then diff == 0, zero that entry
-        # (numpy.isclose handles floating‐point exactly)
+        # Principal-value: wherever t == x_i, then diff == 0, zero that entry
+        # (numpy.isclose handles floating-point exactly)
         D[numpy.isclose(diff, 0.0)] = 0.0
 
         # Integrate each row over t using trapezoid rule on x_s
@@ -825,13 +825,15 @@ class FreeForm(object):
         if self.method == 'jacobi':
             stieltjes = partial(jacobi_stieltjes, psi=self.psi,
                                 support=self.support, alpha=self.alpha,
-                                beta=self.beta, continuation=self.continuation)
+                                beta=self.beta, continuation=self.continuation,
+                                dtype=self.dtype)
             # n_base = n_base
 
         elif self.method == 'chebyshev':
             stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
                                 support=self.support,
-                                continuation=self.continuation)
+                                continuation=self.continuation,
+                                dtype=self.dtype)
 
         mask_p = z.imag >= 0.0
         mask_m = z.imag < 0.0
@@ -1002,7 +1004,7 @@ class FreeForm(object):
             # Initial guess for roots (only for the first iteration)
             # if i == 0:
             #     roots = numpy.full(x.shape, numpy.mean(self.support) - 0.1j,
-            #                        dtype=numpy.complex128)
+            #                        dtype=self.dtype)
             roots = None
 
             rho[i, :], roots = decompress(
@@ -1081,7 +1083,7 @@ class FreeForm(object):
             size = self.n
 
         rho, x = self.decompress(size, **kwargs)
-        eigs = numpy.sort(qmc_sample(x, rho, size, seed=seed))
+        eigs = numpy.sort(sample(x, rho, size, method='qmc', seed=seed))
 
         return eigs
 
