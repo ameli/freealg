@@ -16,14 +16,14 @@ The following classes core implementations defining the free objects.
 
     freealg.FreeForm
 
-Functions
----------
+Linear Algebra
+--------------
 
 The followings are the free version of some of the common `linalg` functions.
 
 .. autosummary::
     :toctree: generated
-    :caption: Functions
+    :caption: Linear Algebra
     :recursive:
     :template: autosummary/member.rst
 
@@ -33,14 +33,29 @@ The followings are the free version of some of the common `linalg` functions.
     freealg.trace
     freealg.slogdet
 
-Distributions
---------------
+Distribution Tools
+------------------
 
-The following classes define classical random ennobles.
+The following functions are utilities for distributions.
 
 .. autosummary::
     :toctree: generated
-    :caption: Distributions
+    :caption: Distribution Tools
+    :recursive:
+    :template: autosummary/member.rst
+
+    freealg.supp
+    freealg.sample
+    freealg.kde
+
+Classical Distributions
+-----------------------
+
+The following classes define classical random ensembles.
+
+.. autosummary::
+    :toctree: generated
+    :caption: Classical Distributions
     :recursive:
     :template: autosummary/class.rst
 

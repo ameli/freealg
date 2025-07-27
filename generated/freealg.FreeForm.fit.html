@@ -260,7 +260,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Functions
+  Linear Algebra
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -292,7 +292,29 @@
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Distributions
+  Distribution Tools
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.supp.html">
+   freealg.supp
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.sample.html">
+   freealg.sample
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.kde.html">
+   freealg.kde
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Classical Distributions
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -426,17 +448,18 @@ relevant if <code class="docutils literal notranslate"><span class="pre">project
 <dt><strong>force</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, it forces the density to have unit mass and to be
 strictly positive.</p>
 </dd>
-<dt><strong>continuation</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'pade'</span></code>, <code class="docutils literal notranslate"><span class="pre">'wynn-eps'</span></code>, <code class="docutils literal notranslate"><span class="pre">'wynn-rho'</span></code>,</span></dt><dd><p><code class="docutils literal notranslate"><span class="pre">'levin'</span></code>, <code class="docutils literal notranslate"><span class="pre">'weniger'</span></code>, <code class="docutils literal notranslate"><span class="pre">'brezinski'</span></code>}, default= <code class="docutils literal notranslate"><span class="pre">'pade'</span></code>
-Method of analytic continuation to construct the second branch of
+<dt><strong>continuation</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'pade'</span></code>, <code class="docutils literal notranslate"><span class="pre">'wynn-eps'</span></code>, <code class="docutils literal notranslate"><span class="pre">'wynn-rho'</span></code>,             <code class="docutils literal notranslate"><span class="pre">'levin'</span></code>, <code class="docutils literal notranslate"><span class="pre">'weniger'</span></code>, <code class="docutils literal notranslate"><span class="pre">'brezinski'</span></code>}, default= <code class="docutils literal notranslate"><span class="pre">'pade'</span></code></span></dt><dd><p>Method of analytic continuation to construct the second branch of
 Steltjes transform in the lower-half complex plane:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">'pade'</span></code>: using Riemann-Hilbert problem with Pade
 approximation.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">'wynn-eps'</span></code>: Wynn’s <span class="math notranslate nohighlight">\(\epsilon\)</span> algorithm.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">'wynn-rho'</span></code>: Wynn’s <span class="math notranslate nohighlight">\(\rho\)</span> algorithm.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">'levin'</span></code>: Levin’s <span class="math notranslate nohighlight">\(u\)</span> transform.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">'weniger'</span></code>: Weniger’s <span class="math notranslate nohighlight">\(\delta^2\)</span> algorithm.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">'brezinski'</span></code>: Brezinski’s <span class="math notranslate nohighlight">\(\theta\)</span> algorithm.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'wynn-rho'</span></code>: Wynn’s <span class="math notranslate nohighlight">\(\rho\)</span> algorithm (<cite>experimental</cite>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'levin'</span></code>: Levin’s <span class="math notranslate nohighlight">\(u\)</span> transform (<cite>experimental</cite>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'weniger'</span></code>: Weniger’s <span class="math notranslate nohighlight">\(\delta^2\)</span> algorithm
+(<cite>experimental</cite>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'brezinski'</span></code>: Brezinski’s <span class="math notranslate nohighlight">\(\theta\)</span> algorithm
+(<cite>experimental</cite>).</p></li>
 </ul>
 </dd>
 <dt><strong>pade_p</strong><span class="classifier">int, default=0</span></dt><dd><p>Degree of polynomial <span class="math notranslate nohighlight">\(P(z)\)</span> is <span class="math notranslate nohighlight">\(q+p\)</span> where <span class="math notranslate nohighlight">\(p\)</span>

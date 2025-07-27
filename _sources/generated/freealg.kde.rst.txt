@@ -1,0 +1,6 @@
+﻿freealg.kde
+===========
+
+.. currentmodule:: freealg
+
+.. autofunction:: kde

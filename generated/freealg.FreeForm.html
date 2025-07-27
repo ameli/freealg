@@ -260,7 +260,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Functions
+  Linear Algebra
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -292,7 +292,29 @@
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Distributions
+  Distribution Tools
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.supp.html">
+   freealg.supp
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.sample.html">
+   freealg.sample
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.kde.html">
+   freealg.kde
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Classical Distributions
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -385,11 +407,11 @@
 <h1>freealg.FreeForm<a class="headerlink" href="#freealg-freeform" title="Permalink to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="freealg.FreeForm">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">FreeForm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">FreeForm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'complex128'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.FreeForm" title="Permalink to this definition">#</a></dt>
 <dd><p>Free probability for large matrices.</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
+<dd class="field-odd"><dl>
 <dt><strong>A</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>The 2D symmetric <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>. The eigenvalues of this will be
 computed upon calling this class. If a 1D array provided, it is
 assumed to be the eigenvalues of <span class="math notranslate nohighlight">\(\mathbf{A}\)</span>.</p>
@@ -400,7 +422,19 @@ estimated from the minimum and maximum of the eigenvalues.</p>
 <dt><strong>delta: float, default=1e-6</strong></dt><dd><p>Size of perturbations into the upper half plane for Plemelj’s
 formula.</p>
 </dd>
-<dt><strong>**kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Parameters for the <code class="docutils literal notranslate"><span class="pre">detect_support</span></code> function can also be prescribed
+<dt><strong>dtype</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'complex128'</span></code>, <code class="docutils literal notranslate"><span class="pre">'complex256'</span></code>}, default = <code class="docutils literal notranslate"><span class="pre">'complex128'</span></code></span></dt><dd><p>Data type for inner computations of complex variables:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'complex128'</span></code>: 128-bit complex numbers, equivalent of two double
+precision floating point.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'complex256'</span></code>: 256-bit complex numbers, equivalent of two long
+double precision floating point. This optino is only available on
+Linux machines.</p></li>
+</ul>
+<p>When using series acceleration methods (such as setting
+<code class="docutils literal notranslate"><span class="pre">continuation</span></code> in <a class="reference internal" href="freealg.FreeForm.fit.html#freealg.FreeForm.fit" title="freealg.FreeForm.fit"><code class="xref py py-func docutils literal notranslate"><span class="pre">fit()</span></code></a> function to <code class="docutils literal notranslate"><span class="pre">wynn-eps</span></code>), setting a
+higher precision floating point arithmetics might improve conference.</p>
+</dd>
+<dt><strong>**kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Parameters for the <a class="reference internal" href="freealg.supp.html#freealg.supp" title="freealg.supp"><code class="xref py py-func docutils literal notranslate"><span class="pre">supp()</span></code></a> function can also be prescribed
 here when <code class="docutils literal notranslate"><span class="pre">support=None</span></code>.</p>
 </dd>
 </dl>

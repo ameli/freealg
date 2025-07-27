@@ -1,0 +1,6 @@
+﻿freealg.supp
+============
+
+.. currentmodule:: freealg
+
+.. autofunction:: supp

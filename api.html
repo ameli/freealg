@@ -11,10 +11,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://ameli.github.io/api.html" />
 <meta property="og:site_name" content="FreeAlg" />
-<meta property="og:description" content="Free Forms: The following classes core implementations defining the free objects. Functions: The followings are the free version of some of the common linalg functions. Distributions: The following classes define classical random ennobles." />
+<meta property="og:description" content="Free Forms: The following classes core implementations defining the free objects. Linear Algebra: The followings are the free version of some of the common linalg functions. Distribution Tools: The following functions are utilities for distributions. Classical Distributions: The following classes..." />
 <meta property="og:image" content="https://raw.githubusercontent.com/ameli/freealg/main/docs/source/_static/images/icons/logo-freealg-light.svg" />
 <meta property="og:image:alt" content="FreeAlg" />
-<meta name="description" content="Free Forms: The following classes core implementations defining the free objects. Functions: The followings are the free version of some of the common linalg functions. Distributions: The following classes define classical random ennobles." />
+<meta name="description" content="Free Forms: The following classes core implementations defining the free objects. Linear Algebra: The followings are the free version of some of the common linalg functions. Distribution Tools: The following functions are utilities for distributions. Classical Distributions: The following classes..." />
 <meta property="og:title" content="freealg">
 <meta property="og:description" content="FreeAlg is a python package for applying free probability on large matrices.">
 
@@ -203,7 +203,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Functions
+  Linear Algebra
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -235,7 +235,29 @@
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Distributions
+  Distribution Tools
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.supp.html">
+   freealg.supp
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.sample.html">
+   freealg.sample
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.kde.html">
+   freealg.kde
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Classical Distributions
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -295,13 +317,18 @@
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#functions">
-   Functions
+  <a class="reference internal nav-link" href="#linear-algebra">
+   Linear Algebra
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#distributions">
-   Distributions
+  <a class="reference internal nav-link" href="#distribution-tools">
+   Distribution Tools
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#classical-distributions">
+   Classical Distributions
   </a>
  </li>
 </ul>
@@ -337,14 +364,14 @@
 <p>The following classes core implementations defining the free objects.</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.FreeForm.html#freealg.FreeForm" title="freealg.FreeForm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.FreeForm</span></code></a>(A[, support, delta])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.FreeForm.html#freealg.FreeForm" title="freealg.FreeForm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.FreeForm</span></code></a>(A[, support, delta, dtype])</p></td>
 <td><p>Free probability for large matrices.</p></td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">#</a></h2>
+<section id="linear-algebra">
+<h2>Linear Algebra<a class="headerlink" href="#linear-algebra" title="Permalink to this heading">#</a></h2>
 <p>The followings are the free version of some of the common <cite>linalg</cite> functions.</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
@@ -366,9 +393,26 @@
 </tbody>
 </table>
 </section>
-<section id="distributions">
-<h2>Distributions<a class="headerlink" href="#distributions" title="Permalink to this heading">#</a></h2>
-<p>The following classes define classical random ennobles.</p>
+<section id="distribution-tools">
+<h2>Distribution Tools<a class="headerlink" href="#distribution-tools" title="Permalink to this heading">#</a></h2>
+<p>The following functions are utilities for distributions.</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.supp.html#freealg.supp" title="freealg.supp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.supp</span></code></a>(eigs[, method, k, p])</p></td>
+<td><p>Estimates the support of the eigenvalue density.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.sample.html#freealg.sample" title="freealg.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.sample</span></code></a>(x, rho, num_pts[, method, seed])</p></td>
+<td><p>Low-discrepancy sampling from density estimate.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.kde.html#freealg.kde" title="freealg.kde"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.kde</span></code></a>(eig, xs, lam_m, lam_p, h[, ...])</p></td>
+<td><p>Kernel density estimation of eigenvalues.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="classical-distributions">
+<h2>Classical Distributions<a class="headerlink" href="#classical-distributions" title="Permalink to this heading">#</a></h2>
+<p>The following classes define classical random ensembles.</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.distributions.MarchenkoPastur.html#freealg.distributions.MarchenkoPastur" title="freealg.distributions.MarchenkoPastur"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.MarchenkoPastur</span></code></a>(lam)</p></td>

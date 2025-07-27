@@ -1,0 +1,6 @@
+﻿freealg.sample
+==============
+
+.. currentmodule:: freealg
+
+.. autofunction:: sample
