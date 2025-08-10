@@ -144,7 +144,7 @@ Estimate Stieltjes transform with :class:`freealg.FreeForm.stieltjes`:
 
     >>> x = numpy.linspace(lam_m-1.5, lam_p+1.5, 300)
     >>> y = numpy.linspace(-1.5, 1.5, 200)
-    >>> mp, mm = ff.stieltjes(x, y, p=2, q=2, plot=True)
+    >>> mp, mm = ff.stieltjes(x, y, plot=True)
 
 .. image:: _static/images/plots/qs_stieltjes.png
     :align: center
@@ -156,7 +156,7 @@ Decompress spectral density to a larger matrix with
 
 .. code-block:: python
 
-    >>> rho = ff.decompress(100000, plot=True)
+    >>> rho = ff.decompress(100_000, plot=True)
 
 .. image:: _static/images/plots/qs_decompress.png
     :align: center

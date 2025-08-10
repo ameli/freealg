@@ -178,9 +178,12 @@ class FreeForm(object):
             # Detect support
             self.lam_m, self.lam_p = supp(self.eig, **kwargs)
         else:
-            self.lam_m = support[0]
-            self.lam_p = support[1]
+            self.lam_m = float(support[0])
+            self.lam_p = float(support[1])
         self.support = (self.lam_m, self.lam_p)
+
+        # Number of quadrature points to evaluate Stieltjes using Gauss-Jacobi
+        self.n_quad = None
 
         # Initialize
         self.method = None                 # fitting rho: jacobi, chebyshev
@@ -189,15 +192,17 @@ class FreeForm(object):
         self.psi = None                    # coefficients of estimating rho
         self.alpha = None                  # Jacobi polynomials alpha parameter
         self.beta = None                   # Jacobi polynomials beta parameter
+        self.cache = {}                    # Cache inner-computations
 
     # ===
     # fit
     # ===
 
-    def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, reg=0.0,
-            projection='gaussian', kernel_bw=0.001, damp=None, force=False,
-            continuation='pade', pade_p=0, pade_q=1, odd_side='left',
-            pade_reg=0.0, optimizer='ls', plot=False, latex=False, save=False):
+    def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, n_quad=60,
+            reg=0.0, projection='gaussian', kernel_bw=0.001, damp=None,
+            force=False, continuation='pade', pade_p=0, pade_q=1,
+            odd_side='left', pade_reg=0.0, optimizer='ls', plot=False,
+            latex=False, save=False):
         """
         Fit model to eigenvalues.
 
@@ -220,6 +225,11 @@ class FreeForm(object):
             Jacobi parameter :math:`\\beta`. Determines the slope of the
             fitting model on the left side of interval. This should be greater
             then -1. This option is only applicable when ``method='jacobi'``.
+
+        n_quad : int, default=60
+            Number of quadrature points to evaluate Stieltjes transform later
+            on (when :func:`decompress` is called) using Gauss-Jacob
+            quadrature. This option is relevant only if ``method='jacobi'``.
 
         reg : float, default=0.0
             Tikhonov regularization coefficient.
@@ -336,6 +346,10 @@ class FreeForm(object):
             >>> from freealg import FreeForm
         """
 
+        # Very important: reset cache whenever this function is called. This
+        # also empties all references holdign a cache copy.
+        self.cache.clear()
+
         if alpha <= -1:
             raise ValueError('"alpha" should be greater then "-1".')
 
@@ -350,6 +364,10 @@ class FreeForm(object):
 
         # Project eigenvalues to Jacobi polynomials basis
         if method == 'jacobi':
+
+            # Set number of Gauss-Jacobi quadratures. This is not used in this
+            # function (used later when decompress is called)
+            self.n_quad = n_quad
 
             if projection == 'sample':
                 psi = jacobi_sample_proj(self.eig, support=self.support, K=K,
@@ -726,6 +744,7 @@ class FreeForm(object):
 
         See Also
         --------
+
         density
         hilbert
 
@@ -757,7 +776,7 @@ class FreeForm(object):
 
         # Create y if not given
         if (plot is False) and (y is None):
-            # Do no tuse a Cartesian grid. Create a 1D array z slightly above
+            # Do not use a Cartesian grid. Create a 1D array z slightly above
             # the real line.
             y = self.delta * 1j
             z = x.astype(complex) + y             # shape (Nx,)
@@ -809,31 +828,39 @@ class FreeForm(object):
         if self.psi is None:
             raise RuntimeError('"fit" the model first.')
 
-        # Allow for arbitrary input shapes
         z = numpy.asarray(z)
-        shape = z.shape
-        if len(shape) == 0:
-            shape = (1,)
-        z = z.reshape(-1, 1)
-
-        # # Set the number of bases as the number of x points insides support
-        # mask_sup = numpy.logical_and(z.real >= self.lam_m,
-        #                              z.real <= self.lam_p)
-        # n_base = 2 * numpy.sum(mask_sup)
 
         # Stieltjes function
         if self.method == 'jacobi':
-            stieltjes = partial(jacobi_stieltjes, psi=self.psi,
-                                support=self.support, alpha=self.alpha,
-                                beta=self.beta, continuation=self.continuation,
-                                dtype=self.dtype)
-            # n_base = n_base
+
+            # Number of quadrature points
+            if z.ndim == 2:
+                # set to twice num x points inside support. This oversampling
+                # avoids anti-aliasing when visualizing.
+                x = z[0, :].real
+                mask_sup = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
+                n_quad = 2 * numpy.sum(mask_sup)
+            else:
+                # If this is None, the calling function will handle it.
+                n_quad = self.n_quad
+
+            stieltjes = partial(jacobi_stieltjes, cache=self.cache,
+                                psi=self.psi, support=self.support,
+                                alpha=self.alpha, beta=self.beta,
+                                continuation=self.continuation,
+                                dtype=self.dtype, n_quad=n_quad)
 
         elif self.method == 'chebyshev':
             stieltjes = partial(chebyshev_stieltjes, psi=self.psi,
                                 support=self.support,
                                 continuation=self.continuation,
                                 dtype=self.dtype)
+
+        # Allow for arbitrary input shapes
+        shape = z.shape
+        if len(shape) == 0:
+            shape = (1,)
+        z = z.reshape(-1, 1)
 
         mask_p = z.imag >= 0.0
         mask_m = z.imag < 0.0
@@ -930,7 +957,7 @@ class FreeForm(object):
             Estimated spectral density at locations x. ``rho`` can be a 1D or
             2D array output:
 
-            * If ``size`` is a scalar, ``rho`` is a 1D array od the same size
+            * If ``size`` is a scalar, ``rho`` is a 1D array of the same size
               as ``x``.
             * If ``size`` is an array of size `n`, ``rho`` is a 2D array with
               `n` rows, where each row corresponds to decompression to a size.

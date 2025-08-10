@@ -203,7 +203,7 @@ def chebyshev_stieltjes(z, psi, support, continuation='pade',
         Methof of analytiv continuation.
 
     dtype : numpy.type, default=numpy.complex128
-        Data type for compelx arrays. This might enhance series acceleration.
+        Data type for complex arrays. This might enhance series acceleration.
 
     Returns
     -------
@@ -218,7 +218,7 @@ def chebyshev_stieltjes(z, psi, support, continuation='pade',
     span = lam_p - lam_m
     center = 0.5 * (lam_m + lam_p)
 
-    # Map z -> u in the standard [-1,1] domain
+    # Map z to u in the standard [-1,1] domain
     u = (2.0 * (z - center)) / span
 
     # Inverse-Joukowski: pick branch sqrt with +Im
@@ -232,15 +232,15 @@ def chebyshev_stieltjes(z, psi, support, continuation='pade',
 
     # This depends on the method of analytic continuation
     if continuation == 'pade':
-        # Build powers J^(k+1) for k = 0, ..., K
+        # Horner summation for S0(J) = sum_{k=0}^K psi_k * J**k
         K = len(psi) - 1
-        Jpow = J[..., None] ** numpy.arange(1, K+2)  # shape: (..., K+1)
-
-        # Summing psi_k * J^(k+1)
-        S = numpy.sum(psi * Jpow, axis=-1)
+        S0 = numpy.zeros_like(J)
+        for k in range(K, -1, -1):
+            S0 = psi[k] + J * S0
+        S = J * S0
 
     else:
-        # Flatten J before passing to Wynn method.
+        # Flatten J before passing to any of the acceleration methods.
         psi_zero = numpy.concatenate([[0.0], psi])
         Sn = partial_sum(psi_zero, J.ravel(), p=0)
 
