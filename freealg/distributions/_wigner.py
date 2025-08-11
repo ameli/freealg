@@ -510,9 +510,15 @@ class Wigner(object):
         # Draw from uniform distribution
         if method == 'mc':
             u = rng.random(size)
+
         elif method == 'qmc':
-            engine = qmc.Halton(d=1, rng=rng)
-            u = engine.random(size)
+            try:
+                engine = qmc.Halton(d=1, scramble=True, rng=rng)
+            except TypeError:
+                # Older scipy versions
+                engine = qmc.Halton(d=1, scramble=True, seed=rng)
+            u = engine.random(size).ravel()
+
         else:
             raise NotImplementedError('"method" is invalid.')
 

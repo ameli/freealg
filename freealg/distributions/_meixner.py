@@ -177,18 +177,12 @@ class Meixner(object):
         rho = numpy.zeros_like(x)
         mask = numpy.logical_and(x > self.lam_m, x < self.lam_p)
 
-        # rho[mask] = \
-        #     numpy.sqrt(4.0 * (1.0 + self.b) - (x[mask] - self.a)**2) / \
-        #     (2.0 * numpy.pi * (self.b * x[mask]**2 + self.a * x[mask] + 1))
-
         numer = numpy.zeros_like(x)
         denom = numpy.ones_like(x)
         numer[mask] = self.c * numpy.sqrt(4.0 * self.b - (x[mask] - self.a)**2)
-        denom[mask] = (1 - self.c)*(x[mask] - self.a)**2
-        denom[mask] += self.a * (2 - self.c)*(x[mask] - self.a)
-        denom[mask] += self.a**2 + self.b * self.c**2
-        denom[mask] *= 2 * numpy.pi
-
+        denom[mask] = 2.0 * numpy.pi * (
+            (1.0 - self.c) * x[mask]**2 + self.a * self.c * x[mask] +
+            self.b * self.c**2)
         rho[mask] = numer[mask] / denom[mask]
 
         if plot:
@@ -260,14 +254,14 @@ class Meixner(object):
         def _P(x):
             # denom = 1.0 + self.b
             # return ((1.0 + 2.0 * self.b) * x + self.a) / denom
-            P = ((self.c - 2.0) * x - self.a * self.c) / 2.0
+            P = (self.c - 2.0) * x - self.a * self.c
             return P
 
         def _Q(x):
             # denom = 1.0 + self.b
             # return (self.b * x**2 + self.a * x + 1.0) / denom
-            Q = ((1.0 - self.c) * x**2 + self.a * self.c * x +
-                 self.b * self.c**2) / 4.0
+            Q = (1.0 - self.c) * x**2 + self.a * self.c * x + \
+                 self.b * self.c**2
             return Q
 
         P = _P(x)
@@ -276,9 +270,6 @@ class Meixner(object):
         Delta = numpy.sqrt(numpy.maximum(Delta2, 0))
         sign = numpy.sign(P)
         hilb = (P - sign * Delta) / (2.0 * Q)
-
-        # using negative sign convention
-        hilb = -hilb
 
         if plot:
             plot_hilbert(x, hilb, support=self.support, latex=latex, save=save)
@@ -299,21 +290,26 @@ class Meixner(object):
         # denom = 1.0 + self.b
         # A = (self.b * z**2 + self.a * z + 1.0) / denom
         # B = ((1.0 + 2.0 * self.b) * z + self.a) / denom
-        A = ((1.0 - self.c) * z**2 + self.a * self.c * z +
-             self.b * self.c**2) / 4.0
-        B = ((self.c - 2.0) * z - self.a * self.c) / 2.0
+        # A = ((1.0 - self.c) * z**2 + self.a * self.c * z +
+        #      self.b * self.c**2) / 4.0
+        # B = ((self.c - 2.0) * z - self.a * self.c) / 2.0
+
+        Q = (1.0 - self.c) * z**2 + self.a * self.c * z + \
+            self.b * self.c**2
+        P = (self.c - 2.0) * z - self.a * self.c
 
         # D = B**2 - 4 * A
         # sqrtD = numpy.sqrt(D)
 
         # Avoid numpy picking the wrong branch
-        d = 2 * numpy.sqrt(1.0 + self.b)
-        r_min = self.a - d
-        r_max = self.a + d
-        sqrtD = numpy.sqrt(z - r_min) * numpy.sqrt(z - r_max)
+        # d = 2 * numpy.sqrt(1.0 + self.b)
+        # r_min = self.a - d
+        # r_max = self.a + d
+        # sqrtD = numpy.sqrt(z - r_min) * numpy.sqrt(z - r_max)
+        sqrtD = numpy.sqrt(P**2 - 4.0 * Q)
 
-        m1 = (-B + sqrtD) / (2 * A)
-        m2 = (-B - sqrtD) / (2 * A)
+        m1 = (P + sqrtD) / (2 * Q)
+        m2 = (P - sqrtD) / (2 * Q)
 
         # pick correct branch only for non-masked entries
         upper = z.imag >= 0
@@ -558,9 +554,15 @@ class Meixner(object):
         # Draw from uniform distribution
         if method == 'mc':
             u = rng.random(size)
+
         elif method == 'qmc':
-            engine = qmc.Halton(d=1, rng=rng)
-            u = engine.random(size)
+            try:
+                engine = qmc.Halton(d=1, scramble=True, rng=rng)
+            except TypeError:
+                # Older scipy versions
+                engine = qmc.Halton(d=1, scramble=True, seed=rng)
+            u = engine.random(size).ravel()
+
         else:
             raise NotImplementedError('"method" is invalid.')
 

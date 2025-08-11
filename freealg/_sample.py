@@ -113,9 +113,14 @@ def sample(x, rho, num_pts, method='qmc', seed=None):
     # Draw from uniform distribution
     if method == 'mc':
         u = rng.random(num_pts)
+
     elif method == 'qmc':
-        engine = qmc.Halton(d=1, rng=rng)
-        u = engine.random(num_pts)
+        try:
+            engine = qmc.Halton(d=1, scramble=True, rng=rng)
+        except TypeError:
+            engine = qmc.Halton(d=1, scramble=True, seed=rng)
+        u = engine.random(num_pts).ravel()
+
     else:
         raise NotImplementedError('"method" is invalid.')
 

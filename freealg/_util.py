@@ -141,28 +141,37 @@ def kde(eig, xs, lam_m, lam_p, h, kernel='beta', plot=False):
 
         span = lam_p - lam_m
         if span <= 0:
-            raise ValueError("lam_p must be larger than lam_m")
+            raise ValueError('"lam_p" must be larger than "lam_m".')
 
         # map samples and grid to [0, 1]
         u = (eig - lam_m) / span
         t = (xs - lam_m) / span
 
-        if u.min() < 0 or u.max() > 1:
-            mask = (u > 0) & (u < 1)
-            u = u[mask]
+        # keep only samples strictly inside (0,1)
+        if (u.min() < 0) or (u.max() > 1):
+            u = u[(u > 0) & (u < 1)]
 
-        pdf = numpy.zeros_like(xs, dtype=float)
-        n = len(u)
+        n = u.size
+        if n == 0:
+            return numpy.zeros_like(xs, dtype=float)
 
-        # tiny positive number to keep shape parameters > 0
+        # vectorized Beta kernels over all samples at once
+        a = (u / h) + 1.0
+        b = ((1.0 - u) / h) + 1.0
+
+        # # tiny positive number to keep shape parameters > 0
         eps = 1e-6
-        for ui in u:
-            a = max(ui / h + 1.0, eps)
-            b = max((1.0 - ui) / h + 1.0, eps)
-            pdf += beta.pdf(t, a, b)
+        a = numpy.clip(a, eps, None)
+        b = numpy.clip(b, eps, None)
 
-        pdf /= n * span                        # renormalise
-        pdf[(t < 0) | (t > 1)] = 0.0           # exact zeros outside
+        # Beta kernel
+        pdf_matrix = beta.pdf(t[None, :], a[:, None], b[:, None])
+
+        # Average and re-normalize back to x variable
+        pdf = pdf_matrix.sum(axis=0) / (n * span)
+
+        # Exact zeros outside [lam_m, lam_p]
+        pdf[(t < 0) | (t > 1)] = 0.0
 
     else:
         raise NotImplementedError('"kernel" is invalid.')

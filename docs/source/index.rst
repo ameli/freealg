@@ -156,7 +156,7 @@ Decompress spectral density to a larger matrix with
 
 .. code-block:: python
 
-    >>> rho = ff.decompress(100_000, plot=True)
+    >>> rho, x = ff.decompress(100_000, plot=True)
 
 .. image:: _static/images/plots/qs_decompress.png
     :align: center
