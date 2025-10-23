@@ -126,6 +126,27 @@ def kde(eig, xs, lam_m, lam_p, h, kernel='beta', plot=False):
 
     freealg.supp
     freealg.sample
+
+    Notes
+    -----
+
+    In Beta kernel density estimation, the shape parameters "a" and "b" of the
+    Beta(a, b)) distribution are computed for each data point "u" as:
+
+        a = (u / h) + 1.0
+        b = ((1.0 - u) / h) + 1.0
+
+    This is a standard way of using Beta kernel (see R-package documentation:
+    https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html
+
+    These equations are derived from "moment matching" method, where
+
+        Mean(Beta(a,b)) = u
+        Var(Beta(a,b)) = (1-u) u h
+
+    Solving these two equations for "a" and "b" yields the relations above.
+    See paper (page 134)
+    https://www.songxichen.com/Uploads/Files/Publication/Chen-CSD-99.pdf
     """
 
     if kernel == 'gaussian':
@@ -155,7 +176,9 @@ def kde(eig, xs, lam_m, lam_p, h, kernel='beta', plot=False):
         if n == 0:
             return numpy.zeros_like(xs, dtype=float)
 
-        # vectorized Beta kernels over all samples at once
+        # Shape parameters "a" and "b" or the kernel Beta(a, b), which is
+        # computed for each data point "u" (see notes above). These are
+        # vectorized.
         a = (u / h) + 1.0
         b = ((1.0 - u) / h) + 1.0
 
