@@ -383,6 +383,23 @@
 <dt><a class="reference internal" href="freealg.sample.html#freealg.sample" title="freealg.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.sample</span></code></a></dt><dd></dd>
 </dl>
 </div>
+<p class="rubric">Notes</p>
+<p>In Beta kernel density estimation, the shape parameters “a” and “b” of the
+Beta(a, b)) distribution are computed for each data point “u” as:</p>
+<blockquote>
+<div><p>a = (u / h) + 1.0
+b = ((1.0 - u) / h) + 1.0</p>
+</div></blockquote>
+<p>This is a standard way of using Beta kernel (see R-package documentation:
+<a class="reference external" href="https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html">https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html</a></p>
+<p>These equations are derived from “moment matching” method, where</p>
+<blockquote>
+<div><p>Mean(Beta(a,b)) = u
+Var(Beta(a,b)) = (1-u) u h</p>
+</div></blockquote>
+<p>Solving these two equations for “a” and “b” yields the relations above.
+See paper (page 134)
+<a class="reference external" href="https://www.songxichen.com/Uploads/Files/Publication/Chen-CSD-99.pdf">https://www.songxichen.com/Uploads/Files/Publication/Chen-CSD-99.pdf</a></p>
 </dd></dl>
 
 </section>
