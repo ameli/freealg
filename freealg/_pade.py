@@ -108,32 +108,35 @@ def _decode_poles(s, lam_m, lam_p):
 # inner ls
 # ========
 
-def _inner_ls(x, f, poles, p=1, pade_reg=0.0):
+def _inner_ls(x, f, poles, dpq=1, pade_reg=0.0):
     """
     This is the inner least square (blazing fast).
+
+    dqp is the difference between the order of P (numerator) and Q
+    (denominator).
     """
 
-    if poles.size == 0 and p == -1:
+    if poles.size == 0 and dpq == -1:
         return 0.0, 0.0, numpy.empty(0)
 
     if poles.size == 0:                      # q = 0
         # A = numpy.column_stack((numpy.ones_like(x), x))
-        cols = [numpy.ones_like(x)] if p >= 0 else []
-        if p == 1:
+        cols = [numpy.ones_like(x)] if dpq >= 0 else []
+        if dpq == 1:
             cols.append(x)
         A = numpy.column_stack(cols)
         # ---
         theta, *_ = lstsq(A, f, rcond=None)
         # c, D = theta  # TEST
-        if p == -1:
+        if dpq == -1:
             c = 0.0
             D = 0.0
             resid = numpy.empty(0)
-        elif p == 0:
+        elif dpq == 0:
             c = theta[0]
             D = 0.0
             resid = numpy.empty(0)
-        else:  # p == 1
+        else:  # dpq == 1
             c, D = theta
             resid = numpy.empty(0)
     else:
@@ -142,28 +145,28 @@ def _inner_ls(x, f, poles, p=1, pade_reg=0.0):
         # # theta, *_ = lstsq(A, f, rcond=None)
         # # c, D, resid = theta[0], theta[1], theta[2:]
         # phi = 1.0 / (x[:, None] - poles[None, :])
-        # cols = [numpy.ones_like(x)] if p >= 0 else []
-        # if p == 1:
+        # cols = [numpy.ones_like(x)] if dpq >= 0 else []
+        # if dpq == 1:
         #     cols.append(x)
         #     cols.append(phi)
         #     A = numpy.column_stack(cols)
         #     theta, *_ = lstsq(A, f, rcond=None)
-        # if p == -1:
+        # if dpq == -1:
         #     c = 0.0
         #     D = 0.0
         #     resid = theta
-        # elif p == 0:
+        # elif dpq == 0:
         #     c = theta[0]
         #     D = 0.0
         #     resid = theta[1:]
-        # else:  # p == 1
+        # else:  # dpq == 1
         #     c = theta[0]
         #     D = theta[1]
         #     resid = theta[2:]
 
         phi = 1.0 / (x[:, None] - poles[None, :])
-        cols = [numpy.ones_like(x)] if p >= 0 else []
-        if p == 1:
+        cols = [numpy.ones_like(x)] if dpq >= 0 else []
+        if dpq == 1:
             cols.append(x)
         cols.append(phi)
 
@@ -179,9 +182,9 @@ def _inner_ls(x, f, poles, p=1, pade_reg=0.0):
             # theta = numpy.linalg.solve(ATA, ATf)
 
             # figure out how many elements to skip
-            if p == 1:
+            if dpq == 1:
                 skip = 2     # skip c and D
-            elif p == 0:
+            elif dpq == 0:
                 skip = 1     # skip c only
             else:
                 skip = 0     # all entries are residues
@@ -198,11 +201,11 @@ def _inner_ls(x, f, poles, p=1, pade_reg=0.0):
         else:
             theta, *_ = lstsq(A, f, rcond=None)
 
-        if p == -1:
+        if dpq == -1:
             c, D, resid = 0.0, 0.0, theta
-        elif p == 0:
+        elif dpq == 0:
             c, D, resid = theta[0], 0.0, theta[1:]
-        else:  # p == 1
+        else:  # dpq == 1
             c, D, resid = theta[0], theta[1], theta[2:]
 
     return c, D, resid
@@ -240,7 +243,7 @@ def _eval_rational(z, c, D, poles, resid):
 # fit pade
 # ========
 
-def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', pade_reg=0.0,
+def fit_pade(x, f, lam_m, lam_p, p=2, q=2, odd_side='left', pade_reg=0.0,
              safety=1.0, max_outer=40, xtol=1e-12, ftol=1e-12, optimizer='ls',
              verbose=0):
     """
@@ -251,16 +254,19 @@ def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', pade_reg=0.0,
     if not (odd_side in ['left', 'right']):
         raise ValueError('"odd_side" can only be "left" or "right".')
 
-    if not (p in [-1, 0, 1]):
-        raise ValueError('"pade_p" can only be -1, 0, or 1.')
+    # Difference between the degrees of numerator and denominator
+    dpq = p - q
+    if not (dpq in [-1, 0, 1]):
+        raise ValueError('"pade_p" and "pade_q" can only differ by "+1", ' +
+                         '"0", or "-1".')
 
     x = numpy.asarray(x, float)
     f = numpy.asarray(f, float)
 
     poles0 = _default_poles(q, lam_m, lam_p, safety=safety, odd_side=odd_side)
-    if q == 0 and p <= 0:
+    if q == 0 and dpq <= 0:
         # c, D, resid = _inner_ls(x, f, poles0, pade_reg=pade_reg)  # TEST
-        c, D, resid = _inner_ls(x, f, poles0, p, pade_reg=pade_reg)
+        c, D, resid = _inner_ls(x, f, poles0, dpq, pade_reg=pade_reg)
         pade_sol = {
             'c': c, 'D': D, 'poles': poles0, 'resid': resid,
             'outer_iters': 0
@@ -274,10 +280,10 @@ def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', pade_reg=0.0,
     # residual
     # --------
 
-    def residual(s, p=p):
+    def residual(s, dpq=dpq):
         poles = _decode_poles(s, lam_m, lam_p)
         # c, D, resid = _inner_ls(x, f, poles, pade_reg=pade_reg) # TEST
-        c, D, resid = _inner_ls(x, f, poles, p, pade_reg=pade_reg)
+        c, D, resid = _inner_ls(x, f, poles, dpq, pade_reg=pade_reg)
         return _eval_rational(x, c, D, poles, resid) - f
 
     # ----------------
@@ -324,7 +330,7 @@ def fit_pade(x, f, lam_m, lam_p, p=1, q=2, odd_side='left', pade_reg=0.0,
 
     poles = _decode_poles(res.x, lam_m, lam_p)
     # c, D, resid = _inner_ls(x, f, poles, pade_reg=pade_reg) # TEST
-    c, D, resid = _inner_ls(x, f, poles, p, pade_reg=pade_reg)
+    c, D, resid = _inner_ls(x, f, poles, dpq, pade_reg=pade_reg)
 
     pade_sol = {
         'c': c, 'D': D, 'poles': poles, 'resid': resid,
@@ -364,127 +370,3 @@ def eval_pade(z, pade_sol):
     for bj, rj in zip(poles, resid):
         out += rj/(z - bj)       # each is an (N,) op, no N*q temp
     return out
-
-
-# ============
-# fit pade old
-# ============
-
-def fit_pade_old(x, f, lam_m, lam_p, p, q, delta=1e-8, B=numpy.inf,
-                 S=numpy.inf, B_default=10.0, S_factor=2.0, maxiter_de=200):
-    """
-    Deprecated.
-
-    Fit a [p/q] rational P/Q of the form:
-      P(x) = s * prod_{i=0..p-1}(x - a_i)
-      Q(x) = prod_{j=0..q-1}(x - b_j)
-
-    Constraints:
-      a_i in [lam_m, lam_p]
-      b_j in (-infty, lam_m - delta] cup [lam_p + delta, infty)
-
-    Approach:
-      - Brute-force all 2^q left/right assignments for denominator roots
-      - Global search with differential_evolution, fallback to zeros if needed
-      - Local refinement with least_squares
-
-    Returns a dict with keys:
-      's'     : optimal scale factor
-      'a'     : array of p numerator roots (in [lam_m, lam_p])
-      'b'     : array of q denominator roots (outside the interval)
-      'resid' : final residual norm
-      'signs' : tuple indicating left/right pattern for each b_j
-    """
-
-    # Determine finite bounds for DE
-    if not numpy.isfinite(B):
-        B_eff = B_default
-    else:
-        B_eff = B
-    if not numpy.isfinite(S):
-        # scale bound: S_factor * max|f| * interval width + safety
-        S_eff = S_factor * numpy.max(numpy.abs(f)) * (lam_p - lam_m) + 1.0
-        if S_eff <= 0:
-            S_eff = 1.0
-    else:
-        S_eff = S
-
-    def map_roots(signs, b):
-        """Map unconstrained b_j -> real root outside the interval."""
-        out = numpy.empty_like(b)
-        for j, (s_val, bj) in enumerate(zip(signs, b)):
-            if s_val > 0:
-                out[j] = lam_p + delta + numpy.exp(bj)
-            else:
-                out[j] = lam_m - delta - numpy.exp(bj)
-        return out
-
-    best = {'resid': numpy.inf}
-
-    # Enumerate all left/right sign patterns
-    for signs in product([-1, 1], repeat=q):
-        # Residual vector for current pattern
-        def resid_vec(z):
-            s_val = z[0]
-            a = z[1:1+p]
-            b = z[1+p:]
-            P = s_val * numpy.prod(x[:, None] - a[None, :], axis=1)
-            roots_Q = map_roots(signs, b)
-            Q = numpy.prod(x[:, None] - roots_Q[None, :], axis=1)
-            return P - f * Q
-
-        def obj(z):
-            r = resid_vec(z)
-            return r.dot(r)
-
-        # Build bounds for DE
-        bounds = []
-        bounds.append((-S_eff, S_eff))      # s
-        bounds += [(lam_m, lam_p)] * p      # a_i
-        bounds += [(-B_eff, B_eff)] * q     # b_j
-
-        # 1) Global search
-        try:
-            de = differential_evolution(obj, bounds,
-                                        maxiter=maxiter_de,
-                                        polish=False)
-            z0 = de.x
-        except ValueError:
-            # fallback: start at zeros
-            z0 = numpy.zeros(1 + p + q)
-
-        # 2) Local refinement
-        ls = least_squares(resid_vec, z0, xtol=1e-12, ftol=1e-12)
-
-        rnorm = numpy.linalg.norm(resid_vec(ls.x))
-        if rnorm < best['resid']:
-            best.update(resid=rnorm, signs=signs, x=ls.x.copy())
-
-    # Unpack best solution
-    z_best = best['x']
-    s_opt = z_best[0]
-    a_opt = z_best[1:1+p]
-    b_opt = map_roots(best['signs'], z_best[1+p:])
-
-    return {
-        's':     s_opt,
-        'a':     a_opt,
-        'b':     b_opt,
-        'resid': best['resid'],
-        'signs': best['signs'],
-    }
-
-
-# =============
-# eval pade old
-# =============
-
-def eval_pade_old(z, s, a, b):
-    """
-    Deprecated.
-    """
-
-    Pz = s * numpy.prod([z - aj for aj in a], axis=0)
-    Qz = numpy.prod([z - bj for bj in b], axis=0)
-
-    return Pz / Qz

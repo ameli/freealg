@@ -200,7 +200,7 @@ class FreeForm(object):
 
     def fit(self, method='jacobi', K=10, alpha=0.0, beta=0.0, n_quad=60,
             reg=0.0, projection='gaussian', kernel_bw=0.001, damp=None,
-            force=False, continuation='pade', pade_p=0, pade_q=1,
+            force=False, continuation='pade', pade_p=1, pade_q=1,
             odd_side='left', pade_reg=0.0, optimizer='ls', plot=False,
             latex=False, save=False):
         """
@@ -275,14 +275,15 @@ class FreeForm(object):
             * ``'brezinski'``: Brezinski's :math:`\\theta` algorithm
               (`experimental`).
 
-        pade_p : int, default=0
-            Degree of polynomial :math:`P(z)` is :math:`q+p` where :math:`p`
-            can only be ``-1``, ``0``, or ``1``. See notes below. This option
+        pade_p : int, default=1
+            Degree of polynomial :math:`P(z)` is :math:`p` where :math:`p` can
+            only be ``q-1``, ``q``, or ``q+1``. See notes below. This option
             is applicable if ``continuation='pade'``.
 
         pade_q : int, default=1
-            Degree of polynomial :math:`Q(z)` is :math:`q`. See notes below.
-            This option is applicable if ``continuation='pade'``.
+            Degree of polynomial :math:`Q(z)` is :math:`q` where :math:`q` can
+            only be ``p-1``, ``p``, or ``p+1``. See notes below. This option
+            is applicable if ``continuation='pade'``.
 
         odd_side : {``'left'``, ``'right'``}, default= ``'left'``
             In case of odd number of poles (when :math:`q` is odd), the extra
