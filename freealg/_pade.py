@@ -13,7 +13,6 @@
 
 import numpy
 from numpy.linalg import lstsq
-from itertools import product
 from scipy.optimize import least_squares, differential_evolution
 
 __all__ = ['fit_pade', 'eval_pade']
