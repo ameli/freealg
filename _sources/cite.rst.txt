@@ -1,29 +1,27 @@
 How to Cite
 ===========
 
-.. [1] Siavash Ameli, Chris van der Heide, Liam Hodgkinson, Michael W. Mahoney (2025). *Spectral Estimation with Free Decompression*. arXiv: 2506.11994 |btn-free-doi| |ameli-free| |btn-bib-free| |btn-view-pdf-free|
+.. [1] Siavash Ameli, Chris van der Heide, Liam Hodgkinson, Michael W. Mahoney (2025). Spectral Estimation with Free Decompression. *The Thirty-ninth Annual Conference on Neural Information Processing Systems* |btn-free-doi| |ameli-free| |btn-bib-free| |btn-view-pdf-free|
 
    .. raw:: html
 
         <div class="highlight-BibTeX notranslate collapse" id="collapse-bib1">
         <div class="highlight">
         <pre class="language-bib">
-        <code class="language-bib">@article{spectral2025,
+        <code class="language-bib">@inproceedings{
+            AMELI-2025,
             title={Spectral Estimation with Free Decompression},
             author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
+            booktitle={The Thirty-ninth Annual Conference on Neural Information Processing Systems},
             year={2025},
-            eprint={2506.11994},
-            archivePrefix={arXiv},
-            primaryClass={stat.ML},
-            url={https://arxiv.org/abs/2506.11994},
-            journal={arXiv preprint arXiv:2506.11994},
+            url={https://openreview.net/forum?id=2CeGVUpOd7}
         }</code></pre>
         </div>
         </div>
 
 .. |btn-free-doi| raw:: html
 
-    <a href="https://arxiv.org/abs/2506.11994" class="btn btn-outline-info btn-sm btn-extra-sm" role="button">DOI</a>
+    <a href="https://openreview.net/pdf?id=2CeGVUpOd7" class="btn btn-outline-info btn-sm btn-extra-sm" role="button">DOI</a>
 
 .. |btn-bib-free| raw:: html
 
