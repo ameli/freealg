@@ -48,15 +48,15 @@ of extremely large matrices.
         :text-align: center
         :class-card: custom-card-link
 
+    .. grid-item-card:: Poster
+        :link: https://www.dropbox.com/scl/fi/y1kj73iykqis644pg5143/free_decompression_poster.pdf?rlkey=8dvoovrnq0lqvo1nh7uawd39l&st=bli4kr84&dl=0
+        :text-align: center
+        :class-card: custom-card-link
+
     .. grid-item-card:: Live Demo
         :link: https://colab.research.google.com/github/ameli/freealg/blob/main/notebooks/quick_start.ipynb
         :text-align: center
         :class-card: custom-card-link
-
-.. .. grid-item-card:: Slides
-..     :link: _static/data/slides.pdf
-..     :text-align: center
-..     :class-card: custom-card-link
 
 
 Install

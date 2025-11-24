@@ -87,19 +87,17 @@ code, we also welcome feature requests and bug reports.
 How to Cite
 ===========
 
-If you use this work, please cite our `arXiv paper <https://arxiv.org/abs/2506.11994>`__.
+If you use this work, please cite our `paper <https://openreview.net/pdf?id=2CeGVUpOd7>`__.
 
   .. code::
 
-      @article{spectral2025,
-          title={Spectral Estimation with Free Decompression},
-          author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
-          year={2025},
-          eprint={2506.11994},
-          archivePrefix={arXiv},
-          primaryClass={stat.ML},
-          url={https://arxiv.org/abs/2506.11994},
-          journal={arXiv preprint arXiv:2506.11994},
+      @inproceedings{
+            AMELI-2025,
+            title={Spectral Estimation with Free Decompression},
+            author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
+            booktitle={The Thirty-ninth Annual Conference on Neural Information Processing Systems},
+            year={2025},
+            url={https://openreview.net/forum?id=2CeGVUpOd7}
       }
 
 
