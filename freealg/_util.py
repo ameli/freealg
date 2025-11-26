@@ -127,26 +127,37 @@ def kde(eig, xs, lam_m, lam_p, h, kernel='beta', plot=False):
     freealg.supp
     freealg.sample
 
+    References
+    ----------
+
+    .. [1] `R-package documentation for Beta kernel
+           <https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html>`__
+
+    .. [2] Chen, S. X. (1999). Beta Kernel estimators for density functions.
+           *Computational Statistics and Data Analysis* 31 p. 131--145.
+
     Notes
     -----
 
-    In Beta kernel density estimation, the shape parameters "a" and "b" of the
-    Beta(a, b)) distribution are computed for each data point "u" as:
+    In Beta kernel density estimation, the shape parameters :math:`a` and
+    :math:`b` of the :math:`\\mathrm{Beta}(a, b)` distribution are computed
+    for each data point :math:`u` as:
+
+    .. math::
 
         a = (u / h) + 1.0
         b = ((1.0 - u) / h) + 1.0
 
-    This is a standard way of using Beta kernel (see R-package documentation:
-    https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html
+    This is a standard way of using Beta kernel (see R-package documentation
+    [1]_). These equations are derived from *moment matching* method, where
 
-    These equations are derived from "moment matching" method, where
+    .. math::
 
-        Mean(Beta(a,b)) = u
-        Var(Beta(a,b)) = (1-u) u h
+        \\mathrm{Mean}(\\mathrm{Beta}(a,b)) = u
+        \\mathrm{Var}(\\mathrm{Beta}(a,b)) = (1-u) u h
 
-    Solving these two equations for "a" and "b" yields the relations above.
-    See paper (page 134)
-    https://www.songxichen.com/Uploads/Files/Publication/Chen-CSD-99.pdf
+    Solving these two equations for :math:`a` and :math:`b` yields the
+    relations above. See [2]_ (page 134).
     """
 
     if kernel == 'gaussian':

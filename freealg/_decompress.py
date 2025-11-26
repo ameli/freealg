@@ -855,16 +855,6 @@ def decompress(freeform, alpha, x, roots_init=None, method='newton',
     density
     stieltjes
 
-    Notes
-    -----
-
-    Work in progress.
-
-    References
-    ----------
-
-    .. [1] tbd
-
     Examples
     --------
 

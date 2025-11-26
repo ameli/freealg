@@ -74,16 +74,6 @@ class FreeForm(object):
         Parameters for the :func:`supp` function can also be prescribed
         here when ``support=None``.
 
-    Notes
-    -----
-
-    TBD
-
-    References
-    ----------
-
-    .. [1] Reference.
-
     Attributes
     ----------
 
@@ -749,16 +739,6 @@ class FreeForm(object):
         density
         hilbert
 
-        Notes
-        -----
-
-        Notes.
-
-        References
-        ----------
-
-        .. [1] tbd
-
         Examples
         --------
 
@@ -972,16 +952,6 @@ class FreeForm(object):
 
         density
         stieltjes
-
-        Notes
-        -----
-
-        Work in progress.
-
-        References
-        ----------
-
-        .. [1] tbd
 
         Examples
         --------
