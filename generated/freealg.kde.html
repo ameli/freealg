@@ -56,6 +56,8 @@
     <script src="../_static/js/custom-pydata.js"></script>
     <script src="../_static/design-tabs.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex2jax": {"inlineMath": [["\\(", "\\)"]], "displayMath": [["\\[", "\\]"]]}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/custom-pydata.css"></script>
     <link rel="canonical" href="https://ameli.github.io/freealg/generated/freealg.kde.html" />
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
@@ -384,22 +386,31 @@
 </dl>
 </div>
 <p class="rubric">Notes</p>
-<p>In Beta kernel density estimation, the shape parameters “a” and “b” of the
-Beta(a, b)) distribution are computed for each data point “u” as:</p>
-<blockquote>
-<div><p>a = (u / h) + 1.0
-b = ((1.0 - u) / h) + 1.0</p>
-</div></blockquote>
-<p>This is a standard way of using Beta kernel (see R-package documentation:
-<a class="reference external" href="https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html">https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html</a></p>
-<p>These equations are derived from “moment matching” method, where</p>
-<blockquote>
-<div><p>Mean(Beta(a,b)) = u
-Var(Beta(a,b)) = (1-u) u h</p>
-</div></blockquote>
-<p>Solving these two equations for “a” and “b” yields the relations above.
-See paper (page 134)
-<a class="reference external" href="https://www.songxichen.com/Uploads/Files/Publication/Chen-CSD-99.pdf">https://www.songxichen.com/Uploads/Files/Publication/Chen-CSD-99.pdf</a></p>
+<p>In Beta kernel density estimation, the shape parameters <span class="math notranslate nohighlight">\(a\)</span> and
+<span class="math notranslate nohighlight">\(b\)</span> of the <span class="math notranslate nohighlight">\(\mathrm{Beta}(a, b)\)</span> distribution are computed
+for each data point <span class="math notranslate nohighlight">\(u\)</span> as:</p>
+<div class="math notranslate nohighlight">
+\[a = (u / h) + 1.0
+b = ((1.0 - u) / h) + 1.0\]</div>
+<p>This is a standard way of using Beta kernel (see R-package documentation
+<a class="reference internal" href="#r45caa3963032-1" id="id1">[1]</a>). These equations are derived from <em>moment matching</em> method, where</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{Mean}(\mathrm{Beta}(a,b)) = u
+\mathrm{Var}(\mathrm{Beta}(a,b)) = (1-u) u h\]</div>
+<p>Solving these two equations for <span class="math notranslate nohighlight">\(a\)</span> and <span class="math notranslate nohighlight">\(b\)</span> yields the
+relations above. See <a class="reference internal" href="#r45caa3963032-2" id="id2">[2]</a> (page 134).</p>
+<p class="rubric">References</p>
+<div role="list" class="citation-list">
+<div class="citation" id="r45caa3963032-1" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html">R-package documentation for Beta kernel</a></p>
+</div>
+<div class="citation" id="r45caa3963032-2" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>Chen, S. X. (1999). Beta Kernel estimators for density functions.
+<em>Computational Statistics and Data Analysis</em> 31 p. 131–145.</p>
+</div>
+</div>
 </dd></dl>
 
 </section>
