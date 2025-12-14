@@ -283,8 +283,8 @@ class MarchenkoPastur(object):
         if numpy.any(not_mask):
 
             sign = -1 if alt_branch else 1
-            A = self.lam * sigma**2 * z
-            B = z - sigma**2 * (1 - self.lam)
+            A = self.lam * sigma**2 * z[not_mask]
+            B = z[not_mask] - sigma**2 * (1 - self.lam)
             D = B**2 - 4 * A
             sqrtD = numpy.sqrt(D)
             m1 = (-B + sqrtD) / (2 * A)
