@@ -140,6 +140,7 @@ class AlgebraicForm(object):
 
         self.A = None
         self.eig = None
+        self.n = None
         self.stieltjes = None
         self.support = support
         self.delta = delta    # Offset above real axis to apply Plemelj formula
@@ -651,61 +652,65 @@ class AlgebraicForm(object):
 
         return rho
 
-    def decompress2(self, size, x=None, plot=False, latex=False,
-                    save=False):
-        """
-        Free decompression of spectral density.
-        """
+    # def decompress2(self, size, x=None, plot=False, latex=False,
+    #                 save=False):
+    #     """
+    #     Free decompression of spectral density.
+    #     """
 
-        # Decompression ratio equal to e^{t}.
-        alpha = numpy.atleast_1d(size) / self.n
+    #     # Decompression ratio equal to e^{t}.
+    #     if self.n is None:
+    #         alpha = numpy.atleast_1d(size)
+    #     else:
+    #         alpha = numpy.atleast_1d(size) / self.n
 
-        def m(z):
-            return stieltjes_poly(z, self.a_coeffs)
+    #     def m(z):
+    #         return stieltjes_poly(z, self.a_coeffs)
 
-        # Lower and upper bound on new support
-        hilb_lb = (1.0 / m(self.lam_m + self.delta * 1j).item()).real
-        hilb_ub = (1.0 / m(self.lam_p + self.delta * 1j).item()).real
-        lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
-        ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
+    #     # Lower and upper bound on new support
+    #     hilb_lb = (1.0 / m(self.lam_m + self.delta * 1j).item()).real
+    #     hilb_ub = (1.0 / m(self.lam_p + self.delta * 1j).item()).real
+    #     lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
+    #     ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
 
-        # Create x if not given
-        if x is None:
-            radius = 0.5 * (ub - lb)
-            center = 0.5 * (ub + lb)
-            scale = 1.25
-            x_min = numpy.floor(center - radius * scale)
-            x_max = numpy.ceil(center + radius * scale)
-            x = numpy.linspace(x_min, x_max, 200)
-        else:
-            x = numpy.asarray(x)
+    #     # Create x if not given
+    #     if x is None:
+    #         radius = 0.5 * (ub - lb)
+    #         center = 0.5 * (ub + lb)
+    #         scale = 1.25
+    #         x_min = numpy.floor(center - radius * scale)
+    #         x_max = numpy.ceil(center + radius * scale)
+    #         x = numpy.linspace(x_min, x_max, 200)
+    #     else:
+    #         x = numpy.asarray(x)
         
-        # Preallocate density to zero
-        rho = numpy.zeros((alpha.size, x.size), dtype=float)
+    #     # Preallocate density to zero
+    #     rho = numpy.zeros((alpha.size, x.size), dtype=float)
 
-        # Decompress to each alpha
-        for i in range(alpha.size):
-            coeffs_i = _decompress_coeffs(self.a_coeffs,
-                                          numpy.log(alpha[i]))
-            for j, x_j in enumerate(x):
-                m_j = stieltjes_poly(x_j, coeffs_i)
-                rho[i, j] = m_j.imag
-        rho = rho / numpy.pi
+    #     # Decompress to each alpha
+    #     for i in range(alpha.size):
+    #         coeffs_i = _decompress_coeffs(self.a_coeffs,
+    #                                       numpy.log(alpha[i]),
+    #                                       normalize=True)
+    #         for j, x_j in enumerate(x):
+    #             m_j = stieltjes_poly(x_j, coeffs_i)
+    #             rho[i, j] = m_j.imag
+    #     rho = rho / numpy.pi
         
-        # If the input size was only a scalar, return a 1D rho, otherwise 2D.
-        if numpy.isscalar(size):
-            rho = numpy.squeeze(rho)
+    #     # If the input size was only a scalar, return a 1D rho, otherwise 2D.
+    #     if numpy.isscalar(size):
+    #         rho = numpy.squeeze(rho)
 
-        # Plot only the last size
-        if plot:
-            if numpy.isscalar(size):
-                rho_last = rho
-            else:
-                rho_last = rho[-1, :]
-            plot_density(x, rho_last, support=(lb, ub),
-                         label='Decompression', latex=latex, save=save)
+    #     # Plot only the last size
+    #     if plot:
+    #         if numpy.isscalar(size):
+    #             rho_last = rho
+    #         else:
+    #             rho_last = rho[-1, :]
+    #         plot_density(x, rho_last, support=(lb, ub),
+    #                      label='Decompression', latex=latex, save=save)
         
-        return rho, x
+    #     return rho, x
 
 
     # ====

@@ -23,11 +23,13 @@ __all__ = ['sample_z_joukowski', 'filter_z_away_from_cuts', 'powers',
 # normalize coefficients
 # ======================
 
-def _normalize_coefficients(a):
+def _normalize_coefficients(arr):
     """
     Trim rows and columns on the sides (equivalent to factorizing or reducing
     degree) and normalize so that the sum of the first column is one.
     """
+
+    a = numpy.asarray(arr).copy()
 
     if a.size == 0:
         return a

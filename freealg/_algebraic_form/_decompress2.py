@@ -8,7 +8,7 @@ from ._continuation_algebraic import _normalize_coefficients
 # =================
 
 
-def _decompress_coeffs(a, t):
+def _decompress_coeffs(a, t, normalize=True):
     """
     Compute the decompressed coefficients A[r, s](t) induced by
     the transform Q_t(z, m) = m^L P(z + (1 - e^{-t}) / m, e^t m).
@@ -75,5 +75,8 @@ def _decompress_coeffs(a, t):
             start = base0 + r
             a_out[r, start:start + (k_degree + 1)] += coeff * row_scaled
 
-    return _normalize_coefficients(a_out)
+    if normalize:
+        return _normalize_coefficients(a_out)
+    
+    return a_out
 

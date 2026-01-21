@@ -51,6 +51,10 @@ def stieltjes_select_root(roots, z, w_prev=None):
     return candidates[idx]
 
 
+# ===============
+# stieltjes_poly
+# ===============
+
 def stieltjes_poly(
     z,
     a,
