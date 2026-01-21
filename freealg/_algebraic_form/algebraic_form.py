@@ -12,19 +12,22 @@
 # =======
 
 import numpy
-from .._util import resolve_complex_dtype
+from .._util import resolve_complex_dtype, compute_eig
 # from .._util import compute_eig
 from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, eval_P
 from ._edge import evolve_edges, merge_edges
 from ._decompress import decompress_newton
+from ._decompress2 import _decompress_coeffs
+from ._homotopy import stieltjes_poly
+from .._free_form._support import supp
+from .._free_form._plot_util import plot_density
 
 # Fallback to previous numpy API
 if not hasattr(numpy, 'trapezoid'):
     numpy.trapezoid = numpy.trapz
 
 __all__ = ['AlgebraicForm']
-
 
 # ==============
 # Algebraic Form
@@ -129,43 +132,56 @@ class AlgebraicForm(object):
     # def __init__(self, A, support=None, delta=1e-6, dtype='complex128',
     #              **kwargs):
 
-    def __init__(self, stieltjes, support=None, delta=1e-5, dtype='complex128',
+    def __init__(self, A, support=None, delta=1e-5, dtype='complex128',
                  **kwargs):
         """
         Initialization.
         """
 
-        # self.A = None
-        # self.eig = None
-        self.stieltjes = stieltjes
+        self.A = None
+        self.eig = None
+        self.stieltjes = None
         self.support = support
         self.delta = delta    # Offset above real axis to apply Plemelj formula
 
         # Data type for complex arrays
         self.dtype = resolve_complex_dtype(dtype)
 
-        # # Eigenvalues
-        # if A.ndim == 1:
-        #     # When A is a 1D array, it is assumed A is the eigenvalue array.
-        #     self.eig = A
-        #     self.n = len(A)
-        # elif A.ndim == 2:
-        #     # When A is a 2D array, it is assumed A is the actual array,
-        #     # and its eigenvalues will be computed.
-        #     self.A = A
-        #     self.n = A.shape[0]
-        #     assert A.shape[0] == A.shape[1], \
-        #         'Only square matrices are permitted.'
-        #     self.eig = compute_eig(A)
+        if callable(A):
+            self.stieltjes = A
+        else:
+            # Eigenvalues
+            if A.ndim == 1:
+                # When A is a 1D array, it is assumed A is the eigenvalue array.
+                self.eig = A
+                self.n = len(A)
+            elif A.ndim == 2:
+                # When A is a 2D array, it is assumed A is the actual array,
+                # and its eigenvalues will be computed.
+                self.A = A
+                self.n = A.shape[0]
+                assert A.shape[0] == A.shape[1], \
+                    'Only square matrices are permitted.'
+                self.eig = compute_eig(A)
+            
+            # Use empirical Stieltjes function
+            self.stieltjes = lambda z: \
+                numpy.mean(1.0/(self.eig-z[:,
+                                numpy.newaxis]), axis=-1)
 
         # Support
-        # if support is None:
-        #     # Detect support
-        #     self.lam_m, self.lam_p = supp(self.eig, **kwargs)
-        # else:
-        #     self.lam_m = float(support[0])
-        #     self.lam_p = float(support[1])
-        # self.support = (self.lam_m, self.lam_p)
+        if support is None:
+            if self.eig is None:
+                raise RuntimeError("Support must be provided without data")
+            # Detect support
+            self.lam_m, self.lam_p = supp(self.eig, **kwargs)
+            self.support = [(self.lam_m, self.lam_p)]
+            self.broad_support = self.support[0]
+        else:
+            self.support = support
+            self.lam_m = min([s[0] for s in self.support])
+            self.lam_p = max([s[1] for s in self.support])
+            self.broad_support = (self.lam_m, self.lam_p)
 
         # Initialize
         # self.method = None                 # fitting rho: jacobi, chebyshev
@@ -225,7 +241,7 @@ class AlgebraicForm(object):
             print("fit residual 99.9%:",
                   numpy.quantile(P_res[numpy.isfinite(P_res)], 0.999))
 
-            print('\nCoefficinets')
+            print('\nCoefficients')
             with numpy.printoptions(precision=4, suppress=True):
                 for i in range(a_coeffs.shape[0]):
                     for j in range(a_coeffs.shape[1]):
@@ -233,7 +249,7 @@ class AlgebraicForm(object):
                         print(f"{v.real:>+0.4f}{v.imag:>+0.4f}j", end=" ")
                     print('')
 
-            print('\nCoefficients mangitudes')
+            print('\nCoefficient Magnitudes')
             with numpy.printoptions(precision=6, suppress=True):
                 print(numpy.abs(a_coeffs))
 
@@ -243,22 +259,22 @@ class AlgebraicForm(object):
     # generate grid
     # =============
 
-    # def _generate_grid(self, scale, extend=1.0, N=500):
-    #     """
-    #     Generate a grid of points to evaluate density / Hilbert / Stieltjes
-    #     transforms.
-    #     """
-    #
-    #     radius = 0.5 * (self.lam_p - self.lam_m)
-    #     center = 0.5 * (self.lam_p + self.lam_m)
-    #
-    #     x_min = numpy.floor(extend * (center - extend * radius * scale))
-    #     x_max = numpy.ceil(extend * (center + extend * radius * scale))
-    #
-    #     x_min /= extend
-    #     x_max /= extend
-    #
-    #     return numpy.linspace(x_min, x_max, N)
+    def _generate_grid(self, scale, extend=1.0, N=500):
+        """
+        Generate a grid of points to evaluate density / Hilbert / Stieltjes
+        transforms.
+        """
+    
+        radius = 0.5 * (self.lam_p - self.lam_m)
+        center = 0.5 * (self.lam_p + self.lam_m)
+    
+        x_min = numpy.floor(extend * (center - extend * radius * scale))
+        x_max = numpy.ceil(extend * (center + extend * radius * scale))
+    
+        x_min /= extend
+        x_max /= extend
+    
+        return numpy.linspace(x_min, x_max, N)
 
     # =======
     # density
@@ -312,15 +328,19 @@ class AlgebraicForm(object):
             raise RuntimeError('The model needs to be fit using the .fit() ' +
                                'function.')
 
-        # # Create x if not given
-        # if x is None:
-        #     x = self._generate_grid(1.25)
-        #
-        # # Preallocate density to zero
-        # rho = numpy.zeros_like(x)
-        #
-        # # Compute density only inside support
-        # mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
+        # Create x if not given
+        if x is None:
+            x = self._generate_grid(1.25)
+        
+        # Preallocate density to zero
+        rho = numpy.zeros_like(x)
+        
+        for idx, x_i in enumerate(x):
+            m_i = stieltjes_poly(x_i, self.a_coeffs)
+            rho[idx] = m_i.imag
+        
+        rho = rho / numpy.pi
+
         #
         # if self.method == 'jacobi':
         #     rho[mask] = jacobi_density(x[mask], self.psi, self.support,
@@ -342,11 +362,11 @@ class AlgebraicForm(object):
         #     print(f'"rho" is not positive. min_rho: {min_rho:>0.3f}. Set ' +
         #           r'"force=True".')
         #
-        # if plot:
-        #     plot_density(x, rho, eig=self.eig, support=self.support,
-        #                  label='Estimate', latex=latex, save=save)
-        #
-        # return rho
+        if plot:
+            plot_density(x, rho, eig=self.eig, support=self.broad_support,
+                         label='Estimate', latex=latex, save=save)
+        
+        return rho
 
     # =======
     # hilbert
@@ -630,6 +650,64 @@ class AlgebraicForm(object):
             print("success rate per t:", ok.mean(axis=1))
 
         return rho
+
+    def decompress2(self, size, x=None, plot=False, latex=False,
+                    save=False):
+        """
+        Free decompression of spectral density.
+        """
+
+        # Decompression ratio equal to e^{t}.
+        alpha = numpy.atleast_1d(size) / self.n
+
+        def m(z):
+            return stieltjes_poly(z, self.a_coeffs)
+
+        # Lower and upper bound on new support
+        hilb_lb = (1.0 / m(self.lam_m + self.delta * 1j).item()).real
+        hilb_ub = (1.0 / m(self.lam_p + self.delta * 1j).item()).real
+        lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
+        ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
+
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (ub - lb)
+            center = 0.5 * (ub + lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 200)
+        else:
+            x = numpy.asarray(x)
+        
+        # Preallocate density to zero
+        rho = numpy.zeros((alpha.size, x.size), dtype=float)
+
+        # Decompress to each alpha
+        for i in range(alpha.size):
+            coeffs_i = _decompress_coeffs(self.a_coeffs,
+                                          numpy.log(alpha[i]))
+            print(coeffs_i)
+            for j, x_j in enumerate(x):
+                m_j = stieltjes_poly(x_j, coeffs_i)
+                rho[i, j] = m_j.imag
+        rho = rho / numpy.pi
+        
+        # If the input size was only a scalar, return a 1D rho, otherwise 2D.
+        if numpy.isscalar(size):
+            rho = numpy.squeeze(rho)
+
+        # Plot only the last size
+        if plot:
+            if numpy.isscalar(size):
+                rho_last = rho
+            else:
+                rho_last = rho[-1, :]
+            plot_density(x, rho_last, support=(lb, ub),
+                         label='Decompression', latex=latex, save=save)
+        
+        return rho, x
+
 
     # ====
     # edge

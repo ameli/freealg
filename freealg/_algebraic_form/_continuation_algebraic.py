@@ -51,7 +51,7 @@ def _normalize_coefficients(a):
     a = a[:, first_col:last_col]
 
     # --- Normalize so first column sums to 1 ---
-    col_sum = numpy.sum(a[:, 0])
+    col_sum = numpy.sum(numpy.abs(a[:, 0]))
     if col_sum != 0:
         a = a / col_sum
 
