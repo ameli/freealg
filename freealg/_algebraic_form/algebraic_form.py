@@ -687,7 +687,6 @@ class AlgebraicForm(object):
         for i in range(alpha.size):
             coeffs_i = _decompress_coeffs(self.a_coeffs,
                                           numpy.log(alpha[i]))
-            print(coeffs_i)
             for j, x_j in enumerate(x):
                 m_j = stieltjes_poly(x_j, coeffs_i)
                 rho[i, j] = m_j.imag
