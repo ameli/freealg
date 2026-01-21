@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.ChiralBlock.density
+=========================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: ChiralBlock.density

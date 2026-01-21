@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.AlgebraicForm.decompress
+================================
+
+.. currentmodule:: freealg
+
+.. automethod:: AlgebraicForm.decompress

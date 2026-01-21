@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.GeometricForm.decompress
+================================
+
+.. currentmodule:: freealg
+
+.. automethod:: GeometricForm.decompress
