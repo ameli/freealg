@@ -18,6 +18,7 @@
          MarchenkoPastur.matrix
          MarchenkoPastur.sample
          MarchenkoPastur.stieltjes
+         MarchenkoPastur.support
       
   
 
