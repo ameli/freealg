@@ -14,19 +14,21 @@
 import numpy
 from .._geometric_form._continuation_genus0 import joukowski_z
 
-__all__ = ['normalize_coefficients',
-    'sample_z_joukowski', 'filter_z_away_from_cuts', 'powers',
-    'fit_polynomial_relation', 'eval_P', 'eval_roots',
-    'build_sheets_from_roots']
+__all__ = ['sample_z_joukowski', 'filter_z_away_from_cuts', 'powers',
+           'fit_polynomial_relation', 'eval_P', 'eval_roots',
+           'build_sheets_from_roots']
+
 
 # ======================
 # normalize coefficients
 # ======================
 
-def normalize_coefficients(a):
-    # Trim rows and columns on the sides (equivalent to factorizing
-    # or reducing degree) and normalize so that the sum of the first
-    # column is one. 
+def _normalize_coefficients(a):
+    """
+    Trim rows and columns on the sides (equivalent to factorizing or reducing
+    degree) and normalize so that the sum of the first column is one.
+    """
+
     if a.size == 0:
         return a
 
@@ -54,6 +56,7 @@ def normalize_coefficients(a):
         a = a / col_sum
 
     return a
+
 
 # ==================
 # sample z joukowski
@@ -126,7 +129,7 @@ def powers(x, deg):
 # =======================
 
 def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
-                            triangular=None):
+                            triangular=None, normalize=False):
 
     z = numpy.asarray(z, dtype=complex).ravel()
     m = numpy.asarray(m, dtype=complex).ravel()
@@ -202,7 +205,10 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
     for k, (i, j) in enumerate(pairs):
         full[i, j] = coef[k]
 
-    return normalize_coefficients(full)
+    if normalize:
+        full = _normalize_coefficients(full)
+
+    return full
 
 
 # ======

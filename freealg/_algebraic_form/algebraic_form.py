@@ -183,6 +183,7 @@ class AlgebraicForm(object):
             y_eps=2e-2,
             x_pad=0.0,
             triangular=None,
+            normalize=False,
             verbose=False):
         """
         Fits polynomial.
@@ -213,7 +214,8 @@ class AlgebraicForm(object):
         m1_fit = self.stieltjes(z_fit)
         a_coeffs = fit_polynomial_relation(z_fit, m1_fit, s=deg_m, deg_z=deg_z,
                                            ridge_lambda=reg,
-                                           triangular=triangular)
+                                           triangular=triangular,
+                                           normalize=normalize)
 
         self.a_coeffs = a_coeffs
 
