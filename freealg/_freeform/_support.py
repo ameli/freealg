@@ -11,7 +11,7 @@
 # =======
 
 import numpy
-import numba
+# import numba
 from scipy.stats import gaussian_kde
 
 __all__ = ['support_from_density', 'supp']
@@ -21,10 +21,10 @@ __all__ = ['support_from_density', 'supp']
 # support from density
 # ====================
 
-@numba.njit(numba.types.UniTuple(numba.types.int64, 2)(
-    numba.types.float64,
-    numba.types.float64[::1]
-))
+# @numba.njit(numba.types.UniTuple(numba.types.int64, 2)(
+#     numba.types.float64,
+#     numba.types.float64[::1]
+# ))
 def support_from_density(dx, density):
     """
     Estimates the support from a collection of noisy observations of a
