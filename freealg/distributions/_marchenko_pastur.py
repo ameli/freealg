@@ -13,8 +13,8 @@
 
 import numpy
 from scipy.interpolate import interp1d
-from .._plot_util import plot_density, plot_hilbert, plot_stieltjes, \
-    plot_stieltjes_on_disk, plot_samples
+from .._freeform._plot_util import plot_density, plot_hilbert, \
+    plot_stieltjes, plot_stieltjes_on_disk, plot_samples
 from ..visualization import glue_branches
 
 try:
