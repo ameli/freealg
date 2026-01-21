@@ -15,6 +15,8 @@ The following classes core implementations defining the free objects.
     :template: autosummary/class.rst
 
     freealg.FreeForm
+    freealg.AlgebraicForm
+    freealg.GeometricForm
 
 Linear Algebra
 --------------
@@ -64,3 +66,6 @@ The following classes define classical random ensembles.
     freealg.distributions.KestenMcKay
     freealg.distributions.Wachter
     freealg.distributions.Meixner
+    freealg.distributions.ChiralBlock
+    freealg.distributions.DeformedWigner
+    freealg.distributions.DeformedMarchenkoPastur

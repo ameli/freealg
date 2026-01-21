@@ -290,26 +290,14 @@ class DeformedWigner(object):
         A : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
-        Parameters
-        ----------
-        size : int
-            Size n of the matrix.
-
-        seed : int, default=None
-            Seed for random number generator.
-
-        Returns
-        -------
-        A : numpy.ndarray
-            Symmetric matrix of shape (n, n).
-
         Notes
         -----
 
-        Generate an :math:`n x n` matrix :math:`\\mathbf{A} = \\mathbf{T} +
-        \\sigma \\mathbf{W}` whose ESD converges to
-        :math:`H \\boxplus SC_{\\sigma^2}`, where
-        :math:`H = w_1 \\delta_{t_1} + (1-w_1) \\delta_{t_2}`.
+        Generate an :math:`n \\times n` matrix
+        :math:`\\mathbf{A} = \\mathbf{T} + \\sigma \\mathbf{W}`
+        whose ESD converges to
+        :math:`H \\boxplus \\mathrm{SC}_{\\sigma^2}`, where
+        :math:`H = w_1 \\delta_{t_1} + (1 - w_1) \\delta_{t_2}`.
 
         Examples
         --------
@@ -317,8 +305,8 @@ class DeformedWigner(object):
         .. code-block::python
 
             >>> from freealg.distributions import DeformedWigner
-            >>> mp = DeformedWigner(1/50)
-            >>> A = mp.matrix(2000)
+            >>> dwg = DeformedWigner(1/50)
+            >>> A = dwg.matrix(2000)
         """
 
         n = int(size)
