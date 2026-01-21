@@ -6,14 +6,15 @@
 # under the terms of the license found in the LICENSE.txt file in the root
 # directory of this source tree.
 
-from .freeform import FreeForm
-from ._linalg import eigvalsh, cond, norm, trace, slogdet
-from ._support import supp
-from ._sample import sample
-from ._util import kde
+from ._freeform import FreeForm, eigvalsh, cond, norm, trace, slogdet, supp, \
+    sample, kde
+from ._algebraic_form import AlgebraicForm
+from ._geometric_form import GeometricForm
+from . import visualization
 from . import distributions
 
-__all__ = ['FreeForm', 'distributions', 'eigvalsh', 'cond', 'norm', 'trace',
-           'slogdet', 'supp', 'sample', 'kde']
+__all__ = ['FreeForm', 'distributions', 'visualization', 'eigvalsh', 'cond',
+           'norm', 'trace', 'slogdet', 'supp', 'sample', 'kde',
+           'AlgebraicForm', 'GeometricForm']
 
 from .__version__ import __version__                          # noqa: F401 E402

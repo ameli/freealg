@@ -11,5 +11,9 @@ from ._wigner import Wigner
 from ._kesten_mckay import KestenMcKay
 from ._wachter import Wachter
 from ._meixner import Meixner
+from ._chiral_block import ChiralBlock
+from ._deformed_wigner import DeformedWigner
+from ._deformed_marchenko_pastur import DeformedMarchenkoPastur
 
-__all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter', 'Meixner']
+__all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter', 'Meixner',
+           'ChiralBlock', 'DeformedWigner', 'DeformedMarchenkoPastur']

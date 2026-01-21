@@ -15,6 +15,7 @@ import numpy
 from scipy.interpolate import interp1d
 from .._plot_util import plot_density, plot_hilbert, plot_stieltjes, \
     plot_stieltjes_on_disk, plot_samples
+from ..visualization import glue_branches
 
 try:
     from scipy.integrate import cumtrapz
@@ -94,15 +95,20 @@ class MarchenkoPastur(object):
     # init
     # ====
 
-    def __init__(self, lam):
+    def __init__(self, lam, sigma=1.0):
         """
         Initialization.
         """
 
         self.lam = lam
-        self.lam_p = (1 + numpy.sqrt(self.lam))**2
-        self.lam_m = (1 - numpy.sqrt(self.lam))**2
-        self.support = (self.lam_m, self.lam_p)
+        self.sigma = sigma
+
+        # self.lam_p = (1 + numpy.sqrt(self.lam))**2
+        # self.lam_m = (1 - numpy.sqrt(self.lam))**2
+        self.lam_p = sigma**2 * (1.0 + numpy.sqrt(lam))**2
+        self.lam_m = sigma**2 * (1.0 - numpy.sqrt(lam))**2
+
+        self.supp = (self.lam_m, self.lam_p)
 
     # =======
     # density
@@ -117,7 +123,7 @@ class MarchenkoPastur(object):
 
         x : numpy.array, default=None
             The locations where density is evaluated at. If `None`, an interval
-            slightly larger than the support interval of the spectral density
+            slightly larger than the supp interval of the spectral density
             is used.
 
         rho : numpy.array, default=None
@@ -132,7 +138,7 @@ class MarchenkoPastur(object):
 
         save : bool, default=False
             If not `False`, the plot is saved. If a string is given, it is
-            assumed to the save filename (with the file extension). This option
+        assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
 
         eig : numpy.array, default=None
@@ -168,11 +174,21 @@ class MarchenkoPastur(object):
             x_max = numpy.ceil(center + radius * scale)
             x = numpy.linspace(x_min, x_max, 500)
 
-        rho = numpy.zeros_like(x)
-        mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
+        # Unpack parameters
+        lam = self.lam
+        lam_p = self.lam_p
+        lam_m = self.lam_m
+        sigma = self.sigma
 
-        rho[mask] = (1.0 / (2.0 * numpy.pi * x[mask] * self.lam)) * \
-            numpy.sqrt((self.lam_p - x[mask]) * (x[mask] - self.lam_m))
+        rho = numpy.zeros_like(x)
+        # mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
+        mask = (x > lam_m) & (x < lam_p)
+
+        # rho[mask] = (1.0 / (2.0 * numpy.pi * x[mask] * self.lam)) * \
+        #     numpy.sqrt((self.lam_p - x[mask]) * (x[mask] - self.lam_m))
+
+        rho[mask] = numpy.sqrt((lam_p - x[mask]) * (x[mask] - lam_m)) / \
+            (lam * x[mask] * 2 * numpy.pi * sigma**2)
 
         if plot:
             if eig is not None:
@@ -182,6 +198,17 @@ class MarchenkoPastur(object):
             plot_density(x, rho, label=label, latex=latex, save=save, eig=eig)
 
         return rho
+
+    # =======
+    # support
+    # =======
+
+    def support(self):
+        """
+        supp
+        """
+
+        return [self.supp]
 
     # =======
     # hilbert
@@ -196,7 +223,7 @@ class MarchenkoPastur(object):
 
         x : numpy.array, default=None
             The locations where Hilbert transform is evaluated at. If `None`,
-            an interval slightly larger than the support interval of the
+            an interval slightly larger than the supp interval of the
             spectral density is used.
 
         plot : bool, default=False
@@ -257,7 +284,7 @@ class MarchenkoPastur(object):
         hilb = -hilb
 
         if plot:
-            plot_hilbert(x, hilb, support=self.support, latex=latex, save=save)
+            plot_hilbert(x, hilb, support=self.supp, latex=latex, save=save)
 
         return hilb
 
@@ -265,59 +292,126 @@ class MarchenkoPastur(object):
     # m mp numeric vectorized
     # =======================
 
-    def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
+    # def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
+    #     """
+    #     Stieltjes transform (principal or secondary branch)
+    #     for Marchenko-Pastur distribution on upper half-plane.
+    #     """
+    #
+    #     sigma = 1.0
+    #     m = numpy.empty_like(z, dtype=complex)
+    #
+    #     # When z is too small, do not use quadratic form.
+    #     mask = numpy.abs(z) < tol
+    #     m[mask] = 1 / (sigma**2 * (1 - self.lam))
+    #
+    #     # Use quadratic form
+    #     not_mask = ~mask
+    #     if numpy.any(not_mask):
+    #
+    #         sign = -1 if alt_branch else 1
+    #         A = self.lam * sigma**2 * z[not_mask]
+    #         B = z[not_mask] - sigma**2 * (1 - self.lam)
+    #         D = B**2 - 4 * A
+    #         sqrtD = numpy.sqrt(D)
+    #         m1 = (-B + sqrtD) / (2 * A)
+    #         m2 = (-B - sqrtD) / (2 * A)
+    #
+    #         # pick correct branch only for non-masked entries
+    #         upper = z[not_mask].imag >= 0
+    #         branch = numpy.empty_like(m1)
+    #         branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
+    #                                     m2[upper])
+    #         branch[~upper] = numpy.where(sign*m1[~upper].imag < 0,
+    #                                      m1[~upper], m2[~upper])
+    #         m[not_mask] = branch
+    #
+    #     return m
+
+    # =============
+    # sqrt pos imag
+    # =============
+
+    def _sqrt_pos_imag(self, z):
         """
-        Stieltjes transform (principal or secondary branch)
-        for Marchenko-Pastur distribution on upper half-plane.
+        Square root on a branch cut with always positive imaginary part.
         """
 
-        sigma = 1.0
-        m = numpy.empty_like(z, dtype=complex)
+        sq = numpy.sqrt(z)
+        sq = numpy.where(sq.imag < 0, -sq, sq)
 
-        # When z is too small, do not use quadratic form.
-        mask = numpy.abs(z) < tol
-        m[mask] = 1 / (sigma**2 * (1 - self.lam))
-
-        # Use quadratic form
-        not_mask = ~mask
-        if numpy.any(not_mask):
-
-            sign = -1 if alt_branch else 1
-            A = self.lam * sigma**2 * z[not_mask]
-            B = z[not_mask] - sigma**2 * (1 - self.lam)
-            D = B**2 - 4 * A
-            sqrtD = numpy.sqrt(D)
-            m1 = (-B + sqrtD) / (2 * A)
-            m2 = (-B - sqrtD) / (2 * A)
-
-            # pick correct branch only for non-masked entries
-            upper = z[not_mask].imag >= 0
-            branch = numpy.empty_like(m1)
-            branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
-                                        m2[upper])
-            branch[~upper] = numpy.where(sign*m1[~upper].imag < 0, m1[~upper],
-                                         m2[~upper])
-            m[not_mask] = branch
-
-        return m
+        return sq
 
     # ============
     # m mp reflect
     # ============
 
-    def _m_mp_reflect(self, z, alt_branch=False):
+    # def _m_mp_reflect(self, z, alt_branch=False):
+    #     """
+    #     Analytic continuation using Schwarz reflection.
+    #     """
+    #
+    #     mask_p = z.imag >= 0.0
+    #     mask_n = z.imag < 0.0
+    #
+    #     m = numpy.zeros_like(z)
+    #
+    #     f = self._m_mp_numeric_vectorized
+    #     m[mask_p] = f(z[mask_p], alt_branch=False)
+    #     m[mask_n] = f(z[mask_n], alt_branch=alt_branch)
+    #
+    #     return m
+
+    # ================
+    # stieltjes branch
+    # ================
+
+    def _stieltjes_branch(self, z, alt_branch=False, tol=1e-8):
         """
-        Analytic continuation using Schwarz reflection.
         """
 
-        mask_p = z.imag >= 0.0
-        mask_n = z.imag < 0.0
+        # Unpack parameters
+        lam = self.lam
+        sigma = self.sigma
 
-        m = numpy.zeros_like(z)
+        z = numpy.asarray(z, dtype=complex)
+        m = numpy.empty_like(z, dtype=complex)
 
-        f = self._m_mp_numeric_vectorized
-        m[mask_p] = f(z[mask_p], alt_branch=False)
-        m[mask_n] = f(z[mask_n], alt_branch=alt_branch)
+        def _eval_upper(zu):
+            mu = numpy.empty_like(zu, dtype=complex)
+
+            mask = numpy.abs(zu) < tol
+            if numpy.any(mask):
+                if alt_branch:
+                    mu[mask] = numpy.inf + 0.0j
+                else:
+                    mu[mask] = 1.0 / (sigma**2 * (1.0 - lam))
+
+            not_mask = ~mask
+            if numpy.any(not_mask):
+                sign = -1 if alt_branch else 1
+
+                A = lam * sigma**2 * zu[not_mask]
+                B = zu[not_mask] - sigma**2 * (1.0 - lam)
+                D = B**2 - 4.0 * A
+
+                sqrtD = self._sqrt_pos_imag(D)
+
+                r1 = (-B + sqrtD) / (2.0 * A)
+                r2 = (-B - sqrtD) / (2.0 * A)
+
+                mu[not_mask] = numpy.where(sign * r1.imag > 0.0, r1, r2)
+
+            return mu
+
+        mask_p = numpy.imag(z) >= 0.0
+        if numpy.any(mask_p):
+            m[mask_p] = _eval_upper(z[mask_p])
+
+        mask_n = ~mask_p
+        if numpy.any(mask_n):
+            z_ref = numpy.conjugate(z[mask_n])
+            m[mask_n] = numpy.conjugate(_eval_upper(z_ref))
 
         return m
 
@@ -325,8 +419,8 @@ class MarchenkoPastur(object):
     # stieltjes
     # =========
 
-    def stieltjes(self, x=None, y=None, plot=False, on_disk=False, latex=False,
-                  save=False):
+    def stieltjes(self, z=None, x=None, y=None, alt_branch='both', plot=False,
+                  on_disk=False, latex=False, save=False):
         """
         Stieltjes transform of distribution.
 
@@ -335,12 +429,16 @@ class MarchenkoPastur(object):
 
         x : numpy.array, default=None
             The x axis of the grid where the Stieltjes transform is evaluated.
-            If `None`, an interval slightly larger than the support interval of
+            If `None`, an interval slightly larger than the supp interval of
             the spectral density is used.
 
         y : numpy.array, default=None
             The y axis of the grid where the Stieltjes transform is evaluated.
             If `None`, a grid on the interval ``[-1, 1]`` is used.
+
+        alt_branch : {``True``, ``False``, ``'both'``} default=``'both'``
+            If `True`, returns non-physical branch. If `False`, returns
+            physical branch. If ``'both'``, returns both.
 
         plot : bool, default=False
             If `True`, Stieltjes transform is plotted.
@@ -407,38 +505,57 @@ class MarchenkoPastur(object):
             # Cayley transform mapping zeta on D to z on H
             z_H = 1j * (1 + zeta) / (1 - zeta)
 
-            m1_D = self._m_mp_reflect(z_H, alt_branch=False)
-            m2_D = self._m_mp_reflect(z_H, alt_branch=True)
+            # m1_D = self._m_mp_reflect(z_H, alt_branch=False)
+            # m2_D = self._m_mp_reflect(z_H, alt_branch=True)
+            m1_D = self._stieltjes_branch(z_H, alt_branch=False)
+            m2_D = self._stieltjes_branch(z_H, alt_branch=True)
+            m12_D = glue_branches(z_H, m1_D, m2_D)
 
-            plot_stieltjes_on_disk(r, t, m1_D, m2_D, support=self.support,
+            plot_stieltjes_on_disk(r, t, m1_D, m12_D, support=self.supp,
                                    latex=latex, save=save)
 
-            return m1_D, m2_D
+            if alt_branch == 'both':
+                return m1_D, m2_D
+            elif alt_branch is True:
+                return m2_D
+            else:
+                return m1_D
 
-        # Create x if not given
-        if x is None:
-            radius = 0.5 * (self.lam_p - self.lam_m)
-            center = 0.5 * (self.lam_p + self.lam_m)
-            scale = 2.0
-            x_min = numpy.floor(2.0 * (center - 2.0 * radius * scale)) / 2.0
-            x_max = numpy.ceil(2.0 * (center + 2.0 * radius * scale)) / 2.0
-            x = numpy.linspace(x_min, x_max, 500)
+        if z is None:
+            # Create x if not given
+            if x is None:
+                radius = 0.5 * (self.lam_p - self.lam_m)
+                center = 0.5 * (self.lam_p + self.lam_m)
+                scale = 2.0
+                x_min = numpy.floor(
+                    2.0 * (center - 2.0 * radius * scale)) / 2.0
+                x_max = numpy.ceil(
+                    2.0 * (center + 2.0 * radius * scale)) / 2.0
+                x = numpy.linspace(x_min, x_max, 500)
 
-        # Create y if not given
-        if y is None:
-            y = numpy.linspace(-1, 1, 400)
+            # Create y if not given
+            if y is None:
+                y = numpy.linspace(-1, 1, 400)
 
-        x_grid, y_grid = numpy.meshgrid(x, y)
-        z = x_grid + 1j * y_grid              # shape (Ny, Nx)
+            x_grid, y_grid = numpy.meshgrid(x, y)
+            z = x_grid + 1j * y_grid              # shape (Ny, Nx)
 
-        m1 = self._m_mp_reflect(z, alt_branch=False)
-        m2 = self._m_mp_reflect(z, alt_branch=True)
+        # m1 = self._m_mp_reflect(z, alt_branch=False)
+        # m2 = self._m_mp_reflect(z, alt_branch=True)
+        m1 = self._stieltjes_branch(z, alt_branch=False)
+        m2 = self._stieltjes_branch(z, alt_branch=True)
 
         if plot:
-            plot_stieltjes(x, y, m1, m2, support=self.support, latex=latex,
+            m12 = glue_branches(z, m1, m2)
+            plot_stieltjes(x, y, m1, m12, support=self.supp, latex=latex,
                            save=save)
 
-        return m1, m2
+        if alt_branch == 'both':
+            return m1, m2
+        elif alt_branch is True:
+            return m2
+        else:
+            return m1
 
     # ======
     # sample
@@ -456,11 +573,11 @@ class MarchenkoPastur(object):
             Size of sample.
 
         x_min : float, default=None
-            Minimum of sample values. If `None`, the left edge of the support
+            Minimum of sample values. If `None`, the left edge of the supp
             is used.
 
         x_max : float, default=None
-            Maximum of sample values. If `None`, the right edge of the support
+            Maximum of sample values. If `None`, the right edge of the supp
             is used.
 
         method : {``'mc'``, ``'qmc'``}, default= ``'qmc'``

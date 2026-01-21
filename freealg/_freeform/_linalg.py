@@ -11,7 +11,7 @@
 # =======
 
 import numpy
-from ._util import compute_eig
+from .._util import compute_eig
 from .freeform import FreeForm
 
 __all__ = ['eigvalsh', 'cond', 'norm', 'trace', 'slogdet']

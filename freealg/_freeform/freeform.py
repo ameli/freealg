@@ -13,7 +13,8 @@
 
 import numpy
 from functools import partial
-from ._util import resolve_complex_dtype, compute_eig, kde, force_density
+from .._util import resolve_complex_dtype, compute_eig
+from ._density_util import kde, force_density
 from ._jacobi import jacobi_sample_proj, jacobi_kernel_proj, jacobi_density, \
     jacobi_stieltjes
 from ._chebyshev import chebyshev_sample_proj, chebyshev_kernel_proj, \
