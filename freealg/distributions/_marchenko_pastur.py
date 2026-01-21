@@ -13,7 +13,7 @@
 
 import numpy
 from scipy.interpolate import interp1d
-from .._freeform._plot_util import plot_density, plot_hilbert, \
+from .._free_form._plot_util import plot_density, plot_hilbert, \
     plot_stieltjes, plot_stieltjes_on_disk, plot_samples
 from ..visualization import glue_branches
 

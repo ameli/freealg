@@ -35,6 +35,9 @@ class DeformedWigner(object):
         Initialization.
         """
 
+        if not (0.0 <= w1 <= 1.0):
+            raise ValueError("w1 must be in [0, 1].")
+
         self.t1 = t1
         self.t2 = t2
         self.w1 = w1
@@ -287,26 +290,65 @@ class DeformedWigner(object):
         A : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
+        Parameters
+        ----------
+        size : int
+            Size n of the matrix.
+
+        seed : int, default=None
+            Seed for random number generator.
+
+        Returns
+        -------
+        A : numpy.ndarray
+            Symmetric matrix of shape (n, n).
+
+        Notes
+        -----
+
+        Generate an :math:`n x n` matrix :math:`\\mathbf{A} = \\mathbf{T} +
+        \\sigma \\mathbf{W}` whose ESD converges to
+        :math:`H \\boxplus SC_{\\sigma^2}`, where
+        :math:`H = w_1 \\delta_{t_1} + (1-w_1) \\delta_{t_2}`.
+
         Examples
         --------
 
         .. code-block::python
 
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
+            >>> from freealg.distributions import DeformedWigner
+            >>> mp = DeformedWigner(1/50)
             >>> A = mp.matrix(2000)
         """
 
-        # Parameters
-        # m = int(size / self.lam)
-        #
-        # # Generate random matrix X (n x m) with i.i.d.
-        # rng = numpy.random.default_rng(seed)
-        # X = rng.standard_normal((size, m))
-        #
-        # # Form the sample covariance matrix A = (1/m)*XX^T.
-        # A = X @ X.T / m
-        #
-        # return A
+        n = int(size)
+        if n <= 0:
+            raise ValueError("size must be a positive integer.")
 
-        pass
+        # Unpack parameters
+        t1 = float(self.t1)
+        t2 = float(self.t2)
+        w1 = float(self.w1)
+        sigma = float(self.sigma)
+
+        # RNG
+        rng = numpy.random.default_rng(seed)
+
+        # T part
+        n1 = int(round(w1 * n))
+        n1 = max(0, min(n, n1))
+
+        d = numpy.empty(n, dtype=numpy.float64)
+        d[:n1] = t1
+        d[n1:] = t2
+        rng.shuffle(d)  # randomize positions
+        T = numpy.diag(d)
+
+        # W part: Symmetric Wigner with variance 1/n (up to symmetry)
+        G = rng.standard_normal((n, n))
+        W = (G + G.T) * (0.5 / numpy.sqrt(n))
+
+        # Compose
+        A = T + sigma * W
+
+        return A

@@ -70,6 +70,15 @@ class DeformedMarchenkoPastur(object):
         Initialization.
         """
 
+        if not (0.0 <= w1 <= 1.0):
+            raise ValueError("w1 must be in [0, 1].")
+
+        if c < 0.0:
+            raise ValueError("c must be >= 0.")
+
+        if t1 < 0.0 or t2 < 0.0:
+            raise ValueError("t1 and t2 must be >= 0 for a covariance model.")
+
         self.t1 = t1
         self.t2 = t2
         self.w1 = w1
@@ -592,6 +601,24 @@ class DeformedMarchenkoPastur(object):
         A : numpy.ndarray
             A matrix of the size :math:`n \\times n`.
 
+        Notes
+        -----
+
+        Generate an :math:`n x n` sample covariance matrix :math:`\\mathbf{S}`
+        whose ESD converges to :math:`H \\boxtimes MP_c`, where
+        :math:`H = w_1 \\delta_{t_1} + (1-w_1) \\delta_{t_2}`.
+
+        Finite :math:`n` construction:
+
+        * :math:`m` is chosen so that :math:`n/m` approx :math:`c` (when
+          :math:`c>0`),
+        * :math:`Z` has i.i.d. :math:`N(0,1)`,
+        * :math:`\\boldsymbol{\\Sigma}` has eigenvalues :math:`t_1`,
+          :math:`t_2` with proportions
+          :math:`w_1`, and :math:`1-w_1`,
+        * :math:`\\mathbf{S} = (1/m) \\boldsymbol{\\Sigma}^{1/2} \\mathbf{Z}
+          \\mathbf{Z}^T \\boldsymbol{\\Sigma}^{1/2}`.
+
         Examples
         --------
 
@@ -602,16 +629,47 @@ class DeformedMarchenkoPastur(object):
             >>> A = mp.matrix(2000)
         """
 
-        # Parameters
-        # m = int(size / self.lam)
-        #
-        # # Generate random matrix X (n x m) with i.i.d.
-        # rng = numpy.random.default_rng(seed)
-        # X = rng.standard_normal((size, m))
-        #
-        # # Form the sample covariance matrix A = (1/m)*XX^T.
-        # A = X @ X.T / m
-        #
-        # return A
+        n = int(size)
+        if n <= 0:
+            raise ValueError("size must be a positive integer.")
 
-        pass
+        # Unpack parameters
+        t1 = float(self.t1)
+        t2 = float(self.t2)
+        w1 = float(self.w1)
+        c = float(self.c)
+
+        rng = numpy.random.default_rng(seed)
+
+        # Choose m so that n/m approx c (for c>0). For c=0, return population
+        # Sigma.
+        if c == 0.0:
+            n1 = int(round(w1 * n))
+            n1 = max(0, min(n, n1))
+            d = numpy.empty(n, dtype=numpy.float64)
+            d[:n1] = t1
+            d[n1:] = t2
+            rng.shuffle(d)
+            return numpy.diag(d)
+
+        # m must be positive integer
+        m = int(round(n / c)) if c > 0.0 else n
+        m = max(1, m)
+
+        # Build diagonal Sigma^{1/2} with two atoms
+        n1 = int(round(w1 * n))
+        n1 = max(0, min(n, n1))
+
+        s = numpy.empty(n, dtype=numpy.float64)
+        s[:n1] = numpy.sqrt(t1)
+        s[n1:] = numpy.sqrt(t2)
+        rng.shuffle(s)
+
+        # Draw Z and form X = Sigma^{1/2} Z / sqrt(m)
+        Z = rng.standard_normal((n, m))
+        X = (s[:, None] * Z) / numpy.sqrt(m)
+
+        # Sample covariance
+        S = X @ X.T
+
+        return S

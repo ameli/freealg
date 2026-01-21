@@ -6,7 +6,7 @@
 # under the terms of the license found in the LICENSE.txt file in the root
 # directory of this source tree.
 
-from .freeform import FreeForm
+from .free_form import FreeForm
 from ._linalg import eigvalsh, cond, norm, trace, slogdet
 from ._support import supp
 from ._sample import sample

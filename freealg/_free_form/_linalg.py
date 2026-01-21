@@ -12,7 +12,7 @@
 
 import numpy
 from .._util import compute_eig
-from .freeform import FreeForm
+from .free_form import FreeForm
 
 __all__ = ['eigvalsh', 'cond', 'norm', 'trace', 'slogdet']
 

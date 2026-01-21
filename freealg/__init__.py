@@ -6,7 +6,7 @@
 # under the terms of the license found in the LICENSE.txt file in the root
 # directory of this source tree.
 
-from ._freeform import FreeForm, eigvalsh, cond, norm, trace, slogdet, supp, \
+from ._free_form import FreeForm, eigvalsh, cond, norm, trace, slogdet, supp, \
     sample, kde
 from ._algebraic_form import AlgebraicForm
 from ._geometric_form import GeometricForm

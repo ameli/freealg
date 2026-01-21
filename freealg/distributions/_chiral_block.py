@@ -404,7 +404,7 @@ class ChiralBlock(object):
         ----------
 
         size : int
-            Size :math:`n` of the matrix.
+            Total size :math:`N = n + m` of the returned matrix.
 
         seed : int, default=None
             Seed for random number generator.
@@ -413,7 +413,24 @@ class ChiralBlock(object):
         -------
 
         A : numpy.ndarray
-            A matrix of the size :math:`n \\times n`.
+            Symmetric matrix of shape :math:`N \\times N`.
+
+        Notes
+        -----
+
+        Generate a :math:`(n+m) x (n+m)` matrix
+
+        .. math::
+
+            H =
+            \\begin{bmatrix}
+                \\alpha \\mathbf{I}_n & (1/\\sqrt{m})) \\mathbf{X} \\
+                (1/\\sqrt{m})) \\mathbf{X}^{\\intercal} & \\beta \\mathbf{I}_m
+            \\end{bmatrix}
+
+
+        where :math:`\\mathbf{X}` has i.i.d. :math:`N(0,1)` entries and
+        :math:`n/m` approximates :math:`c`.
 
         Examples
         --------
@@ -425,16 +442,53 @@ class ChiralBlock(object):
             >>> A = mp.matrix(2000)
         """
 
-        # Parameters
-        # m = int(size / self.lam)
-        #
-        # # Generate random matrix X (n x m) with i.i.d.
-        # rng = numpy.random.default_rng(seed)
-        # X = rng.standard_normal((size, m))
-        #
-        # # Form the sample covariance matrix A = (1/m)*XX^T.
-        # A = X @ X.T / m
-        #
-        # return A
+        N = int(size)
+        if N <= 1:
+            raise ValueError("size must be an integer >= 2.")
 
-        pass
+        # Unpack parameters
+        alpha = float(self.alpha)
+        beta = float(self.beta)
+        c = float(self.c)
+
+        rng = numpy.random.default_rng(seed)
+
+        # Choose n,m so that n/m approx c and n+m = N.
+        # Solve n = c m and n + m = N -> m = N/(c+1), n = cN/(c+1).
+        m = int(round(N / (c + 1.0)))
+        m = max(1, min(N - 1, m))
+        n = N - m
+
+        # Optionally refine to get ratio closer to c (cheap local search).
+        # This keeps deterministic behavior.
+        best_n = n
+        best_m = m
+        best_err = abs((n / float(m)) - c)
+        for dm in (-2, -1, 0, 1, 2):
+            mm = m + dm
+            if mm <= 0 or mm >= N:
+                continue
+            nn = N - mm
+            err = abs((nn / float(mm)) - c)
+            if err < best_err:
+                best_err = err
+                best_n = nn
+                best_m = mm
+        n = best_n
+        m = best_m
+
+        # Draw X (n x m) with i.i.d. entries
+        X = rng.standard_normal((n, m))
+
+        # Assemble H
+        H = numpy.zeros((N, N), dtype=numpy.float64)
+
+        H[:n, :n] = alpha * numpy.eye(n, dtype=numpy.float64)
+        H[n:, n:] = beta * numpy.eye(m, dtype=numpy.float64)
+
+        s = 1.0 / numpy.sqrt(float(m))
+        B = s * X
+        H[:n, n:] = B
+        H[n:, :n] = B.T
+
+        return H
