@@ -14,11 +14,46 @@
 import numpy
 from .._geometric_form._continuation_genus0 import joukowski_z
 
-__all__ = [
+__all__ = ['normalize_coefficients',
     'sample_z_joukowski', 'filter_z_away_from_cuts', 'powers',
     'fit_polynomial_relation', 'eval_P', 'eval_roots',
     'build_sheets_from_roots']
 
+# ======================
+# normalize coefficients
+# ======================
+
+def normalize_coefficients(a):
+    # Trim rows and columns on the sides (equivalent to factorizing
+    # or reducing degree) and normalize so that the sum of the first
+    # column is one. 
+    if a.size == 0:
+        return a
+
+    # --- Trim zero rows (top and bottom) ---
+    non_zero_rows = numpy.any(a != 0, axis=1)
+    if not numpy.any(non_zero_rows):
+        return a[:0, :0]
+
+    first_row = numpy.argmax(non_zero_rows)
+    last_row = len(non_zero_rows) - numpy.argmax(non_zero_rows[::-1])
+    a = a[first_row:last_row, :]
+
+    # --- Trim zero columns (left and right) ---
+    non_zero_cols = numpy.any(a != 0, axis=0)
+    if not numpy.any(non_zero_cols):
+        return a[:, :0]
+
+    first_col = numpy.argmax(non_zero_cols)
+    last_col = len(non_zero_cols) - numpy.argmax(non_zero_cols[::-1])
+    a = a[:, first_col:last_col]
+
+    # --- Normalize so first column sums to 1 ---
+    col_sum = numpy.sum(a[:, 0])
+    if col_sum != 0:
+        a = a / col_sum
+
+    return a
 
 # ==================
 # sample z joukowski
@@ -167,7 +202,7 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
     for k, (i, j) in enumerate(pairs):
         full[i, j] = coef[k]
 
-    return full
+    return normalize_coefficients(full)
 
 
 # ======
