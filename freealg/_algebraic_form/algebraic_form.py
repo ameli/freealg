@@ -151,7 +151,7 @@ class AlgebraicForm(object):
 
         if inspect.isclass(A) and hasattr(A, "stieltjes") and \
                 callable(getattr(A, "stieltjes", None)):
-            # This is one of the distribution objects, like MarchenkoPasture
+            # This is one of the distribution objects, like MarchenkoPastur
             self.stieltjes = A.stieltjes
             self.n = 1
 

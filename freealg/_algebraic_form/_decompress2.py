@@ -13,7 +13,7 @@ __all__ = ['decompress_coeffs']
 # decompress_coeffs
 # =================
 
-def _decompress_coeffs(a, t, normalize=True):
+def decompress_coeffs(a, t, normalize=True):
     """
     Compute the decompressed coefficients A[r, s](t) induced by
     the transform Q_t(z, m) = m^L P(z + (1 - e^{-t}) / m, e^t m).
@@ -82,5 +82,5 @@ def _decompress_coeffs(a, t, normalize=True):
 
     if normalize:
         return _normalize_coefficients(a_out)
-    
+
     return a_out
