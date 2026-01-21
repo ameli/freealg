@@ -1,9 +1,15 @@
+# =======
+# Imports
+# =======
+
 import numpy
 
-# =====================
-# stieltjes_select_root
-# =====================
+__all__ = ['stieltjes_poly']
 
+
+# =====================
+# stieltjes select root
+# =====================
 
 def stieltjes_select_root(roots, z, w_prev=None):
     """
@@ -25,6 +31,7 @@ def stieltjes_select_root(roots, z, w_prev=None):
     w : complex
         Selected root corresponding to the Stieltjes branch.
     """
+
     z = complex(z)
     roots = numpy.asarray(roots, dtype=numpy.complex128).ravel()
 
@@ -51,17 +58,11 @@ def stieltjes_select_root(roots, z, w_prev=None):
     return candidates[idx]
 
 
-# ===============
-# stieltjes_poly
-# ===============
+# ==============
+# stieltjes poly
+# ==============
 
-def stieltjes_poly(
-    z,
-    a,
-    eps=None,
-    height=1e4,
-    steps=100,
-):
+def stieltjes_poly(z, a, eps=None, height=1e4, steps=100):
     """
     Evaluate the Stieltjes-branch solution m(z) of an algebraic equation.
 
@@ -92,11 +93,12 @@ def stieltjes_poly(
         Value of the Stieltjes-branch solution m(z) (or m(z+i*eps) if z is
         real).
     """
+
     z = complex(z)
     a = numpy.asarray(a)
 
     if a.ndim != 2:
-        raise ValueError("a must be a 2D array.")
+        raise ValueError('a must be a 2D array.')
 
     if steps < 1:
         raise ValueError("steps must be a positive integer.")

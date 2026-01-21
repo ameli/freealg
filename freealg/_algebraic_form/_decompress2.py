@@ -1,12 +1,17 @@
+# =======
+# Imports
+# =======
+
 import numpy
 from scipy.special import comb
 from ._continuation_algebraic import _normalize_coefficients
+
+__all__ = ['decompress_coeffs']
 
 
 # =================
 # decompress_coeffs
 # =================
-
 
 def _decompress_coeffs(a, t, normalize=True):
     """
@@ -79,4 +84,3 @@ def _decompress_coeffs(a, t, normalize=True):
         return _normalize_coefficients(a_out)
     
     return a_out
-

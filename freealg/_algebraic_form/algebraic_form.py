@@ -11,6 +11,7 @@
 # Imports
 # =======
 
+import inspect
 import numpy
 from .._util import resolve_complex_dtype, compute_eig
 # from .._util import compute_eig
@@ -18,7 +19,7 @@ from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, eval_P
 from ._edge import evolve_edges, merge_edges
 from ._decompress import decompress_newton
-from ._decompress2 import _decompress_coeffs
+from ._decompress2 import decompress_coeffs
 from ._homotopy import stieltjes_poly
 from .._free_form._support import supp
 from .._free_form._plot_util import plot_density
@@ -28,6 +29,7 @@ if not hasattr(numpy, 'trapezoid'):
     numpy.trapezoid = numpy.trapz
 
 __all__ = ['AlgebraicForm']
+
 
 # ==============
 # Algebraic Form
@@ -140,7 +142,6 @@ class AlgebraicForm(object):
 
         self.A = None
         self.eig = None
-        self.n = None
         self.stieltjes = None
         self.support = support
         self.delta = delta    # Offset above real axis to apply Plemelj formula
@@ -148,12 +149,21 @@ class AlgebraicForm(object):
         # Data type for complex arrays
         self.dtype = resolve_complex_dtype(dtype)
 
-        if callable(A):
+        if inspect.isclass(A) and hasattr(A, "stieltjes") and \
+                callable(getattr(A, "stieltjes", None)):
+            # This is one of the distribution objects, like MarchenkoPasture
+            self.stieltjes = A.stieltjes
+            self.n = 1
+
+        elif callable(A):
+            # This is a custom function
             self.stieltjes = A
+            self.n = 1
+
         else:
             # Eigenvalues
             if A.ndim == 1:
-                # When A is a 1D array, it is assumed A is the eigenvalue array.
+                # If A is a 1D array, it is assumed A is the eigenvalues array.
                 self.eig = A
                 self.n = len(A)
             elif A.ndim == 2:
@@ -164,11 +174,10 @@ class AlgebraicForm(object):
                 assert A.shape[0] == A.shape[1], \
                     'Only square matrices are permitted.'
                 self.eig = compute_eig(A)
-            
+
             # Use empirical Stieltjes function
             self.stieltjes = lambda z: \
-                numpy.mean(1.0/(self.eig-z[:,
-                                numpy.newaxis]), axis=-1)
+                numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
 
         # Support
         if support is None:
@@ -185,7 +194,6 @@ class AlgebraicForm(object):
             self.broad_support = (self.lam_m, self.lam_p)
 
         # Initialize
-        # self.method = None                 # fitting rho: jacobi, chebyshev
         self.a_coeffs = None               # Polynomial coefficients
         self.cache = {}                    # Cache inner-computations
 
@@ -210,8 +218,6 @@ class AlgebraicForm(object):
         # also empties all references holdign a cache copy.
         # self.cache.clear()
 
-        # return self.a_coeffs
-
         z_fits = []
         for sup in self.support:
             a, b = sup
@@ -222,11 +228,9 @@ class AlgebraicForm(object):
 
         z_fit = numpy.concatenate(z_fits)
 
-        # Remove points too close to ANY cut
+        # Remove points too close to any cut
         z_fit = filter_z_away_from_cuts(z_fit, self.support, y_eps=y_eps,
                                         x_pad=x_pad)
-
-        # ---------
 
         m1_fit = self.stieltjes(z_fit)
         a_coeffs = fit_polynomial_relation(z_fit, m1_fit, s=deg_m, deg_z=deg_z,
@@ -265,16 +269,16 @@ class AlgebraicForm(object):
         Generate a grid of points to evaluate density / Hilbert / Stieltjes
         transforms.
         """
-    
+
         radius = 0.5 * (self.lam_p - self.lam_m)
         center = 0.5 * (self.lam_p + self.lam_m)
-    
+
         x_min = numpy.floor(extend * (center - extend * radius * scale))
         x_max = numpy.ceil(extend * (center + extend * radius * scale))
-    
+
         x_min /= extend
         x_max /= extend
-    
+
         return numpy.linspace(x_min, x_max, N)
 
     # =======
@@ -332,17 +336,16 @@ class AlgebraicForm(object):
         # Create x if not given
         if x is None:
             x = self._generate_grid(1.25)
-        
+
         # Preallocate density to zero
         rho = numpy.zeros_like(x)
-        
+
         for idx, x_i in enumerate(x):
             m_i = stieltjes_poly(x_i, self.a_coeffs)
             rho[idx] = m_i.imag
-        
+
         rho = rho / numpy.pi
 
-        #
         # if self.method == 'jacobi':
         #     rho[mask] = jacobi_density(x[mask], self.psi, self.support,
         #                                self.alpha, self.beta)
@@ -362,11 +365,11 @@ class AlgebraicForm(object):
         # if min_rho < 0.0 - 1e-3:
         #     print(f'"rho" is not positive. min_rho: {min_rho:>0.3f}. Set ' +
         #           r'"force=True".')
-        #
+
         if plot:
             plot_density(x, rho, eig=self.eig, support=self.broad_support,
                          label='Estimate', latex=latex, save=save)
-        
+
         return rho
 
     # =======
@@ -589,129 +592,99 @@ class AlgebraicForm(object):
     # decompress
     # ==========
 
-    def decompress(self, x, t,
-                   max_iter=50,
-                   tol=1e-12,
-                   armijo=1e-4,
-                   min_lam=1e-6,
-                   w_min=1e-14,
-                   sweep=True,
-                   verbose=False):
+    def decompress(self, size, x=None, method='one', plot=False, latex=False,
+                   save=False, verbose=False, newton_opt={
+                       'max_iter': 50, 'tol': 1e-12, 'armijo': 1e-4,
+                       'min_lam': 1e-6, 'w_min': 1e-14, 'sweep': True}):
         """
         Free decompression of spectral density.
         """
 
         # Check size argument
-        # if numpy.isscalar(size):
-        #     size = int(size)
-        # else:
-        #     # Check monotonic increment (either all increasing or decreasing)
-        #     diff = numpy.diff(size)
-        #     if not (numpy.all(diff >= 0) or numpy.all(diff <= 0)):
-        #         raise ValueError('"size" increment should be monotonic.')
+        if numpy.isscalar(size):
+            size = int(size)
+        else:
+            # Check monotonic increment (either all increasing or decreasing)
+            diff = numpy.diff(size)
+            if not (numpy.all(diff >= 0) or numpy.all(diff <= 0)):
+                raise ValueError('"size" increment should be monotonic.')
 
         # Decompression ratio equal to e^{t}.
-        # alpha = numpy.atleast_1d(size) / self.n
+        alpha = numpy.atleast_1d(size) / self.n
 
-        # # If the input size was only a scalar, return a 1D rho, otherwise 2D.
-        # if numpy.isscalar(size):
-        #     rho = numpy.squeeze(rho)
-        #
-        # # Plot only the last size
-        # if plot:
-        #     if numpy.isscalar(size):
-        #         rho_last = rho
-        #     else:
-        #         rho_last = rho[-1, :]
-        #     plot_density(x, rho_last, support=(lb, ub),
-        #                  label='Decompression', latex=latex, save=save)
-        #
-        # return rho, x
+        def m_fn(z):
+            return stieltjes_poly(z, self.a_coeffs)
 
-        # Query grid on the real axis + a small imaginary buffer
-        z_query = x + 1j * self.delta
+        # Lower and upper bound on new support
+        hilb_lb = (1.0 / m_fn(self.lam_m + self.delta * 1j).item()).real
+        hilb_ub = (1.0 / m_fn(self.lam_p + self.delta * 1j).item()).real
+        lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
+        ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
 
-        # Initial condition at t=0 (physical branch)
-        w0_list = self.stieltjes(z_query)
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (ub - lb)
+            center = 0.5 * (ub + lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 200)
+        else:
+            x = numpy.asarray(x)
 
-        # Evolve
-        W, ok = decompress_newton(
-            z_query, t, self.a_coeffs,
-            w0_list=w0_list,
-            max_iter=max_iter,
-            tol=tol,
-            armijo=armijo,
-            min_lam=min_lam,
-            w_min=w_min,
-            sweep=sweep)
+        if method == 'one':
 
-        rho = W.imag / numpy.pi
+            # Query grid on the real axis + a small imaginary buffer
+            z_query = x + 1j * self.delta
 
-        if verbose:
-            print("success rate per t:", ok.mean(axis=1))
+            # Initial condition at t=0 (physical branch)
+            w0_list = self.stieltjes(z_query)
 
-        return rho
+            # Times
+            t = numpy.log(alpha)
 
-    # def decompress2(self, size, x=None, plot=False, latex=False,
-    #                 save=False):
-    #     """
-    #     Free decompression of spectral density.
-    #     """
+            # Evolve
+            W, ok = decompress_newton(
+                z_query, t, self.a_coeffs,
+                w0_list=w0_list, **newton_opt)
 
-    #     # Decompression ratio equal to e^{t}.
-    #     if self.n is None:
-    #         alpha = numpy.atleast_1d(size)
-    #     else:
-    #         alpha = numpy.atleast_1d(size) / self.n
+            rho = W.imag / numpy.pi
 
-    #     def m(z):
-    #         return stieltjes_poly(z, self.a_coeffs)
+            if verbose:
+                print("success rate per t:", ok.mean(axis=1))
 
-    #     # Lower and upper bound on new support
-    #     hilb_lb = (1.0 / m(self.lam_m + self.delta * 1j).item()).real
-    #     hilb_ub = (1.0 / m(self.lam_p + self.delta * 1j).item()).real
-    #     lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
-    #     ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
+        elif method == 'two':
 
-    #     # Create x if not given
-    #     if x is None:
-    #         radius = 0.5 * (ub - lb)
-    #         center = 0.5 * (ub + lb)
-    #         scale = 1.25
-    #         x_min = numpy.floor(center - radius * scale)
-    #         x_max = numpy.ceil(center + radius * scale)
-    #         x = numpy.linspace(x_min, x_max, 200)
-    #     else:
-    #         x = numpy.asarray(x)
-        
-    #     # Preallocate density to zero
-    #     rho = numpy.zeros((alpha.size, x.size), dtype=float)
+            # Preallocate density to zero
+            rho = numpy.zeros((alpha.size, x.size), dtype=float)
 
-    #     # Decompress to each alpha
-    #     for i in range(alpha.size):
-    #         coeffs_i = _decompress_coeffs(self.a_coeffs,
-    #                                       numpy.log(alpha[i]),
-    #                                       normalize=True)
-    #         for j, x_j in enumerate(x):
-    #             m_j = stieltjes_poly(x_j, coeffs_i)
-    #             rho[i, j] = m_j.imag
-    #     rho = rho / numpy.pi
-        
-    #     # If the input size was only a scalar, return a 1D rho, otherwise 2D.
-    #     if numpy.isscalar(size):
-    #         rho = numpy.squeeze(rho)
+            # Decompress to each alpha
+            for i in range(alpha.size):
+                coeffs_i = decompress_coeffs(self.a_coeffs,
+                                             numpy.log(alpha[i]))
+                for j, x_j in enumerate(x):
+                    m_j = stieltjes_poly(x_j, coeffs_i)
+                    rho[i, j] = m_j.imag
 
-    #     # Plot only the last size
-    #     if plot:
-    #         if numpy.isscalar(size):
-    #             rho_last = rho
-    #         else:
-    #             rho_last = rho[-1, :]
-    #         plot_density(x, rho_last, support=(lb, ub),
-    #                      label='Decompression', latex=latex, save=save)
-        
-    #     return rho, x
+            rho = rho / numpy.pi
 
+        else:
+            raise ValueError('"method" is invalid.')
+
+        # If the input size was only a scalar, return a 1D rho, otherwise 2D.
+        if numpy.isscalar(size):
+            rho = numpy.squeeze(rho)
+
+        # Plot only the last size
+        if plot:
+            if numpy.isscalar(size):
+                rho_last = rho
+            else:
+                rho_last = rho[-1, :]
+            plot_density(x, rho_last, support=(lb, ub),
+                         label='Decompression', latex=latex, save=save)
+
+        return rho, x
 
     # ====
     # edge
