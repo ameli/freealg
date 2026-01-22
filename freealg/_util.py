@@ -70,3 +70,26 @@ def compute_eig(A, lower=False):
     eig = scipy.linalg.eigvalsh(A, lower=lower, driver='ev')
 
     return eig
+
+# ================
+# subsample matrix
+# ================
+
+def subsample_matrix(matrix, submatrix_size, seed=None):
+    """
+    Generate a random subsample of a larger matrix
+    """
+
+    if matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("Matrix must be square")
+
+    n = matrix.shape[0]
+    if submatrix_size > n:
+        raise ValueError("Submatrix size cannot exceed matrix size")
+
+    rng = numpy.random.default_rng(seed)
+    idx = rng.choice(n, size=submatrix_size, replace=False)
+    idx = numpy.sort(idx)  # optional, preserves original ordering
+
+    return matrix[numpy.ix_(idx, idx)]
+

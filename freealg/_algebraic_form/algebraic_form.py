@@ -655,12 +655,16 @@ class AlgebraicForm(object):
 
             # Query grid on the real axis + a small imaginary buffer
             z_query = x + 1j * self.delta
+            stieltjes = numpy.vectorize(m_fn)
 
             # Initial condition at t=0 (physical branch)
-            w0_list = self.stieltjes(z_query)
+            w0_list = stieltjes(z_query)
 
             # Times
             t = numpy.log(alpha)
+
+            # Ensure it starts from t = 0
+            t = numpy.concatenate([numpy.zeros(1), t])
 
             # Evolve
             W, ok = decompress_newton(
@@ -668,6 +672,9 @@ class AlgebraicForm(object):
                 w0_list=w0_list, **newton_opt)
 
             rho = W.imag / numpy.pi
+
+            # Remove time zero
+            rho = rho[1:, :]
 
             if verbose:
                 print("success rate per t:", ok.mean(axis=1))
