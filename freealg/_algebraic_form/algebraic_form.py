@@ -20,9 +20,9 @@ from ._continuation_algebraic import sample_z_joukowski, \
 from ._edge import evolve_edges, merge_edges
 from ._decompress import decompress_newton
 from ._decompress2 import decompress_coeffs
-from ._homotopy import stieltjes_poly
+from ._homotopy import StieltjesPoly
 from ._discriminant import compute_singular_points
-from ._moments import Moments
+from ._moments import MomentsESD
 from .._free_form._support import supp
 from .._free_form._plot_util import plot_density
 
@@ -180,7 +180,7 @@ class AlgebraicForm(object):
             # Use empirical Stieltjes function
             self.stieltjes = lambda z: \
                 numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
-            self.moments = Moments(self.eig)
+            self.moments = MomentsESD(self.eig)
 
         # Support
         if support is None:
@@ -294,6 +294,7 @@ class AlgebraicForm(object):
         status['res_99_9'] = float(res_99_9)
         status['fit_metrics'] = fit_metrics
         self.status = status
+        self.stieltjes = StieltjesPoly(self.a_coeffs)
 
         if verbose:
             print(f'fit residual max  : {res_max:>0.4e}')
@@ -398,13 +399,7 @@ class AlgebraicForm(object):
             x = self._generate_grid(1.25)
 
         # Preallocate density to zero
-        rho = numpy.zeros_like(x)
-
-        for idx, x_i in enumerate(x):
-            m_i = stieltjes_poly(x_i, self.a_coeffs)
-            rho[idx] = m_i.imag
-
-        rho = rho / numpy.pi
+        rho = self.stieltjes(x).imag / numpy.pi
 
         # if self.method == 'jacobi':
         #     rho[mask] = jacobi_density(x[mask], self.psi, self.support,
@@ -672,12 +667,9 @@ class AlgebraicForm(object):
         # Decompression ratio equal to e^{t}.
         alpha = numpy.atleast_1d(size) / self.n
 
-        def m_fn(z):
-            return stieltjes_poly(z, self.a_coeffs)
-
         # Lower and upper bound on new support
-        hilb_lb = (1.0 / m_fn(self.lam_m + self.delta * 1j).item()).real
-        hilb_ub = (1.0 / m_fn(self.lam_p + self.delta * 1j).item()).real
+        hilb_lb = (1.0 / self.stieltjes(self.lam_m + self.delta * 1j).item()).real
+        hilb_ub = (1.0 / self.stieltjes(self.lam_p + self.delta * 1j).item()).real
         lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
         ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
 
@@ -698,9 +690,7 @@ class AlgebraicForm(object):
             z_query = x + 1j * self.delta
 
             # Initial condition at t=0 (physical branch)
-            # w0_list = self.stieltjes(z_query)
-            stieltjes = numpy.vectorize(m_fn)
-            w0_list = stieltjes(z_query)
+            w0_list = self.stieltjes(z_query)
 
             # Times
             t = numpy.log(alpha)
@@ -730,9 +720,8 @@ class AlgebraicForm(object):
             for i in range(alpha.size):
                 coeffs_i = decompress_coeffs(self.a_coeffs,
                                              numpy.log(alpha[i]))
-                for j, x_j in enumerate(x):
-                    m_j = stieltjes_poly(x_j, coeffs_i)
-                    rho[i, j] = m_j.imag
+                stieltjes_i = StieltjesPoly(coeffs_i)
+                rho[i, :] = stieltjes_i.imag
 
             rho = rho / numpy.pi
 
