@@ -63,7 +63,7 @@ class AlgebraicForm(object):
         * ``'complex128'``: 128-bit complex numbers, equivalent of two double
           precision floating point.
         * ``'complex256'``: 256-bit complex numbers, equivalent of two long
-          double precision floating point. This optino is only available on
+          double precision floating point. This option is only available on
           Linux machines.
 
         When using series acceleration methods (such as setting
@@ -271,7 +271,7 @@ class AlgebraicForm(object):
                 triangular=triangular, normalize=normalize, mu=mu,
                 mu_reg=mu_reg)
 
-        # Compute global branhc points, zeros of leading a_j, and support
+        # Compute global branch points, zeros of leading a_j, and support
         branch_points, a_s_zero, support = compute_singular_points(a_coeffs)
 
         self.a_coeffs = a_coeffs
@@ -641,7 +641,8 @@ class AlgebraicForm(object):
             t = numpy.log(alpha)
 
             # Ensure it starts from t = 0
-            t = numpy.concatenate([numpy.zeros(1), t])
+            if t[0] > 1.0:
+                t = numpy.concatenate([numpy.zeros(1), t])
 
             # Evolve
             W, ok = decompress_newton(

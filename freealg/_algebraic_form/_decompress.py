@@ -504,6 +504,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
     ok : ndarray of bool, same shape as W
         Convergence flags from the accepted solve at each point.
     """
+
     z_list = numpy.asarray(z_list, dtype=complex).ravel()
     t_grid = numpy.asarray(t_grid, dtype=float).ravel()
     nt = t_grid.size
