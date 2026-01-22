@@ -71,6 +71,7 @@ def compute_eig(A, lower=False):
 
     return eig
 
+
 # ================
 # subsample matrix
 # ================
@@ -92,4 +93,3 @@ def subsample_matrix(matrix, submatrix_size, seed=None):
     idx = numpy.sort(idx)  # optional, preserves original ordering
 
     return matrix[numpy.ix_(idx, idx)]
-

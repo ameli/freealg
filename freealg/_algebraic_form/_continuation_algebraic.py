@@ -13,6 +13,7 @@
 
 import numpy
 from .._geometric_form._continuation_genus0 import joukowski_z
+from ._constraints import build_moment_constraint_matrix
 
 __all__ = ['sample_z_joukowski', 'filter_z_away_from_cuts', 'powers',
            'fit_polynomial_relation', 'sanity_check_stieltjes_branch',
@@ -131,7 +132,11 @@ def powers(x, deg):
 # =======================
 
 def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
-                            triangular=None, normalize=False):
+                            triangular=None, normalize=False,
+                            mu=None, mu_reg=None):
+    """
+    Fits polynomial P(z, m) = 0 with samples from the physical branch.
+    """
 
     z = numpy.asarray(z, dtype=complex).ravel()
     m = numpy.asarray(m, dtype=complex).ravel()
@@ -198,13 +203,81 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
     s_col[s_col == 0.0] = 1.0
     As = Ar / s_col[None, :]
 
-    if ridge_lambda > 0.0:
-        L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef, dtype=float)
-        As = numpy.vstack([As, L])
+    # Optional moment constraints B c = 0 (hard via nullspace, soft via
+    # weighted rows)
+    if mu is not None:
+        B = build_moment_constraint_matrix(pairs, deg_z, s, mu)
+        if B.shape[0] > 0:
+            Bs = B / s_col[None, :]
 
-    _, _, vh = numpy.linalg.svd(As, full_matrices=False)
-    coef_scaled = vh[-1, :]
-    coef = coef_scaled / s_col
+            if mu_reg is None:
+                # Hard constraints: solve in nullspace of Bs
+                uB, sB, vhB = numpy.linalg.svd(Bs, full_matrices=True)
+                tolB = 1e-12 * (sB[0] if sB.size else 1.0)
+                rankB = int(numpy.sum(sB > tolB))
+                if rankB >= n_coef:
+                    raise RuntimeError(
+                        'Moment constraints leave no feasible coefficients.')
+
+                N = vhB[rankB:, :].T  # (n_coef, n_free)
+                AN = As @ N
+
+                if ridge_lambda > 0.0:
+                    L = numpy.sqrt(ridge_lambda) * numpy.eye(N.shape[1],
+                                                             dtype=float)
+                    AN = numpy.vstack([AN, L])
+
+                _, _, vhN = numpy.linalg.svd(AN, full_matrices=False)
+                y = vhN[-1, :]
+                coef_scaled = N @ y
+
+                coef = coef_scaled / s_col
+
+            else:
+                mu_reg = float(mu_reg)
+                if mu_reg > 0.0:
+                    As_aug = As
+                    Bs_w = numpy.sqrt(mu_reg) * Bs
+                    As_aug = numpy.vstack([As_aug, Bs_w])
+
+                    if ridge_lambda > 0.0:
+                        L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef,
+                                                                 dtype=float)
+                        As_aug = numpy.vstack([As_aug, L])
+
+                    _, _, vh = numpy.linalg.svd(As_aug, full_matrices=False)
+                    coef_scaled = vh[-1, :]
+                    coef = coef_scaled / s_col
+                else:
+                    # mu_reg == 0 => ignore constraints
+                    if ridge_lambda > 0.0:
+                        L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef,
+                                                                 dtype=float)
+                        As = numpy.vstack([As, L])
+
+                    _, _, vh = numpy.linalg.svd(As, full_matrices=False)
+                    coef_scaled = vh[-1, :]
+                    coef = coef_scaled / s_col
+
+        else:
+            # B has no effective rows -> proceed unconstrained
+            if ridge_lambda > 0.0:
+                L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef, dtype=float)
+                As = numpy.vstack([As, L])
+
+            _, _, vh = numpy.linalg.svd(As, full_matrices=False)
+            coef_scaled = vh[-1, :]
+            coef = coef_scaled / s_col
+
+    else:
+        # No moment constraints
+        if ridge_lambda > 0.0:
+            L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef, dtype=float)
+            As = numpy.vstack([As, L])
+
+        _, _, vh = numpy.linalg.svd(As, full_matrices=False)
+        coef_scaled = vh[-1, :]
+        coef = coef_scaled / s_col
 
     full = numpy.zeros((deg_z + 1, s + 1), dtype=complex)
     for k, (i, j) in enumerate(pairs):

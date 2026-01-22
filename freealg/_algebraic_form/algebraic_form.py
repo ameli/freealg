@@ -197,6 +197,7 @@ class AlgebraicForm(object):
 
         # Initialize
         self.a_coeffs = None               # Polynomial coefficients
+        self.status = None                 # Fitting status
         self.cache = {}                    # Cache inner-computations
 
     # ===
@@ -210,10 +211,38 @@ class AlgebraicForm(object):
             y_eps=2e-2,
             x_pad=0.0,
             triangular=None,
+            mu=None,
+            mu_reg=None,
             normalize=False,
             verbose=False):
         """
-        Fits polynomial.
+        Fit polynomial.
+
+        Parameters
+        ----------
+
+        deg_m : int
+            Degree :math:`\\deg_m(P)`
+
+        deg_z : int
+            Degree :math:`\\deg_z(P)`
+
+        mu : array_like, default=None
+            If an array :math:`[\\mu_0, \\mu_`, \\dots, \\mu_r]` is given,
+            it enforces the first :math:`r+1` moments. Note that :math:`\\mu_0`
+            should be :math:`1` to ensure unit mass. See also ``mu_reg`.
+
+        mu_reg: float, default=None
+            If `None`, the constraints ``mu`` are applied as hard constraint.
+            If a positive number, the constraints are applied as a soft
+            constraints with regularisation ``mu_reg``.
+
+        Notes
+        -----
+
+        When the input data are from an exact model, hard moment constraint is
+        preferred over soft constraint as the latter can hurt an already a good
+        fit.
         """
 
         # Very important: reset cache whenever this function is called. This
@@ -234,11 +263,13 @@ class AlgebraicForm(object):
         z_fit = filter_z_away_from_cuts(z_fit, self.support, y_eps=y_eps,
                                         x_pad=x_pad)
 
+        # Fitting (w_inf = None means adaptive weight selection)
         m1_fit = self.stieltjes(z_fit)
         a_coeffs = fit_polynomial_relation(z_fit, m1_fit, s=deg_m, deg_z=deg_z,
                                            ridge_lambda=reg,
                                            triangular=triangular,
-                                           normalize=normalize)
+                                           normalize=normalize, mu=mu,
+                                           mu_reg=mu_reg)
 
         self.a_coeffs = a_coeffs
 
@@ -254,8 +285,9 @@ class AlgebraicForm(object):
                                                eta=max(y_eps, 1e-2), n_x=128,
                                                max_bad_frac=0.05)
 
-        status['res_max'] = res_max
-        status['res_99_9'] = res_99_9
+        status['res_max'] = float(res_max)
+        status['res_99_9'] = float(res_99_9)
+        self.status = status
 
         if verbose:
             print(f'fit residual max  : {res_max:>0.4e}')
@@ -658,9 +690,10 @@ class AlgebraicForm(object):
 
             # Query grid on the real axis + a small imaginary buffer
             z_query = x + 1j * self.delta
-            stieltjes = numpy.vectorize(m_fn)
 
             # Initial condition at t=0 (physical branch)
+            # w0_list = self.stieltjes(z_query)
+            stieltjes = numpy.vectorize(m_fn)
             w0_list = stieltjes(z_query)
 
             # Times
