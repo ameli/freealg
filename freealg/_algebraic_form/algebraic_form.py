@@ -21,6 +21,7 @@ from ._edge import evolve_edges, merge_edges
 from ._decompress import decompress_newton
 from ._decompress2 import decompress_coeffs
 from ._homotopy import stieltjes_poly
+from ._discriminant import compute_singular_points
 from ._moments import Moments
 from .._free_form._support import supp
 from .._free_form._plot_util import plot_density
@@ -265,11 +266,13 @@ class AlgebraicForm(object):
 
         # Fitting (w_inf = None means adaptive weight selection)
         m1_fit = self.stieltjes(z_fit)
-        a_coeffs = fit_polynomial_relation(z_fit, m1_fit, s=deg_m, deg_z=deg_z,
-                                           ridge_lambda=reg,
-                                           triangular=triangular,
-                                           normalize=normalize, mu=mu,
-                                           mu_reg=mu_reg)
+        a_coeffs, fit_metrics = fit_polynomial_relation(
+                z_fit, m1_fit, s=deg_m, deg_z=deg_z, ridge_lambda=reg,
+                triangular=triangular, normalize=normalize, mu=mu,
+                mu_reg=mu_reg)
+
+        # Compute global branhc points, zeros of leading a_j, and support
+        branch_points, a_s_zero, support = compute_singular_points(a_coeffs)
 
         self.a_coeffs = a_coeffs
 
@@ -285,8 +288,11 @@ class AlgebraicForm(object):
                                                eta=max(y_eps, 1e-2), n_x=128,
                                                max_bad_frac=0.05)
 
+        status['branch_points'] = branch_points
+        status['a_s_zero'] = a_s_zero
         status['res_max'] = float(res_max)
         status['res_99_9'] = float(res_99_9)
+        status['fit_metrics'] = fit_metrics
         self.status = status
 
         if verbose:
@@ -312,7 +318,7 @@ class AlgebraicForm(object):
             else:
                 print('\nStieltjes sanity check: OK')
 
-        return a_coeffs, status
+        return a_coeffs, support, status
 
     # =============
     # generate grid

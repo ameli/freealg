@@ -227,7 +227,7 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
                                                              dtype=float)
                     AN = numpy.vstack([AN, L])
 
-                _, _, vhN = numpy.linalg.svd(AN, full_matrices=False)
+                _, svals, vhN = numpy.linalg.svd(AN, full_matrices=False)
                 y = vhN[-1, :]
                 coef_scaled = N @ y
 
@@ -245,7 +245,8 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
                                                                  dtype=float)
                         As_aug = numpy.vstack([As_aug, L])
 
-                    _, _, vh = numpy.linalg.svd(As_aug, full_matrices=False)
+                    _, svals, vh = numpy.linalg.svd(As_aug,
+                                                    full_matrices=False)
                     coef_scaled = vh[-1, :]
                     coef = coef_scaled / s_col
                 else:
@@ -255,7 +256,7 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
                                                                  dtype=float)
                         As = numpy.vstack([As, L])
 
-                    _, _, vh = numpy.linalg.svd(As, full_matrices=False)
+                    _, svals, vh = numpy.linalg.svd(As, full_matrices=False)
                     coef_scaled = vh[-1, :]
                     coef = coef_scaled / s_col
 
@@ -265,7 +266,7 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
                 L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef, dtype=float)
                 As = numpy.vstack([As, L])
 
-            _, _, vh = numpy.linalg.svd(As, full_matrices=False)
+            _, svals, vh = numpy.linalg.svd(As, full_matrices=False)
             coef_scaled = vh[-1, :]
             coef = coef_scaled / s_col
 
@@ -275,7 +276,7 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
             L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef, dtype=float)
             As = numpy.vstack([As, L])
 
-        _, _, vh = numpy.linalg.svd(As, full_matrices=False)
+        _, svals, vh = numpy.linalg.svd(As, full_matrices=False)
         coef_scaled = vh[-1, :]
         coef = coef_scaled / s_col
 
@@ -286,7 +287,14 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
     if normalize:
         full = _normalize_coefficients(full)
 
-    return full
+    # Diagnostic metrics
+    fit_metrics = {
+        's_min': svals[-1],
+        'gap_ratio': float(svals[-2] / svals[-1]),
+        'n_small': float(int(numpy.sum(svals <= svals[0] * 1e-12))),
+    }
+
+    return full, fit_metrics
 
 
 # =============================
