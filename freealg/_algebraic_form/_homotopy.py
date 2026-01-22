@@ -4,6 +4,7 @@
 
 import numpy
 from ._moments import AlgebraicStieltjesMoments
+from tqdm import tqdm
 
 __all__ = ['stieltjes_poly']
 
@@ -125,13 +126,15 @@ class StieltjesPoly(object):
         self.steps = steps
         self.order = order
 
-        # Objects depending only on a
         self.mom = AlgebraicStieltjesMoments(a)
-        self._zpows_exp = numpy.arange(self.a_l)
         self.rad = 1.0 + self.height * self.mom.radius(self.order)
+        self.z0_p = 1j * self.rad
+        self.m0_p = self.mom.stieltjes(self.z0_p, self.order)
+        self.z0_m = -1j * self.rad
+        self.m0_m = self.mom.stieltjes(self.z0_m, self.order)
 
     def _poly_coeffs_m(self, z_val):
-        z_powers = z_val ** self._zpows_exp
+        z_powers = z_val ** numpy.arange(self.a_l)
         return (z_powers @ self.a)[::-1]
 
     def _poly_roots(self, z_val):
@@ -165,14 +168,18 @@ class StieltjesPoly(object):
         if half_sign == 0.0:
             half_sign = 1.0
 
-        # If z is outside radius of convergence, no homotopy
-        # necessary
-        if numpy.abs(z) > self.rad:
-            target = self.mom.stieltjes(z, self.order)
-            return select_root(self._poly_roots(z), z, target)
+        # # If z is outside radius of convergence, no homotopy
+        # # necessary
+        # if numpy.abs(z) > self.rad:
+        #     target = self.mom.stieltjes(z, self.order)
+        #     return select_root(self._poly_roots(z), z, target)
 
-        z0 = 1j * float(half_sign) * self.rad
-        target = self.mom.stieltjes(z0, self.order)
+        if half_sign > 0.0:
+            z0 = self.z0_p
+            target = self.m0_p
+        else:
+            z0 = self.z0_m
+            target = self.m0_m
 
         # Initialize at z0
         w_prev = select_root(self._poly_roots(z0), z0, target)
@@ -184,7 +191,7 @@ class StieltjesPoly(object):
 
         return w_prev
 
-    def __call__(self, z):
+    def __call__(self, z, progress=False):
         # Scalar fast-path
         if numpy.isscalar(z):
             return self.evaluate(z)
@@ -194,7 +201,11 @@ class StieltjesPoly(object):
         out = numpy.empty(z_arr.shape, dtype=numpy.complex128)
 
         # Iterate over indices so we can pass Python scalars into evaluate()
-        for idx in numpy.ndindex(z_arr.shape):
+        if progress:
+            indices = tqdm(numpy.ndindex(z_arr.shape),total=z_arr.size)
+        else:
+            indices = numpy.ndindex(z_arr.shape)
+        for idx in indices:
             out[idx] = self.evaluate(z_arr[idx])
 
         return out

@@ -24,7 +24,7 @@ from ._homotopy import StieltjesPoly
 from ._discriminant import compute_singular_points
 from ._moments import MomentsESD
 from .._free_form._support import supp
-from .._free_form._plot_util import plot_density
+from .._free_form._plot_util import plot_density, plot_hilbert, plot_stieltjes
 
 # Fallback to previous numpy API
 if not hasattr(numpy, 'trapezoid'):
@@ -144,7 +144,7 @@ class AlgebraicForm(object):
 
         self.A = None
         self.eig = None
-        self.stieltjes = None
+        self._stieltjes = None
         self.moments = None
         self.support = support
         self.delta = delta    # Offset above real axis to apply Plemelj formula
@@ -154,12 +154,12 @@ class AlgebraicForm(object):
 
         if hasattr(A, 'stieltjes') and callable(getattr(A, 'stieltjes', None)):
             # This is one of the distribution objects, like MarchenkoPastur
-            self.stieltjes = A.stieltjes
+            self._stieltjes = A.stieltjes
             self.n = 1
 
         elif callable(A):
             # This is a custom function
-            self.stieltjes = A
+            self._stieltjes = A
             self.n = 1
 
         else:
@@ -178,7 +178,7 @@ class AlgebraicForm(object):
                 self.eig = compute_eig(A)
 
             # Use empirical Stieltjes function
-            self.stieltjes = lambda z: \
+            self._stieltjes = lambda z: \
                 numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
             self.moments = MomentsESD(self.eig)
 
@@ -265,7 +265,7 @@ class AlgebraicForm(object):
                                         x_pad=x_pad)
 
         # Fitting (w_inf = None means adaptive weight selection)
-        m1_fit = self.stieltjes(z_fit)
+        m1_fit = self._stieltjes(z_fit)
         a_coeffs, fit_metrics = fit_polynomial_relation(
                 z_fit, m1_fit, s=deg_m, deg_z=deg_z, ridge_lambda=reg,
                 triangular=triangular, normalize=normalize, mu=mu,
@@ -294,7 +294,7 @@ class AlgebraicForm(object):
         status['res_99_9'] = float(res_99_9)
         status['fit_metrics'] = fit_metrics
         self.status = status
-        self.stieltjes = StieltjesPoly(self.a_coeffs)
+        self._stieltjes = StieltjesPoly(self.a_coeffs)
 
         if verbose:
             print(f'fit residual max  : {res_max:>0.4e}')
@@ -388,8 +388,6 @@ class AlgebraicForm(object):
             >>> from freealg import FreeForm
         """
 
-        pass
-
         if self.a_coeffs is None:
             raise RuntimeError('The model needs to be fit using the .fit() ' +
                                'function.')
@@ -399,27 +397,7 @@ class AlgebraicForm(object):
             x = self._generate_grid(1.25)
 
         # Preallocate density to zero
-        rho = self.stieltjes(x).imag / numpy.pi
-
-        # if self.method == 'jacobi':
-        #     rho[mask] = jacobi_density(x[mask], self.psi, self.support,
-        #                                self.alpha, self.beta)
-        # elif self.method == 'chebyshev':
-        #     rho[mask] = chebyshev_density(x[mask], self.psi, self.support)
-        # else:
-        #     raise RuntimeError('"method" is invalid.')
-        #
-        # # Check density is unit mass
-        # mass = numpy.trapezoid(rho, x)
-        # if not numpy.isclose(mass, 1.0, atol=1e-2):
-        #     print(f'"rho" is not unit mass. mass: {mass:>0.3f}. Set ' +
-        #           r'"force=True".')
-        #
-        # # Check density is positive
-        # min_rho = numpy.min(rho)
-        # if min_rho < 0.0 - 1e-3:
-        #     print(f'"rho" is not positive. min_rho: {min_rho:>0.3f}. Set ' +
-        #           r'"force=True".')
+        rho = self._stieltjes(x).imag / numpy.pi
 
         if plot:
             plot_density(x, rho, eig=self.eig, support=self.broad_support,
@@ -431,7 +409,7 @@ class AlgebraicForm(object):
     # hilbert
     # =======
 
-    def hilbert(self, x=None, rho=None, plot=False, latex=False, save=False):
+    def hilbert(self, x=None, plot=False, latex=False, save=False):
         """
         Compute Hilbert transform of the spectral density.
 
@@ -442,9 +420,6 @@ class AlgebraicForm(object):
             The locations where Hilbert transform is evaluated at. If `None`,
             an interval slightly larger than the support interval of the
             spectral density is used.
-
-        rho : numpy.array, default=None
-            Density. If `None`, it will be computed.
 
         plot : bool, default=False
             If `True`, density is plotted.
@@ -477,49 +452,22 @@ class AlgebraicForm(object):
             >>> from freealg import FreeForm
         """
 
-        pass
-
         if self.a_coeffs is None:
             raise RuntimeError('The model needs to be fit using the .fit() ' +
                                'function.')
 
-        # # Create x if not given
-        # if x is None:
-        #     x = self._generate_grid(1.25)
-        #
-        # # if (numpy.min(x) > self.lam_m) or (numpy.max(x) < self.lam_p):
-        # #     raise ValueError('"x" does not encompass support interval.')
-        #
-        # # Preallocate density to zero
-        # if rho is None:
-        #     rho = self.density(x)
-        #
-        # # mask of support [lam_m, lam_p]
-        # mask = numpy.logical_and(x >= self.lam_m, x <= self.lam_p)
-        # x_s = x[mask]
-        # rho_s = rho[mask]
-        #
-        # # Form the matrix of integrands: rho_s / (t - x_i)
-        # # Here, we have diff[i,j] = x[i] - x_s[j]
-        # diff = x[:, None] - x_s[None, :]
-        # D = rho_s[None, :] / diff
-        #
-        # # Principal-value: wherever t == x_i, then diff == 0, zero that entry
-        # # (numpy.isclose handles floating-point exactly)
-        # D[numpy.isclose(diff, 0.0)] = 0.0
-        #
-        # # Integrate each row over t using trapezoid rule on x_s
-        # # Namely, hilb[i] = int rho_s(t)/(t - x[i]) dt
-        # hilb = numpy.trapezoid(D, x_s, axis=1) / numpy.pi
-        #
-        # # We use negative sign convention
-        # hilb = -hilb
-        #
-        # if plot:
-        #     plot_hilbert(x, hilb, support=self.support, latex=latex,
-        #                  save=save)
-        #
-        # return hilb
+        # Create x if not given
+        if x is None:
+            x = self._generate_grid(1.25)
+
+        # Preallocate density to zero
+        hilb = -self._stieltjes(x).real / numpy.pi
+        
+        if plot:
+            plot_hilbert(x, hilb, support=self.support, latex=latex,
+                         save=save)
+        
+        return hilb
 
     # =========
     # stieltjes
@@ -559,11 +507,8 @@ class AlgebraicForm(object):
         Returns
         -------
 
-        m_p : numpy.ndarray
+        m : numpy.ndarray
             The Stieltjes transform on the principal branch.
-
-        m_m : numpy.ndarray
-            The Stieltjes transform continued to the secondary branch.
 
         See Also
         --------
@@ -579,36 +524,34 @@ class AlgebraicForm(object):
             >>> from freealg import FreeForm
         """
 
-        pass
-
         if self.a_coeffs is None:
             raise RuntimeError('The model needs to be fit using the .fit() ' +
                                'function.')
 
-        # # Create x if not given
-        # if x is None:
-        #     x = self._generate_grid(2.0, extend=2.0)
-        #
-        # # Create y if not given
-        # if (plot is False) and (y is None):
-        #     # Do not use a Cartesian grid. Create a 1D array z slightly above
-        #     # the real line.
-        #     y = self.delta * 1j
-        #     z = x.astype(complex) + y             # shape (Nx,)
-        # else:
-        #     # Use a Cartesian grid
-        #     if y is None:
-        #         y = numpy.linspace(-1, 1, 400)
-        #     x_grid, y_grid = numpy.meshgrid(x.real, y.real)
-        #     z = x_grid + 1j * y_grid              # shape (Ny, Nx)
-        #
-        # m1, m2 = self._eval_stieltjes(z, branches=True)
-        #
-        # if plot:
-        #     plot_stieltjes(x, y, m1, m2, self.support, latex=latex,
-        #                    save=save)
-        #
-        # return m1, m2
+        # Create x if not given
+        if x is None:
+            x = self._generate_grid(2.0, extend=2.0)[::2]
+        
+        # Create y if not given
+        if (plot is False) and (y is None):
+            # Do not use a Cartesian grid. Create a 1D array z slightly above
+            # the real line.
+            y = self.delta * 1j
+            z = x.astype(complex) + y             # shape (Nx,)
+        else:
+            # Use a Cartesian grid
+            if y is None:
+                y = numpy.linspace(-1, 1, 200)
+            x_grid, y_grid = numpy.meshgrid(x.real, y.real)
+            z = x_grid + 1j * y_grid              # shape (Ny, Nx)
+        
+        m = self._stieltjes(z, progress=True)
+        
+        if plot:
+            plot_stieltjes(x, y, m, m, self.broad_support, latex=latex,
+                           save=save)
+        
+        return m
 
     # ==============
     # eval stieltjes
@@ -668,8 +611,8 @@ class AlgebraicForm(object):
         alpha = numpy.atleast_1d(size) / self.n
 
         # Lower and upper bound on new support
-        hilb_lb = (1.0 / self.stieltjes(self.lam_m + self.delta * 1j).item()).real
-        hilb_ub = (1.0 / self.stieltjes(self.lam_p + self.delta * 1j).item()).real
+        hilb_lb = (1.0 / self._stieltjes(self.lam_m + self.delta * 1j).item()).real
+        hilb_ub = (1.0 / self._stieltjes(self.lam_p + self.delta * 1j).item()).real
         lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
         ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
 
@@ -690,7 +633,7 @@ class AlgebraicForm(object):
             z_query = x + 1j * self.delta
 
             # Initial condition at t=0 (physical branch)
-            w0_list = self.stieltjes(z_query)
+            w0_list = self._stieltjes(z_query)
 
             # Times
             t = numpy.log(alpha)
@@ -721,7 +664,7 @@ class AlgebraicForm(object):
                 coeffs_i = decompress_coeffs(self.a_coeffs,
                                              numpy.log(alpha[i]))
                 stieltjes_i = StieltjesPoly(coeffs_i)
-                rho[i, :] = stieltjes_i.imag
+                rho[i, :] = stieltjes_i(x).imag
 
             rho = rho / numpy.pi
 

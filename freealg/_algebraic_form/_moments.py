@@ -441,10 +441,3 @@ class AlgebraicStieltjesMoments(object):
         mu = self.moments(N)
         return -numpy.sum(z[..., numpy.newaxis]**(-numpy.arange(N+1)-1) * mu,
                           axis=-1)
-
-    def target_pt(self, N=15):
-        # Obtain an estimate of the Stieltjes transform at a
-        # single point z where the estimate is likely reliable
-        z = 1j + 2j * self.radius(N)
-        return z, self.stieltjes(z, N)
-
