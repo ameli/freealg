@@ -1,9 +1,13 @@
+# =======
+# Imports
+# =======
+
 import numpy
 
 
-# =========
+# =======
 # Moments
-# =========
+# =======
 
 class MomentsESD(object):
     """
@@ -85,9 +89,9 @@ class MomentsESD(object):
         # (a_{n,0},...,a_{n,n-1})
         self._a = {0: numpy.array([1.0])}
 
-    # ----------
-    # moments
-    # ----------
+    # =
+    # m
+    # =
 
     def m(self, n):
         """
@@ -111,9 +115,9 @@ class MomentsESD(object):
             self._m[n] = numpy.mean(self.eig ** n)
         return self._m[n]
 
-    # -------------
-    # coefficients
-    # -------------
+    # ======
+    # coeffs
+    # ======
 
     def coeffs(self, n):
         """
@@ -129,7 +133,8 @@ class MomentsESD(object):
         -------
 
         a_n : numpy.ndarray
-            Array of shape ``(n,)`` containing :math:`(a_{n,0}, \\dots, a_{n,n-1})`.
+            Array of shape ``(n,)`` containing :math:`(a_{n,0},
+            \\dots, a_{n,n-1})`.
         """
 
         if n in self._a:
@@ -142,6 +147,10 @@ class MomentsESD(object):
 
         self._compute_row(n)
         return self._a[n]
+
+    # ===========
+    # compute row
+    # ===========
 
     def _compute_row(self, n):
         """
@@ -212,9 +221,9 @@ class MomentsESD(object):
 
         self._a[n] = a_n
 
-    # ----------
+    # --------
     # evaluate
-    # ----------
+    # --------
 
     def __call__(self, n, t=0.0):
         """
@@ -254,10 +263,10 @@ class MomentsESD(object):
         k = numpy.arange(n, dtype=float)
         return numpy.dot(a_n, numpy.exp(k * t))
 
+
 # ===========================
 # Algebraic Stieltjes Moments
 # ===========================
-
 
 class AlgebraicStieltjesMoments(object):
     """
@@ -265,7 +274,7 @@ class AlgebraicStieltjesMoments(object):
     compute the large-|z| branch
         m(z) = sum_{k>=0} mu_series[k] / z^{k+1}.
 
-    Convention here: choose mu0 (the leading coefficient) by solving the 
+    Convention here: choose mu0 (the leading coefficient) by solving the
     leading-diagonal equation and (by default) picking the root closest
     to -1, i.e. m(z) ~ -1/z.
 
@@ -281,7 +290,7 @@ class AlgebraicStieltjesMoments(object):
         if self.a.ndim != 2:
             raise ValueError("a must be a 2D NumPy array with a[i,j]=a_{ij}.")
 
-        self.I = self.a.shape[0] - 1
+        self.I = self.a.shape[0] - 1                               # noqa: E741
         self.J = self.a.shape[1] - 1
 
         nz = numpy.argwhere(self.a != 0)
@@ -320,7 +329,8 @@ class AlgebraicStieltjesMoments(object):
             if j > 0:
                 self.A0 += j * coeff * self.mu0pow[j - 1]
         if self.A0 == 0:
-            raise ValueError("A0 is zero for this mu0; the sequential recursion is degenerate.")
+            raise ValueError("A0 is zero for this mu0; the sequential " +
+                             "recursion is degenerate.")
 
         # Stored series moments mu_series[0..]
         self._mu = [self.mu0]
@@ -344,14 +354,17 @@ class AlgebraicStieltjesMoments(object):
                 coeffs[j] = self.a[i, j]
 
         if not numpy.any(coeffs != 0):
-            raise ValueError("Leading diagonal polynomial is identically zero; cannot determine mu0.")
+            raise ValueError("Leading diagonal polynomial is identically " +
+                             "zero; cannot determine mu0.")
 
         deg = int(numpy.max(numpy.nonzero(coeffs)[0]))
-        roots = numpy.roots(coeffs[:deg + 1][::-1])  # descending powers for numpy.roots
+
+        # descending powers for numpy.roots
+        roots = numpy.roots(coeffs[:deg + 1][::-1])
 
         # Targetting mu0 = -1 for ~ -1/z asymptotics
         mu0 = roots[numpy.argmin(numpy.abs(roots + 1))]
-        
+
         if abs(mu0.imag) < 1e-12:
             mu0 = mu0.real
         return mu0
@@ -363,7 +376,8 @@ class AlgebraicStieltjesMoments(object):
 
             # Compute f[j] = coefficient of w^k in (S_trunc(w))^j,
             # where S_trunc uses mu_0..mu_{k-1} only (i.e. mu_k treated as 0).
-            # Key fact: in the true c[j,k], mu_k can only appear linearly as j*mu_k*mu0^{j-1}.
+            # Key fact: in the true c[j,k], mu_k can only appear linearly as
+            # j*mu_k*mu0^{j-1}.
             f = [0] * (self.J + 1)
             f[0] = 0
             for j in range(1, self.J + 1):
@@ -371,8 +385,9 @@ class AlgebraicStieltjesMoments(object):
                 # sum_{t=1..k-1} mu_t * c[j-1, k-t]
                 for t in range(1, k):
                     ssum += self._mu[t] * self._c[j - 1][k - t]
-                # recurrence: c[j,k] = mu0*c[j-1,k] + sum_{t=1..k-1} mu_t*c[j-1,k-t] + mu_k*c[j-1,0]
-                # with mu_k=0 for f, and c[j-1,k]=f[j-1]
+                # recurrence: c[j,k] = mu0*c[j-1,k] + sum_{t=1..k-1}
+                # mu_t*c[j-1,k-t] + mu_k*c[j-1,0] with mu_k=0 for f,
+                # and c[j-1,k]=f[j-1]
                 f[j] = self.mu0 * f[j - 1] + ssum
 
             # Build the linear equation for mu_k:
@@ -386,7 +401,8 @@ class AlgebraicStieltjesMoments(object):
                     continue
                 rest += coeff * f[j]
 
-            # lower diagonals s=1..k contribute coeff*c[j,k-s] (already known since k-s < k)
+            # lower diagonals s=1..k contribute coeff*c[j,k-s] (already known
+            # since k-s < k)
             for s in range(1, k + 1):
                 entries = self.diag.get(s)
                 if not entries:
@@ -402,7 +418,8 @@ class AlgebraicStieltjesMoments(object):
             mu_k = -rest / self.A0
             self._mu.append(mu_k)
 
-            # Now append the new column k to c using the full convolution recurrence:
+            # Now append the new column k to c using the full convolution
+            # recurrence:
             # c[j,k] = sum_{t=0..k} mu_t * c[j-1,k-t]
             for j in range(self.J + 1):
                 self._c[j].append(0)
@@ -430,9 +447,10 @@ class AlgebraicStieltjesMoments(object):
         # Estimate the radius of convergence of the Stieltjes
         # series
         if N < 3:
-            raise RuntimeError("Order is too small, choose a larger value of N")
+            raise RuntimeError("N is too small, choose a larger value.")
         self._ensure(N)
-        return max([numpy.abs(self._mu[j] / self._mu[j-1]) for j in range(2,N+1)])
+        return max([numpy.abs(self._mu[j] / self._mu[j-1])
+                    for j in range(2, N+1)])
 
     def stieltjes(self, z, N):
         # Estimate Stieltjes transform (root) using moment

@@ -145,7 +145,7 @@ class AlgebraicForm(object):
         self.A = None
         self.eig = None
         self._stieltjes = None
-        self.moments = None
+        self._moments = None
         self.support = support
         self.delta = delta    # Offset above real axis to apply Plemelj formula
 
@@ -180,7 +180,7 @@ class AlgebraicForm(object):
             # Use empirical Stieltjes function
             self._stieltjes = lambda z: \
                 numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
-            self.moments = MomentsESD(self.eig)
+            self._moments = MomentsESD(self.eig)  # NOTE (never used)
 
         # Support
         if support is None:
@@ -294,7 +294,7 @@ class AlgebraicForm(object):
         status['res_99_9'] = float(res_99_9)
         status['fit_metrics'] = fit_metrics
         self.status = status
-        self._stieltjes = StieltjesPoly(self.a_coeffs)
+        self._stieltjes = StieltjesPoly(self.a_coeffs)  # NOTE overwrite init
 
         if verbose:
             print(f'fit residual max  : {res_max:>0.4e}')
@@ -462,11 +462,11 @@ class AlgebraicForm(object):
 
         # Preallocate density to zero
         hilb = -self._stieltjes(x).real / numpy.pi
-        
+
         if plot:
             plot_hilbert(x, hilb, support=self.support, latex=latex,
                          save=save)
-        
+
         return hilb
 
     # =========
@@ -531,7 +531,7 @@ class AlgebraicForm(object):
         # Create x if not given
         if x is None:
             x = self._generate_grid(2.0, extend=2.0)[::2]
-        
+
         # Create y if not given
         if (plot is False) and (y is None):
             # Do not use a Cartesian grid. Create a 1D array z slightly above
@@ -544,13 +544,13 @@ class AlgebraicForm(object):
                 y = numpy.linspace(-1, 1, 200)
             x_grid, y_grid = numpy.meshgrid(x.real, y.real)
             z = x_grid + 1j * y_grid              # shape (Ny, Nx)
-        
+
         m = self._stieltjes(z, progress=True)
-        
+
         if plot:
             plot_stieltjes(x, y, m, m, self.broad_support, latex=latex,
                            save=save)
-        
+
         return m
 
     # ==============
@@ -611,8 +611,10 @@ class AlgebraicForm(object):
         alpha = numpy.atleast_1d(size) / self.n
 
         # Lower and upper bound on new support
-        hilb_lb = (1.0 / self._stieltjes(self.lam_m + self.delta * 1j).item()).real
-        hilb_ub = (1.0 / self._stieltjes(self.lam_p + self.delta * 1j).item()).real
+        hilb_lb = \
+            (1.0 / self._stieltjes(self.lam_m + self.delta * 1j).item()).real
+        hilb_ub = \
+            (1.0 / self._stieltjes(self.lam_p + self.delta * 1j).item()).real
         lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
         ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
 

@@ -6,12 +6,12 @@ import numpy
 from ._moments import AlgebraicStieltjesMoments
 from tqdm import tqdm
 
-__all__ = ['stieltjes_poly']
+__all__ = ['StieltjesPoly']
 
 
-# =====================
+# ===========
 # select root
-# =====================
+# ===========
 
 def select_root(roots, z, target):
     """
@@ -202,7 +202,7 @@ class StieltjesPoly(object):
 
         # Iterate over indices so we can pass Python scalars into evaluate()
         if progress:
-            indices = tqdm(numpy.ndindex(z_arr.shape),total=z_arr.size)
+            indices = tqdm(numpy.ndindex(z_arr.shape), total=z_arr.size)
         else:
             indices = numpy.ndindex(z_arr.shape)
         for idx in indices:
@@ -265,7 +265,7 @@ class StieltjesPoly(object):
 #         coeffs = numpy.asarray(poly_coeffs_m(z_val), dtype=numpy.complex128)
 #         return numpy.roots(coeffs)
 
-#     # If user asked for a real-axis value, interpret as boundary value from C+.
+#     # If user asked a real-axis value, interpret as boundary value from C+.
 #     if z.imag == 0.0:
 #         if eps is None:
 #             eps = 1e-8 * max(1.0, abs(z))
