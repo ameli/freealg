@@ -14,7 +14,7 @@
 import numpy
 import scipy
 
-__all__ = ['resolve_complex_dtype', 'compute_eig']
+__all__ = ['resolve_complex_dtype', 'compute_eig', 'subsample_matrix']
 
 
 # =====================

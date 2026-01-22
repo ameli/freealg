@@ -21,6 +21,7 @@ from ._edge import evolve_edges, merge_edges
 from ._decompress import decompress_newton
 from ._decompress2 import decompress_coeffs
 from ._homotopy import stieltjes_poly
+from ._moments import Moments
 from .._free_form._support import supp
 from .._free_form._plot_util import plot_density
 
@@ -143,6 +144,7 @@ class AlgebraicForm(object):
         self.A = None
         self.eig = None
         self.stieltjes = None
+        self.moments = None
         self.support = support
         self.delta = delta    # Offset above real axis to apply Plemelj formula
 
@@ -177,6 +179,7 @@ class AlgebraicForm(object):
             # Use empirical Stieltjes function
             self.stieltjes = lambda z: \
                 numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
+            self.moments = Moments(self.eig)
 
         # Support
         if support is None:
