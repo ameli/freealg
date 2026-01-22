@@ -15,8 +15,8 @@ import numpy
 from .._geometric_form._continuation_genus0 import joukowski_z
 
 __all__ = ['sample_z_joukowski', 'filter_z_away_from_cuts', 'powers',
-           'fit_polynomial_relation', 'eval_P', 'eval_roots',
-           'build_sheets_from_roots']
+           'fit_polynomial_relation', 'sanity_check_stieltjes_branch',
+           'eval_P', 'eval_roots', 'build_sheets_from_roots']
 
 
 # ======================
@@ -191,12 +191,15 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
     if w is not None:
         A = A * w[:, None]
 
-    s_col = numpy.max(numpy.abs(A), axis=0)
+    # Enforce real coefficients by solving: Re(A) c = 0 and Im(A) c = 0
+    Ar = numpy.vstack([A.real, A.imag])
+
+    s_col = numpy.max(numpy.abs(Ar), axis=0)
     s_col[s_col == 0.0] = 1.0
-    As = A / s_col[None, :]
+    As = Ar / s_col[None, :]
 
     if ridge_lambda > 0.0:
-        L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef, dtype=complex)
+        L = numpy.sqrt(ridge_lambda) * numpy.eye(n_coef, dtype=float)
         As = numpy.vstack([As, L])
 
     _, _, vh = numpy.linalg.svd(As, full_matrices=False)
@@ -211,6 +214,77 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
         full = _normalize_coefficients(full)
 
     return full
+
+
+# =============================
+# sanity check stieltjes branch
+# =============================
+
+def sanity_check_stieltjes_branch(a_coeffs, x_min, x_max, eta=0.1,
+                                  n_x=64, y0=None, max_bad_frac=0.05):
+    """
+    Quick sanity check: does P(z,m)=0 admit a continuously trackable root with
+    Im(m)>0 along z=x+i*eta.
+    """
+
+    x_min = float(x_min)
+    x_max = float(x_max)
+    eta = float(eta)
+    n_x = int(n_x)
+    if n_x < 4:
+        n_x = 4
+
+    if y0 is None:
+        y0 = 10.0 * max(1.0, abs(x_min), abs(x_max))
+    y0 = float(y0)
+
+    z0 = 1j * y0
+    m0_target = -1.0 / z0
+
+    c0 = _poly_coef_in_m(numpy.array([z0]), a_coeffs)[0]
+    r0 = numpy.roots(c0[::-1])
+    if r0.size == 0:
+        return {'ok': False, 'frac_bad': 1.0, 'n_test': 0, 'n_bad': 0}
+
+    k0 = int(numpy.argmin(numpy.abs(r0 - m0_target)))
+    m_prev = r0[k0]
+
+    xs = numpy.linspace(x_min, x_max, n_x)
+    zs = xs + 1j * eta
+
+    n_bad = 0
+    n_ok = 0
+
+    for z in zs:
+        c = _poly_coef_in_m(numpy.array([z]), a_coeffs)[0]
+        r = numpy.roots(c[::-1])
+        if r.size == 0 or not numpy.all(numpy.isfinite(r)):
+            n_bad += 1
+            continue
+
+        k = int(numpy.argmin(numpy.abs(r - m_prev)))
+        m_sel = r[k]
+        m_prev = m_sel
+        n_ok += 1
+
+        if not numpy.isfinite(m_sel) or (m_sel.imag <= 0.0):
+            n_bad += 1
+
+    n_test = n_ok + (n_bad - (n_x - n_ok))
+    if n_test <= 0:
+        n_test = n_x
+
+    frac_bad = float(n_bad) / float(n_x)
+    ok = frac_bad <= float(max_bad_frac)
+
+    status = {
+        'ok': ok,
+        'frac_bad': frac_bad,
+        'n_test': n_x,
+        'n_bad': n_bad
+    }
+
+    return status
 
 
 # ======
@@ -361,6 +435,10 @@ def eval_roots(z, a_coeffs):
 # =======================
 
 def track_one_sheet_on_grid(z, roots, sheet_seed, cuts=None, i0=None, j0=None):
+    """
+    This is mostly used for visualization of the sheets.
+    """
+
     z = numpy.asarray(z)
     n_y, n_x = z.shape
     s = roots.shape[1]
@@ -467,6 +545,7 @@ def track_one_sheet_on_grid(z, roots, sheet_seed, cuts=None, i0=None, j0=None):
 # =======================
 
 def build_sheets_from_roots(z, roots, m1, cuts=None, i0=None, j0=None):
+
     z = numpy.asarray(z)
     m1 = numpy.asarray(m1)
 

@@ -11,12 +11,12 @@
 # Imports
 # =======
 
-import inspect
 import numpy
 from .._util import resolve_complex_dtype, compute_eig
 # from .._util import compute_eig
 from ._continuation_algebraic import sample_z_joukowski, \
-        filter_z_away_from_cuts, fit_polynomial_relation, eval_P
+        filter_z_away_from_cuts, fit_polynomial_relation, \
+        sanity_check_stieltjes_branch, eval_P
 from ._edge import evolve_edges, merge_edges
 from ._decompress import decompress_newton
 from ._decompress2 import decompress_coeffs
@@ -214,7 +214,7 @@ class AlgebraicForm(object):
         """
 
         # Very important: reset cache whenever this function is called. This
-        # also empties all references holdign a cache copy.
+        # also empties all references holding a cache copy.
         # self.cache.clear()
 
         z_fits = []
@@ -239,25 +239,45 @@ class AlgebraicForm(object):
 
         self.a_coeffs = a_coeffs
 
-        if verbose:
-            P_res = numpy.abs(eval_P(z_fit, m1_fit, a_coeffs))
-            print("fit residual max:", numpy.max(P_res[numpy.isfinite(P_res)]))
-            print("fit residual 99.9%:",
-                  numpy.quantile(P_res[numpy.isfinite(P_res)], 0.999))
+        # Reporting error
+        P_res = numpy.abs(eval_P(z_fit, m1_fit, a_coeffs))
+        res_max = numpy.max(P_res[numpy.isfinite(P_res)])
+        res_99_9 = numpy.quantile(P_res[numpy.isfinite(P_res)], 0.999)
 
-            print('\nCoefficients')
-            with numpy.printoptions(precision=4, suppress=True):
+        # Check polynomial has Stieltjes root
+        x_min = self.lam_m - 1.0
+        x_max = self.lam_p + 1.0
+        status = sanity_check_stieltjes_branch(a_coeffs, x_min, x_max,
+                                               eta=max(y_eps, 1e-2), n_x=128,
+                                               max_bad_frac=0.05)
+
+        status['res_max'] = res_max
+        status['res_99_9'] = res_99_9
+
+        if verbose:
+            print(f'fit residual max  : {res_max:>0.4e}')
+            print(f'fit residual 99.9%: {res_99_9:>0.4e}')
+
+            print('\nCoefficients (real)')
+            with numpy.printoptions(precision=8, suppress=True):
                 for i in range(a_coeffs.shape[0]):
                     for j in range(a_coeffs.shape[1]):
                         v = a_coeffs[i, j]
-                        print(f"{v.real:>+0.4f}{v.imag:>+0.4f}j", end=" ")
+                        print(f'{v.real:>+0.8f}', end=' ')
                     print('')
 
-            print('\nCoefficient Magnitudes')
-            with numpy.printoptions(precision=6, suppress=True):
-                print(numpy.abs(a_coeffs))
+            a_coeffs_img_norm = numpy.linalg.norm(a_coeffs.imag, ord='fro')
+            print(f'\nCoefficients (imag) norm: {a_coeffs_img_norm:>0.4e}')
 
-        return a_coeffs
+            if not status['ok']:
+                print("\nWARNING: sanity check failed:\n" +
+                      f"\tfrac_bad: {status['frac_bad']:>0.3f}\n" +
+                      f"\tn_bad   : {status['n_bad']}\n" +
+                      f"\tn_test  : {status['n_test']}")
+            else:
+                print('\nStieltjes sanity check: OK')
+
+        return a_coeffs, status
 
     # =============
     # generate grid
