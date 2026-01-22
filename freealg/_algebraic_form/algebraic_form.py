@@ -149,8 +149,7 @@ class AlgebraicForm(object):
         # Data type for complex arrays
         self.dtype = resolve_complex_dtype(dtype)
 
-        if inspect.isclass(A) and hasattr(A, "stieltjes") and \
-                callable(getattr(A, "stieltjes", None)):
+        if hasattr(A, 'stieltjes') and callable(getattr(A, 'stieltjes', None)):
             # This is one of the distribution objects, like MarchenkoPastur
             self.stieltjes = A.stieltjes
             self.n = 1

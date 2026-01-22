@@ -62,7 +62,7 @@ def stieltjes_select_root(roots, z, w_prev=None):
 # stieltjes poly
 # ==============
 
-def stieltjes_poly(z, a, eps=None, height=1e4, steps=100):
+def stieltjes_poly(z, a, eps=None, height=1e+4, steps=100):
     """
     Evaluate the Stieltjes-branch solution m(z) of an algebraic equation.
 
