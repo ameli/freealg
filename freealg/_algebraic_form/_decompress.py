@@ -14,7 +14,50 @@
 import numpy
 from ._continuation_algebraic import powers
 
-__all__ = ['decompress_newton_old', 'decompress_newton']
+__all__ = ['build_time_grid', 'decompress_newton_old', 'decompress_newton']
+
+
+# ===============
+# build time grid
+# ===============
+
+def build_time_grid(sizes, n0, min_n_time=0):
+    """
+    sizes: list/array of requested matrix sizes (e.g. [2000,3000,4000,8000])
+    n0:    initial size (self.n)
+    min_n_time: minimum number of time points to run Newton sweep on
+
+    Returns
+    -------
+    t_all: sorted time grid to run solver on
+    idx_req: indices of requested times inside t_all (same order as sizes)
+    """
+
+    sizes = numpy.asarray(sizes, dtype=float)
+    alpha = sizes / float(n0)
+    t_req = numpy.log(alpha)
+
+    # Always include t=0 and T=max(t_req)
+    T = float(numpy.max(t_req)) if t_req.size else 0.0
+    base = numpy.unique(numpy.r_[0.0, t_req, T])
+    t_all = numpy.sort(base)
+
+    # Add points only if needed: split largest gaps
+    N = int(min_n_time) if min_n_time is not None else 0
+    while t_all.size < N and t_all.size >= 2:
+        gaps = numpy.diff(t_all)
+        k = int(numpy.argmax(gaps))
+        mid = 0.5 * (t_all[k] + t_all[k+1])
+        t_all = numpy.sort(numpy.unique(numpy.r_[t_all, mid]))
+
+    # Map each requested time to an index in t_all (stable, no float drama)
+    # (t_req values came from same construction, so they should match exactly;
+    # still: use searchsorted + assert)
+    idx_req = numpy.searchsorted(t_all, t_req)
+    # optional sanity:
+    # assert numpy.allclose(t_all[idx_req], t_req, rtol=0, atol=0)
+
+    return t_all, idx_req
 
 
 # ===============

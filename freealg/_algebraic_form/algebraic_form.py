@@ -18,10 +18,11 @@ from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, \
         sanity_check_stieltjes_branch, eval_P
 from ._edge import evolve_edges, merge_edges
-from ._decompress import decompress_newton
+from ._decompress import build_time_grid, decompress_newton
 from ._decompress2 import decompress_coeffs
 from ._homotopy import StieltjesPoly
-from ._discriminant import compute_singular_points
+from ._branch_points import compute_branch_points
+from ._support import compute_support
 from ._moments import MomentsESD
 from .._free_form._support import supp
 from .._free_form._plot_util import plot_density, plot_hilbert, plot_stieltjes
@@ -133,9 +134,6 @@ class AlgebraicForm(object):
     # init
     # ====
 
-    # def __init__(self, A, support=None, delta=1e-6, dtype='complex128',
-    #              **kwargs):
-
     def __init__(self, A, support=None, delta=1e-5, dtype='complex128',
                  **kwargs):
         """
@@ -147,6 +145,7 @@ class AlgebraicForm(object):
         self._stieltjes = None
         self._moments = None
         self.support = support
+        self.est_support = None  # Estimated from polynmial after fitting
         self.delta = delta    # Offset above real axis to apply Plemelj formula
 
         # Data type for complex arrays
@@ -155,6 +154,7 @@ class AlgebraicForm(object):
         if hasattr(A, 'stieltjes') and callable(getattr(A, 'stieltjes', None)):
             # This is one of the distribution objects, like MarchenkoPastur
             self._stieltjes = A.stieltjes
+            self.support = A.support()
             self.n = 1
 
         elif callable(A):
@@ -182,16 +182,15 @@ class AlgebraicForm(object):
                 numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
             self._moments = MomentsESD(self.eig)  # NOTE (never used)
 
-        # Support
-        if support is None:
+        # broad support
+        if self.support is None:
             if self.eig is None:
                 raise RuntimeError("Support must be provided without data")
+
             # Detect support
             self.lam_m, self.lam_p = supp(self.eig, **kwargs)
-            self.support = [(self.lam_m, self.lam_p)]
-            self.broad_support = self.support[0]
+            self.broad_support = (self.lam_m, self.lam_p)
         else:
-            self.support = support
             self.lam_m = min([s[0] for s in self.support])
             self.lam_p = max([s[1] for s in self.support])
             self.broad_support = (self.lam_m, self.lam_p)
@@ -251,7 +250,16 @@ class AlgebraicForm(object):
         # self.cache.clear()
 
         z_fits = []
-        for sup in self.support:
+
+        # Sampling around support, or broad_support. This is only needed to
+        # ensure sampled points are not hiting the support itself is not used
+        # in any computation. If support is not known, use broad support.
+        if self.support is not None:
+            possible_support = self.support
+        else:
+            possible_support = self.broad_support
+
+        for sup in possible_support:
             a, b = sup
 
             for i in range(len(r)):
@@ -261,7 +269,7 @@ class AlgebraicForm(object):
         z_fit = numpy.concatenate(z_fits)
 
         # Remove points too close to any cut
-        z_fit = filter_z_away_from_cuts(z_fit, self.support, y_eps=y_eps,
+        z_fit = filter_z_away_from_cuts(z_fit, possible_support, y_eps=y_eps,
                                         x_pad=x_pad)
 
         # Fitting (w_inf = None means adaptive weight selection)
@@ -271,10 +279,10 @@ class AlgebraicForm(object):
                 triangular=triangular, normalize=normalize, mu=mu,
                 mu_reg=mu_reg)
 
-        # Compute global branch points, zeros of leading a_j, and support
-        branch_points, a_s_zero, support = compute_singular_points(a_coeffs)
-
         self.a_coeffs = a_coeffs
+
+        # Estimate support from the fitted polynomial
+        self.est_support, _ = self.estimate_support(a_coeffs)
 
         # Reporting error
         P_res = numpy.abs(eval_P(z_fit, m1_fit, a_coeffs))
@@ -288,8 +296,6 @@ class AlgebraicForm(object):
                                                eta=max(y_eps, 1e-2), n_x=128,
                                                max_bad_frac=0.05)
 
-        status['branch_points'] = branch_points
-        status['a_s_zero'] = a_s_zero
         status['res_max'] = float(res_max)
         status['res_99_9'] = float(res_99_9)
         status['fit_metrics'] = fit_metrics
@@ -319,7 +325,64 @@ class AlgebraicForm(object):
             else:
                 print('\nStieltjes sanity check: OK')
 
-        return a_coeffs, support, status
+        return a_coeffs, self.est_support, status
+
+    # =====================
+    # inflate broad support
+    # =====================
+
+    def _inflate_broad_support(self, inflate=0.0):
+        """
+        """
+
+        min_supp, max_supp = self.broad_support
+
+        c_supp = 0.5 * (max_supp + min_supp)
+        r_supp = 0.5 * (max_supp - min_supp)
+
+        x_min = c_supp - r_supp * (1.0 + inflate)
+        x_max = c_supp + r_supp * (1.0 + inflate)
+
+        return x_min, x_max
+
+    # ================
+    # estimate support
+    # ================
+
+    def estimate_support(self, a_coeffs=None, n_scan=4000):
+        """
+        """
+
+        if a_coeffs is None:
+            if self.a_coeffs is None:
+                raise RuntimeError('Call "fit" first.')
+            else:
+                a_coeffs = self.a_coeffs
+
+        # Inflate a bit to make sure all points are searched
+        x_min, x_max = self._inflate_broad_support(inflate=0.2)
+
+        est_support, info = compute_support(a_coeffs, x_min=x_min, x_max=x_max,
+                                            n_scan=n_scan)
+
+        return est_support, info
+
+    # ======================
+    # estimate branch points
+    # ======================
+
+    def estimate_branch_points(self):
+        """
+        Compute global branch points and zeros of leading a_j
+        """
+
+        if self.a_coeffs is None:
+            raise RuntimeError('Call "fit" first.')
+
+        bp, leading_zeros, info = compute_branch_points(
+            self.a_coeffs, tol=1e-12, real_tol=None)
+
+        return bp, leading_zeros, info
 
     # =============
     # generate grid
@@ -464,7 +527,7 @@ class AlgebraicForm(object):
         hilb = -self._stieltjes(x).real / numpy.pi
 
         if plot:
-            plot_hilbert(x, hilb, support=self.support, latex=latex,
+            plot_hilbert(x, hilb, support=self.broad_support, latex=latex,
                          save=save)
 
         return hilb
@@ -592,8 +655,9 @@ class AlgebraicForm(object):
 
     def decompress(self, size, x=None, method='one', plot=False, latex=False,
                    save=False, verbose=False, newton_opt={
-                       'max_iter': 50, 'tol': 1e-12, 'armijo': 1e-4,
-                       'min_lam': 1e-6, 'w_min': 1e-14, 'sweep': True}):
+                       'min_n_times': 10, 'max_iter': 50, 'tol': 1e-12,
+                       'armijo': 1e-4, 'min_lam': 1e-6, 'w_min': 1e-14,
+                       'sweep': True}):
         """
         Free decompression of spectral density.
         """
@@ -634,25 +698,23 @@ class AlgebraicForm(object):
             # Query grid on the real axis + a small imaginary buffer
             z_query = x + 1j * self.delta
 
-            # Initial condition at t=0 (physical branch)
+            # Initial condition at t = 0 (physical branch)
             w0_list = self._stieltjes(z_query)
 
-            # Times
-            t = numpy.log(alpha)
-
-            # Ensure it starts from t = 0
-            if t[0] > 1.0:
-                t = numpy.concatenate([numpy.zeros(1), t])
+            # Ensure there are at least min_n_times time t, including requested
+            # times, and especially time t = 0
+            t_all, idx_req = build_time_grid(
+                size, self.n, min_n_time=newton_opt.get("min_n_time", 0))
 
             # Evolve
             W, ok = decompress_newton(
-                z_query, t, self.a_coeffs,
+                z_query, t_all, self.a_coeffs,
                 w0_list=w0_list, **newton_opt)
 
-            rho = W.imag / numpy.pi
+            rho_all = W.imag / numpy.pi
 
-            # Remove time zero
-            rho = rho[1:, :]
+            # return only the user-requested ones
+            rho = rho_all[idx_req]
 
             if verbose:
                 print("success rate per t:", ok.mean(axis=1))
@@ -699,10 +761,19 @@ class AlgebraicForm(object):
         Evolves spectral edges.
         """
 
-        edges, ok_edges = evolve_edges(t, self.a_coeffs, support=self.support,
-                                       eta=eta, dt_max=dt_max,
-                                       max_iter=max_iter, tol=tol)
+        if self.support is not None:
+            known_support = self.support
+        elif self.est_support is not None:
+            known_support = self.est_support
+        else:
+            raise RuntimeError('Call "fit" first.')
 
+        edges, ok_edges = evolve_edges(t, self.a_coeffs,
+                                       support=known_support, eta=eta,
+                                       dt_max=dt_max, max_iter=max_iter,
+                                       tol=tol)
+
+        # Remove spurious edges, where two edge cross and are no longer valid.
         edges2, active_k = merge_edges(edges, tol=1e-4)
 
         if verbose:

@@ -289,7 +289,7 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
 
     # Diagnostic metrics
     fit_metrics = {
-        's_min': svals[-1],
+        's_min': float(svals[-1]),
         'gap_ratio': float(svals[-2] / svals[-1]),
         'n_small': float(int(numpy.sum(svals <= svals[0] * 1e-12))),
     }
