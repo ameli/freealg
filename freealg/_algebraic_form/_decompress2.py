@@ -34,6 +34,7 @@ def decompress_coeffs(a, t, normalize=True):
         normalized by normalize_coefficients.
     """
     a = numpy.asarray(a)
+    a[-1, 0] = 0.0
     if a.ndim != 2:
         raise ValueError("a must be a 2D array-like of shape (L+1, K+1).")
 

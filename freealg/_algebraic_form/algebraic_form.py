@@ -23,7 +23,7 @@ from ._decompress2 import decompress_coeffs
 from ._homotopy import StieltjesPoly
 from ._branch_points import compute_branch_points
 from ._support import compute_support
-from ._moments import MomentsESD
+from ._moments import Moments, AlgebraicStieltjesMoments
 from .._free_form._support import supp
 from .._free_form._plot_util import plot_density, plot_hilbert, plot_stieltjes
 
@@ -180,7 +180,7 @@ class AlgebraicForm(object):
             # Use empirical Stieltjes function
             self._stieltjes = lambda z: \
                 numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
-            self._moments = MomentsESD(self.eig)  # NOTE (never used)
+            self._moments = Moments(self.eig)  # NOTE (never used)
 
         # broad support
         if self.support is None:
@@ -301,6 +301,8 @@ class AlgebraicForm(object):
         status['fit_metrics'] = fit_metrics
         self.status = status
         self._stieltjes = StieltjesPoly(self.a_coeffs)  # NOTE overwrite init
+        self._moments_base = AlgebraicStieltjesMoments(a_coeffs)
+        self.moments = Moments(self._moments_base)
 
         if verbose:
             print(f'fit residual max  : {res_max:>0.4e}')
@@ -655,7 +657,7 @@ class AlgebraicForm(object):
 
     def decompress(self, size, x=None, method='one', plot=False, latex=False,
                    save=False, verbose=False, newton_opt={
-                       'min_n_times': 10, 'max_iter': 50, 'tol': 1e-12,
+                       'min_n_time': 10, 'max_iter': 50, 'tol': 1e-12,
                        'armijo': 1e-4, 'min_lam': 1e-6, 'w_min': 1e-14,
                        'sweep': True}):
         """
@@ -726,9 +728,13 @@ class AlgebraicForm(object):
 
             # Decompress to each alpha
             for i in range(alpha.size):
-                coeffs_i = decompress_coeffs(self.a_coeffs,
-                                             numpy.log(alpha[i]))
-                stieltjes_i = StieltjesPoly(coeffs_i)
+                t_i = numpy.log(alpha[i])
+                coeffs_i = decompress_coeffs(self.a_coeffs, t_i)
+
+                def mom(k):
+                    return self.moments(k, t_i)
+                
+                stieltjes_i = StieltjesPoly(coeffs_i, mom)
                 rho[i, :] = stieltjes_i(x).imag
 
             rho = rho / numpy.pi

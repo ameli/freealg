@@ -5,6 +5,7 @@
 import numpy
 from ._moments import AlgebraicStieltjesMoments
 from tqdm import tqdm
+from math import comb
 
 __all__ = ['StieltjesPoly']
 
@@ -86,6 +87,8 @@ class StieltjesPoly(object):
         Coefficient matrix defining P(z, m) in the monomial basis. For fixed
         z, the coefficients of the polynomial in m are assembled from powers
         of z.
+    mom : callable, optional
+        A callable providing raw moments ``m_k = mom(k)``
     eps : float or None, optional
         If Im(z) == 0, use z + i*eps as the boundary evaluation point.
         If None and Im(z) == 0, eps is set to 1e-8 * max(1, |z|).
@@ -114,7 +117,7 @@ class StieltjesPoly(object):
     None, eps is chosen per element as 1e-8 * max(1, |z|).
     """
 
-    def __init__(self, a, eps=None, height=2.0, steps=100, order=15):
+    def __init__(self, a, mom=None, eps=None, height=2.0, steps=100, order=15):
         a = numpy.asarray(a)
         if a.ndim != 2:
             raise ValueError("a must be a 2D array.")
@@ -125,13 +128,28 @@ class StieltjesPoly(object):
         self.height = height
         self.steps = steps
         self.order = order
+        if order < 3:
+            raise RuntimeError("order is too small, choose a larger value.")
 
-        self.mom = AlgebraicStieltjesMoments(a)
-        self.rad = 1.0 + self.height * self.mom.radius(self.order)
+        if mom is None:
+            self.mom = AlgebraicStieltjesMoments(a)
+        else:
+            self.mom = mom
+        self.mu = numpy.array([self.mom(j) for j in range(self.order+1)])
+        self.rad = max([numpy.abs(self.mu[j] / self.mu[j-1])
+                        for j in range(2, self.order+1)])
+        self.rad = 1.0 + self.height * self.rad
         self.z0_p = 1j * self.rad
-        self.m0_p = self.mom.stieltjes(self.z0_p, self.order)
+        self.m0_p = self._moment_est(self.z0_p)
         self.z0_m = -1j * self.rad
-        self.m0_m = self.mom.stieltjes(self.z0_m, self.order)
+        self.m0_m = self._moment_est(self.z0_m)
+
+    def _moment_est(self, z):
+        # Estimate Stieltjes transform (root) using moment
+        # expansion
+        z = numpy.asarray(z)
+        pows = z[..., numpy.newaxis]**(-numpy.arange(self.order+1)-1)
+        return -numpy.sum(pows * self.mu, axis=-1)
 
     def _poly_coeffs_m(self, z_val):
         z_powers = z_val ** numpy.arange(self.a_l)
@@ -142,7 +160,8 @@ class StieltjesPoly(object):
                                dtype=numpy.complex128)
         return numpy.roots(coeffs)
 
-    def evaluate(self, z, eps=None, height=2.0, steps=100, order=15):
+    def evaluate(self, z, eps=None, height=2.0, steps=100, order=15, extrap=2,
+                 num_angles=1):
         """
         Evaluate the Stieltjes-branch solution m(z) at a single point.
 
@@ -168,33 +187,46 @@ class StieltjesPoly(object):
         if half_sign == 0.0:
             half_sign = 1.0
 
-        # # If z is outside radius of convergence, no homotopy
-        # # necessary
-        # if numpy.abs(z) > self.rad:
-        #     target = self.mom.stieltjes(z, self.order)
-        #     return select_root(self._poly_roots(z), z, target)
+        # If z is outside radius of convergence, no homotopy
+        # necessary
+        if numpy.abs(z) > self.rad:
+            target = self._moment_est(z)
+            return select_root(self._poly_roots(z), z, target)
 
-        if half_sign > 0.0:
-            z0 = self.z0_p
-            target = self.m0_p
-        else:
-            z0 = self.z0_m
-            target = self.m0_m
+        # z0 = z.real
+        # z0 = z0 + 1j*numpy.sqrt(self.rad**2 - z0**2)
+        # target = self._moment_est(z0)
+        # if half_sign > 0.0:
+        #     z0 = self.z0_p
+        #     target = self.m0_p
+        # else:
+        #     z0 = self.z0_m
+        #     target = self.m0_m
 
         # Initialize at z0
-        w_prev = select_root(self._poly_roots(z0), z0, target)
+        res = 0
+        for theta in numpy.linspace(0, numpy.pi, num_angles+2)[1:-1]:
+            z0 = self.rad * numpy.exp(1j * theta) * half_sign
+            target = self._moment_est(z0)
+            coeffs = numpy.array([(-1)**k * comb(extrap, k + 1)
+                                for k in range(extrap)])
+            w_prev = numpy.ones(extrap) * \
+                select_root(self._poly_roots(z0), z0, target)
 
-        # Straight-line homotopy continuation
-        for tau in numpy.linspace(0.0, 1.0, int(self.steps) + 1)[1:]:
-            z_tau = z0 + tau * (z_eval - z0)
-            w_prev = select_root(self._poly_roots(z_tau), z_tau, w_prev)
+            # Straight-line homotopy continuation
+            for tau in numpy.linspace(0.0, 1.0, int(self.steps) + 1)[1:]:
+                z_tau = z0 + tau * (z_eval - z0)
+                target = numpy.dot(coeffs, w_prev)
+                w_prev[1:] = w_prev[0:-1]
+                w_prev[0] = select_root(self._poly_roots(z_tau), z_tau, target)
+            res += w_prev[0]
 
-        return w_prev
+        return res / num_angles
 
-    def __call__(self, z, progress=False):
+    def __call__(self, z, progress=False, num_angles=1):
         # Scalar fast-path
         if numpy.isscalar(z):
-            return self.evaluate(z)
+            return self.evaluate(z, num_angles=num_angles)
 
         # Array-like: evaluate elementwise, preserving shape
         z_arr = numpy.asarray(z)
@@ -206,7 +238,7 @@ class StieltjesPoly(object):
         else:
             indices = numpy.ndindex(z_arr.shape)
         for idx in indices:
-            out[idx] = self.evaluate(z_arr[idx])
+            out[idx] = self.evaluate(z_arr[idx], num_angles=num_angles)
 
         return out
 

@@ -9,7 +9,7 @@ import numpy
 # Moments
 # =======
 
-class MomentsESD(object):
+class Moments(object):
     """
     Moments :math:`\\mu_n(t)` generated from eigenvalues, under
     free decompression, where
@@ -23,15 +23,21 @@ class MomentsESD(object):
     Parameters
     ----------
 
-    eig : array_like
-        1D array of eigenvalues (or samples). Internally it is converted to a
-        floating-point :class:`numpy.ndarray`.
+    source : array_like or callable
+        Either
+
+        * a 1D array of eigenvalues (or samples), or
+        * a callable returning the raw moments at zero, ``source(n) = m_n``.
+
+        If an array is provided, moments are estimated via sample averages.
+        If a callable is provided, it is assumed to return exact values of
+        :math:`m_n`.
 
     Attributes
     ----------
 
-    eig : numpy.ndarray
-        Eigenvalue samples.
+    eig : numpy.ndarray or None
+        Eigenvalue samples, if provided.
 
     Methods
     -------
@@ -56,31 +62,23 @@ class MomentsESD(object):
 
     The coefficient row :math:`a_n` is computed using an intermediate quantity
     :math:`R_{n,k}` formed via discrete convolutions of previous rows.
-
-    Examples
-    --------
-
-    .. code-block:: python
-
-        >>> import numpy as np
-        >>> eig = np.array([1.0, 2.0, 3.0])
-        >>> mu = Moments(eig)
-        >>> mu(3, t=0.0)   # equals m_3
-        12.0
-        >>> mu(3, t=0.1)
-        14.203...
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, eig):
+    def __init__(self, source):
         """
         Initialization.
         """
+        self.eig = None
+        self._moment_fn = None
 
-        self.eig = numpy.asarray(eig, dtype=float)
+        if callable(source):
+            self._moment_fn = source
+        else:
+            self.eig = numpy.asarray(source, dtype=float)
 
         # Memoized moments m_n
         self._m = {0: 1.0}
@@ -107,12 +105,25 @@ class MomentsESD(object):
         -------
 
         m_n : float
-            The raw moment :math:`m_n = \\mathbb{E}[\\lambda^n]`, estimated by
-            the sample mean of ``eig**n``.
+            The raw moment :math:`m_n = \\mathbb{E}[\\lambda^n]`.
+
+        Notes
+        -----
+
+        If the instance was initialized with eigenvalue samples, the moment is
+        estimated by the sample mean of ``eig**n``. If initialized with a
+        callable, the callable is used directly.
         """
+        n = int(n)
+        if n < 0:
+            raise ValueError("Moment order n must be >= 0.")
 
         if n not in self._m:
-            self._m[n] = numpy.mean(self.eig ** n)
+            if self._moment_fn is not None:
+                self._m[n] = float(self._moment_fn(n))
+            else:
+                self._m[n] = float(numpy.mean(self.eig ** n))
+
         return self._m[n]
 
     # ======
@@ -136,6 +147,9 @@ class MomentsESD(object):
             Array of shape ``(n,)`` containing :math:`(a_{n,0},
             \\dots, a_{n,n-1})`.
         """
+        n = int(n)
+        if n < 0:
+            raise ValueError("Order n must be >= 0.")
 
         if n in self._a:
             return self._a[n]
@@ -161,36 +175,7 @@ class MomentsESD(object):
 
         n : int
             Row index to compute.
-
-        Notes
-        -----
-
-        For :math:`n=1`, the row is
-
-        .. math::
-
-            a_{1,0} = m_1.
-
-        For :math:`n \\ge 2`, let :math:`R_n` be a length ``n-1`` array defined
-        by convolution of previous rows:
-
-        .. math::
-
-            R_n = \\sum_{i=1}^{n-1} (a_i * a_{n-i})\\big|_{0:(n-2)}.
-
-        Then for :math:`k = 0, \\dots, n-2`,
-
-        .. math::
-
-            a_{n,k} = \\frac{1 + k/2}{(n-1-k)} R_{n,k},
-
-        and the last coefficient is chosen so that :math:`\\mu_n(0)=m_n`:
-
-        .. math::
-
-            a_{n,n-1} = m_n - \\sum_{k=0}^{n-2} a_{n,k}.
         """
-
         if n in self._a:
             return
 
@@ -205,8 +190,7 @@ class MomentsESD(object):
 
         a_n = numpy.zeros(n, dtype=float)
 
-        # Compute R_{n,k} via convolutions:
-        # R_n = sum_{i=1}^{n-1} convolve(a[i], a[n-i]) truncated to length n-1
+        # Compute R_{n,k} via convolutions
         R = numpy.zeros(n - 1, dtype=float)
         for i in range(1, n):
             conv = numpy.convolve(self._a[i], self._a[n - i])
@@ -255,13 +239,16 @@ class MomentsESD(object):
 
         For ``n == 0``, it returns ``1.0``.
         """
-
+        n = int(n)
+        if n < 0:
+            raise ValueError("Order n must be >= 0.")
         if n == 0:
             return 1.0
 
         a_n = self.coeffs(n)
         k = numpy.arange(n, dtype=float)
-        return numpy.dot(a_n, numpy.exp(k * t))
+        return float(numpy.dot(a_n, numpy.exp(k * t)))
+    
 
 
 # ===========================
