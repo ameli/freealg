@@ -505,7 +505,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
                       dt_max=0.1, sweep=True, time_rel_tol=5.0,
                       active_imag_eps=None, sweep_pad=20,
                       max_iter=50, tol=1e-12, armijo=1e-4,
-                      min_lam=1e-6, w_min=1e-14):
+                      min_lam=1e-6, w_min=1e-14, min_n_time=None):
     """
     Evolve w = m(t,z) on a fixed z grid and time grid using FD.
 
