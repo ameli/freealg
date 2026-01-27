@@ -89,7 +89,7 @@ def decompress_coeffs(a, t, normalize=True):
     return a_out
 
 
-def plot_candidates(a, x, delta=1e-4, size=None, latex=False):
+def plot_candidates(a, x, delta=1e-4, size=None, latex=False, verbose=False):
     """
     Visualize candidate densities implied by an algebraic Stieltjes-transform
     relation:
@@ -140,11 +140,12 @@ def plot_candidates(a, x, delta=1e-4, size=None, latex=False):
 
     xs = []
     ys = []
+    max_ys = numpy.zeros_like(x)
 
     # Precompute i-powers indices to avoid repeated arange creation.
     i_idx = numpy.arange(i_degree + 1)
 
-    for xk in x:
+    for idx, xk in enumerate(x):
         z = complex(float(xk), float(delta))  # x + i * delta
 
         # b[j] = sum_i a[i, j] * z^i  => polynomial in m:
@@ -173,6 +174,11 @@ def plot_candidates(a, x, delta=1e-4, size=None, latex=False):
         if numpy.any(mask):
             xs.append(numpy.full(mask.sum(), float(xk)))
             ys.append(im[mask] / numpy.pi)
+            max_ys[idx] = max(ys[-1])
+
+    if verbose:
+        max_density = numpy.trapezoid(max_ys, x)
+        print("Max density: {}".format(max_density))
 
     if xs:
         xs = numpy.concatenate(xs)

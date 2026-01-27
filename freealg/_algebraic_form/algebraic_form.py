@@ -761,7 +761,7 @@ class AlgebraicForm(object):
     # candidates
     # ==========
 
-    def candidates(self, size, x=None):
+    def candidates(self, size, x=None, verbose=False):
 
         # Check size argument
         if numpy.isscalar(size):
@@ -797,7 +797,8 @@ class AlgebraicForm(object):
         for i in range(alpha.size):
             t_i = numpy.log(alpha[i])
             coeffs_i = decompress_coeffs(self.a_coeffs, t_i)
-            plot_candidates(coeffs_i, x, size=int(alpha[i]*self.n))
+            plot_candidates(coeffs_i, x, size=int(alpha[i]*self.n),
+                            verbose=verbose)
 
     # ====
     # edge
