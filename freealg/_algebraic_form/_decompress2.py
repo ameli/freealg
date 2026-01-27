@@ -3,6 +3,7 @@
 # =======
 
 import numpy
+import matplotlib.pyplot as plt
 from scipy.special import comb
 from ._continuation_algebraic import _normalize_coefficients
 
@@ -85,3 +86,109 @@ def decompress_coeffs(a, t, normalize=True):
         return _normalize_coefficients(a_out)
 
     return a_out
+
+
+def plot_candidates(a, x, delta=1e-4, size=None):
+    """
+    Visualize candidate densities implied by an algebraic Stieltjes-transform
+    relation:
+        P(z, m) = sum_{i=0..I} sum_{j=0..J} a[i, j] z^i m^j,
+    where m(z) is defined implicitly by P(z, m(z)) = 0.
+
+    For each grid point x_k, set z = x_k + i * delta, form the polynomial in m
+    given by P(z, m) = 0, solve for its roots, and plot the cloud of candidate
+    densities:
+        (1 / pi) * Im(m_root),
+    keeping only roots with Im(m_root) > 0 (roots are not tracked/paired across
+    x-values).
+
+    Parameters
+    ----------
+    a : array_like of complex or float, shape (I+1, J+1)
+        Coefficients defining P(z, m) in the monomial basis:
+            P(z, m) = sum_{i=0..I} sum_{j=0..J} a[i, j] z^i m^j.
+    x : array_like of float, shape (N,)
+        1D array of real x-values (evaluation grid).
+    delta : float, optional
+        Small positive imaginary offset used to evaluate m(x + i * delta).
+    size : integer, optional
+        For labelling purposes, the size of the corresponding matrix can
+        be provided.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The created figure.
+    ax : matplotlib.axes.Axes
+        The axes the scatter plot was drawn on.
+    """
+    if not (isinstance(delta, (float, int)) and delta > 0):
+        raise ValueError("delta must be a positive scalar.")
+
+    x = numpy.asarray(x)
+    if x.ndim != 1:
+        raise ValueError("x must be a 1D NumPy array.")
+
+    a = numpy.asarray(a)
+    if a.ndim != 2:
+        raise ValueError("a must be a 2D NumPy array with a[i, j] coefficients.")
+    if not numpy.issubdtype(a.dtype, numpy.number):
+        raise ValueError("a must be numeric.")
+
+    i_degree = a.shape[0] - 1
+
+    xs = []
+    ys = []
+
+    # Precompute i-powers indices to avoid repeated arange creation.
+    i_idx = numpy.arange(i_degree + 1)
+
+    for xk in x:
+        z = complex(float(xk), float(delta))  # x + i * delta
+
+        # b[j] = sum_i a[i, j] * z^i  => polynomial in m:
+        #   sum_{j=0..J} b[j] m^j = 0
+        z_pows = z ** i_idx  # length I+1
+        b = (z_pows[:, None] * a).sum(axis=0)  # length J+1, low->high in m
+
+        # Trim trailing (highest-degree) coefficients near zero to avoid
+        # numerical issues in numpy.roots. b is low->high, so trim from end.
+        tol = 1e-14
+        b_trim = b.copy()
+        while b_trim.size > 1 and abs(b_trim[-1]) < tol:
+            b_trim = b_trim[:-1]
+
+        # If constant polynomial (no roots), skip.
+        if b_trim.size <= 1:
+            continue
+
+        # numpy.roots expects highest degree first.
+        coeffs_high_to_low = b_trim[::-1]
+        roots = numpy.roots(coeffs_high_to_low)
+
+        # Keep only roots with positive imaginary part.
+        im = numpy.imag(roots)
+        mask = im > 0
+        if numpy.any(mask):
+            xs.append(numpy.full(mask.sum(), float(xk)))
+            ys.append(im[mask] / numpy.pi)
+
+    if xs:
+        xs = numpy.concatenate(xs)
+        ys = numpy.concatenate(ys)
+    else:
+        xs = numpy.array([], dtype=float)
+        ys = numpy.array([], dtype=float)
+
+    fig, ax = plt.subplots()
+    ax.scatter(xs, ys, s=8, alpha=1, linewidths=0, c='k')
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("density")
+    ax.set_title("Candidate Density Cloud")
+    if size is not None:
+        ax.set_title("Candidate Density Cloud (size = {})".format(size))
+    ax.grid(True, alpha=1)
+    plt.show()
+
+    return fig, ax

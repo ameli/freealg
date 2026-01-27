@@ -19,7 +19,7 @@ from ._continuation_algebraic import sample_z_joukowski, \
         sanity_check_stieltjes_branch, eval_P
 from ._edge import evolve_edges, merge_edges
 from ._decompress import build_time_grid, decompress_newton
-from ._decompress2 import decompress_coeffs
+from ._decompress2 import decompress_coeffs, plot_candidates
 from ._homotopy import StieltjesPoly
 from ._branch_points import compute_branch_points
 from ._support import compute_support
@@ -756,6 +756,48 @@ class AlgebraicForm(object):
                          label='Decompression', latex=latex, save=save)
 
         return rho, x
+
+    # ==========
+    # candidates
+    # ==========
+
+    def candidates(self, size, x=None):
+
+        # Check size argument
+        if numpy.isscalar(size):
+            size = int(size)
+        else:
+            # Check monotonic increment (either all increasing or decreasing)
+            diff = numpy.diff(size)
+            if not (numpy.all(diff >= 0) or numpy.all(diff <= 0)):
+                raise ValueError('"size" increment should be monotonic.')
+
+        # Decompression ratio equal to e^{t}.
+        alpha = numpy.atleast_1d(size) / self.n
+
+        # Lower and upper bound on new support
+        hilb_lb = \
+            (1.0 / self._stieltjes(self.lam_m + self.delta * 1j).item()).real
+        hilb_ub = \
+            (1.0 / self._stieltjes(self.lam_p + self.delta * 1j).item()).real
+        lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
+        ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
+
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (ub - lb)
+            center = 0.5 * (ub + lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 2000)
+        else:
+            x = numpy.asarray(x)
+
+        for i in range(alpha.size):
+            t_i = numpy.log(alpha[i])
+            coeffs_i = decompress_coeffs(self.a_coeffs, t_i)
+            plot_candidates(coeffs_i, x, size=int(alpha[i]*self.n))
 
     # ====
     # edge
