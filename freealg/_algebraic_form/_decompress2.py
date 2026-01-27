@@ -5,6 +5,7 @@
 import numpy
 import matplotlib.pyplot as plt
 from scipy.special import comb
+import texplot
 from ._continuation_algebraic import _normalize_coefficients
 
 __all__ = ['decompress_coeffs']
@@ -88,7 +89,7 @@ def decompress_coeffs(a, t, normalize=True):
     return a_out
 
 
-def plot_candidates(a, x, delta=1e-4, size=None):
+def plot_candidates(a, x, delta=1e-4, size=None, latex=False):
     """
     Visualize candidate densities implied by an algebraic Stieltjes-transform
     relation:
@@ -180,15 +181,18 @@ def plot_candidates(a, x, delta=1e-4, size=None):
         xs = numpy.array([], dtype=float)
         ys = numpy.array([], dtype=float)
 
-    fig, ax = plt.subplots()
-    ax.scatter(xs, ys, s=8, alpha=1, linewidths=0, c='k')
+    with texplot.theme(use_latex=latex):
+        fig, ax = plt.subplots(figsize=(6, 2.7))
+        ax.scatter(xs, ys, s=8, alpha=1, linewidths=0, c='k')
 
-    ax.set_xlabel("x")
-    ax.set_ylabel("density")
-    ax.set_title("Candidate Density Cloud")
-    if size is not None:
-        ax.set_title("Candidate Density Cloud (size = {})".format(size))
-    ax.grid(True, alpha=1)
-    plt.show()
-
-    return fig, ax
+        ax.set_xlabel(r'$\lambda$')
+        ax.set_ylabel(r'$\rho(\lambda)$''')
+        ax.set_title("Candidate Density Cloud")
+        if size is not None:
+            ax.set_title("Candidate Density Cloud (size = {})".format(size))
+        ax.grid(True, alpha=1)
+        save_status = False
+        save_filename = ''
+        texplot.show_or_save_plot(plt, default_filename=save_filename,
+                                  transparent_background=True, dpi=400,
+                                  show_and_save=save_status, verbose=True)
