@@ -90,9 +90,9 @@ class DeformedMarchenkoPastur(object):
 
     def _roots_cubic_u_scalar(self, z):
         """
-        Solve the cubic for u = \\underline{m}(z) for H = w1
-        \\delta_{t1} + (1-w1)
-        \\delta_{t2}.
+        Solve the cubic for u = \\underline{m}(z) for H = w_1
+        \\delta_{t_1} + (1-w_1)
+        \\delta_{t_2}.
         """
 
         # Unpack parameters
@@ -159,8 +159,8 @@ class DeformedMarchenkoPastur(object):
 
     def stieltjes(self, z, max_iter=100, tol=1e-12):
         """
-        Physical/Herglotz branch of m(z) for μ = H \\boxtimes MP_c with
-        H = w1 \\delta_{t1} + (1-w1) \\delta_{t2}.
+        Physical/Herglotz branch of m(z) for \\mu = H \\boxtimes MP_c with
+        H = w_1 \\delta_{t_1} + (1-w_1) \\delta_{t_2}.
         Fast masked Newton in u (companion Stieltjes), keeping z's original
         shape.
         """
@@ -206,8 +206,7 @@ class DeformedMarchenkoPastur(object):
             f = (-1.0 / ua) + c * (w1 * t1 / d1 + w2 * t2 / d2) - za
             fp = (1.0 / (ua * ua)) - c * (
                 w1 * (t1 * t1) / (d1 * d1) +
-                w2 * (t2 * t2) / (d2 * d2)
-            )
+                w2 * (t2 * t2) / (d2 * d2))
 
             step = f / fp
             un = ua - step

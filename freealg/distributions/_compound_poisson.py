@@ -28,32 +28,32 @@ class CompoundPoisson(object):
     Notes
     -----
 
-    This model has atom at zero with mass :math:`\\max(1-e^{-\\lambda}, 0)`.
+    This model has atom at zero with mass :math:`\\max(1-\\lambda, 0)`.
 
     This model is the additive free compound Poisson law whose R-transform is
 
     .. math::
 
         R(w) = \\lambda \\left(
-            w_1 \\frac{a_1}{1-a_1 w} + (1-w_1) \\frac{a_2}{1-a_2 w}
+            w_1 \\frac{t_1}{1-t_1 w} + (1-w_1) \\frac{t_2}{1-t_2 w}
         \\right),
 
     where :math:`\\lambda>0` is the total rate (intensity),
-    :math:`a_1,a_2>0` are jump sizes, and :math:`w_1 \\in (0,1)` is the mixture
+    :math:`t_1,t_2>0` are jump sizes, and :math:`w_1 \\in (0,1)` is the mixture
     weight for the first jump.
 
     The Stieltjes transform :math:`m(z)` satisfies
 
     .. math::
 
-        z = 1/m(z) + R(m(z)).
+        R(-m(z)) = z + 1/m(z).
 
     For two atoms, clearing denominators yields a cubic polynomial in
     :math:`m`:
 
     .. math::
 
-        a_3(z)m^3 + a_2(z)m^2 + a_1(z)m + a_0(z) = 0.
+        a_3(z)m^3 + t_2(z)m^2 + t_1(z)m + a_0(z) = 0.
 
     FD-closure (free decompression):
         Under the FD rule that scales the argument of R, this family stays
@@ -66,27 +66,27 @@ class CompoundPoisson(object):
     # init
     # ====
 
-    def __init__(self, a1, a2, w1, lam):
+    def __init__(self, t1, t2, w1, lam):
         """
         Parameters
         ----------
-        a1, a2 : float
+        t1, t2 : float
             Jump sizes (must be > 0). For PSD-like support, keep them > 0.
 
         w1 : float
-            Mixture weight in (0, 1) for a1. Second weight is 1-w1.
+            Mixture weight in (0, 1) for t1. Second weight is 1-w1.
 
         lam : float
             Total rate (intensity), must be > 0.
         """
 
-        a1 = float(a1)
-        a2 = float(a2)
+        t1 = float(t1)
+        t2 = float(t2)
         w1 = float(w1)
         lam = float(lam)
 
-        if a1 <= 0.0 or a2 <= 0.0:
-            raise ValueError("a1 and a2 must be > 0.")
+        if t1 <= 0.0 or t2 <= 0.0:
+            raise ValueError("t1 and t2 must be > 0.")
 
         if not (0.0 < w1 < 1.0):
             raise ValueError("w1 must be in (0, 1).")
@@ -94,8 +94,8 @@ class CompoundPoisson(object):
         if lam <= 0.0:
             raise ValueError("lam must be > 0.")
 
-        self.a1 = a1
-        self.a2 = a2
+        self.t1 = t1
+        self.t2 = t2
         self.w1 = w1
         self.lam = lam
 
@@ -108,8 +108,8 @@ class CompoundPoisson(object):
         Return the three roots of the cubic equation in m at scalar z.
         """
 
-        a1 = float(self.a1)
-        a2 = float(self.a2)
+        t1 = float(self.t1)
+        t2 = float(self.t2)
         w1 = float(self.w1)
         lam = float(self.lam)
         w2 = 1.0 - w1
@@ -120,11 +120,11 @@ class CompoundPoisson(object):
         z = complex(z)
 
         # Coefficients for:
-        #   a3(z)m^3 + a2(z)m^2 + a1(z)m + a0(z) = 0
-        c3 = z * a1 * a2
-        c2 = (-z * (a1 + a2)) - (a1 * a2) * (1.0 - (lam1 + lam2))
-        c1 = z + (a1 + a2) - (lam1 * a1 + lam2 * a2)
-        c0 = -1.0
+        #   a3(z)m^3 + t2(z)m^2 + t1(z)m + a0(z) = 0
+        c3 = z * t1 * t2
+        c2 = (z * (t1 + t2)) + (t1 * t2) * (1.0 - (lam1 + lam2))
+        c1 = z + (t1 + t2) - (lam1 * t1 + lam2 * t2)
+        c0 = 1.0
 
         coeffs = numpy.array([c3, c2, c1, c0], dtype=numpy.complex128)
         roots = numpy.roots(coeffs)
@@ -136,11 +136,11 @@ class CompoundPoisson(object):
 
     def _solve_m_newton(self, z, m0=None, max_iter=100, tol=1e-12):
         """
-        Solve z = 1/m + R(m) for scalar z using Newton iterations.
+        Solve R(-m) = z + 1/m for scalar z using Newton iterations.
         """
 
-        a1 = float(self.a1)
-        a2 = float(self.a2)
+        t1 = float(self.t1)
+        t2 = float(self.t2)
         w1 = float(self.w1)
         lam = float(self.lam)
         w2 = 1.0 - w1
@@ -155,16 +155,16 @@ class CompoundPoisson(object):
             m = complex(m0)
 
         for _ in range(int(max_iter)):
-            d1 = 1.0 - a1 * m
-            d2 = 1.0 - a2 * m
+            d1 = 1.0 + t1 * m
+            d2 = 1.0 + t2 * m
 
-            # f(m) = 1/m + R(m) - z
-            f = (1.0 / m) + (lam1 * a1 / d1) + (lam2 * a2 / d2) - z
+            # f(m) = -1/m + R(-m) - z
+            f = (-1.0 / m) + (lam1 * t1 / d1) + (lam2 * t2 / d2) - z
 
-            # f'(m) = -1/m^2 + sum lam_i a_i^2/(1-a_i m)^2
-            fp = (-1.0 / (m * m)) + (
-                lam1 * (a1 * a1) / (d1 * d1) +
-                lam2 * (a2 * a2) / (d2 * d2)
+            # f'(m) = 1/m^2 - sum lam_i a_i^2/(1+a_i m)^2
+            fp = (1.0 / (m * m)) - (
+                lam1 * (t1 * t1) / (d1 * d1) +
+                lam2 * (t2 * t2) / (d2 * d2)
             )
 
             step = f / fp
@@ -188,8 +188,8 @@ class CompoundPoisson(object):
         """
 
         # Unpack parameters
-        a1 = float(self.a1)
-        a2 = float(self.a2)
+        t1 = float(self.t1)
+        t2 = float(self.t2)
         w1 = float(self.w1)
         lam = float(self.lam)
         w2 = 1.0 - w1
@@ -214,15 +214,14 @@ class CompoundPoisson(object):
             ma = m.ravel()[idx]
             za = z.ravel()[idx]
 
-            d1 = 1.0 - a1 * ma
-            d2 = 1.0 - a2 * ma
+            d1 = 1.0 + t1 * ma
+            d2 = 1.0 + t2 * ma
 
-            f = (1.0 / ma) + (lam1 * a1 / d1) + (lam2 * a2 / d2) - za
+            f = (-1.0 / ma) + (lam1 * t1 / d1) + (lam2 * t2 / d2) - za
 
-            fp = (-1.0 / (ma * ma)) + (
-                lam1 * (a1 * a1) / (d1 * d1) +
-                lam2 * (a2 * a2) / (d2 * d2)
-            )
+            fp = (1.0 / (ma * ma)) - (
+                lam1 * (t1 * t1) / (d1 * d1) +
+                lam2 * (t2 * t2) / (d2 * d2))
 
             step = f / fp
             mn = ma - step
@@ -259,14 +258,32 @@ class CompoundPoisson(object):
     # density
     # =======
 
-    def density(self, x, eta=2e-4, max_iter=100, tol=1e-12):
+    def density(self, x, eta=2e-4, max_iter=100, tol=1e-12, ac_only=True):
         """
         Density rho(x) from Im m(x + i eta) / pi.
+
+        ac_only: bool, default=True
+            If `True`, computes the absolutely-continuous (AC) part. This
+            matters when for :math:`\\lambda < 1`, the distribution has an
+            atom at zero of mass :math:`1 - \\lambda`, and for plotting, this
+            often shows as a spike. Setting this option to true prevents this
+            issue in plotting. Also, to compute support, this option allows
+            proper detection of the support intervals.
         """
 
         z = numpy.asarray(x, dtype=numpy.float64) + 1j * float(eta)
         m = self.stieltjes(z, max_iter=max_iter, tol=tol)
         rho = numpy.imag(m) / numpy.pi
+
+        # If it has an atom, subtract from density to get the absolutely
+        # continuous part before processing the support
+        if (ac_only is True) and (self.lam < 1.0):
+            zr = z.real
+            atom = (1.0 - self.lam) * \
+                (float(eta) / (numpy.pi * (zr*zr + float(eta)**2)))
+            rho = rho - atom
+            rho = numpy.maximum(rho, 0.0)
+
         return rho
 
     # =====
@@ -300,19 +317,19 @@ class CompoundPoisson(object):
 
         _ = method  # keep signature compatible
 
-        a1 = float(self.a1)
-        a2 = float(self.a2)
+        t1 = float(self.t1)
+        t2 = float(self.t2)
         lam = float(self.lam)
 
         if x_max is None:
             # Heuristic: scale grows ~ O(lam * max(a))
-            x_max = (1.0 + lam) * max(a1, a2) * 6.0
+            x_max = (1.0 + lam) * max(t1, t2) * 6.0
         x_max = float(x_max)
         if x_max <= 0.0:
             raise ValueError("x_max must be > 0.")
 
         x = numpy.linspace(0.0, x_max, int(n_probe))
-        rho = self.density(x, eta=eta)
+        rho = self.density(x, eta=eta, ac_only=True)
 
         mask = rho > float(thr)
         if not numpy.any(mask):
@@ -353,7 +370,7 @@ class CompoundPoisson(object):
 
     def matrix(self, size, seed=None):
         """
-        Generate a PSD random matrix whose ESD approximates this law.
+        Generate a symmetric random matrix whose ESD approximates this law.
 
         Construction
         ------------
@@ -383,15 +400,15 @@ class CompoundPoisson(object):
         Returns
         -------
         A : numpy.ndarray
-            Symmetric PSD matrix (n x n).
+            Symmetric matrix (n x n).
         """
 
         n = int(size)
         if n <= 0:
             raise ValueError("size must be a positive integer.")
 
-        a1 = float(self.a1)
-        a2 = float(self.a2)
+        t1 = float(self.t1)
+        t2 = float(self.t2)
         w1 = float(self.w1)
         lam = float(self.lam)
         w2 = 1.0 - w1
@@ -406,14 +423,14 @@ class CompoundPoisson(object):
         # term 1
         c1 = 1.0 / lam1
         m1 = max(1, int(round(n / c1)))
-        s1 = a1 * lam1
+        s1 = t1 * lam1
         Z1 = rng.standard_normal((n, m1))
         A += s1 * (Z1 @ Z1.T) / float(m1)
 
         # term 2
         c2 = 1.0 / lam2
         m2 = max(1, int(round(n / c2)))
-        s2 = a2 * lam2
+        s2 = t2 * lam2
         Z2 = rng.standard_normal((n, m2))
         A += s2 * (Z2 @ Z2.T) / float(m2)
 
@@ -434,8 +451,8 @@ class CompoundPoisson(object):
         Coefficients match _roots_cubic_m_scalar.
         """
 
-        a1 = float(self.a1)
-        a2 = float(self.a2)
+        t1 = float(self.t1)
+        t2 = float(self.t2)
         w1 = float(self.w1)
         w2 = 1.0 - w1
         lam = float(self.lam)
@@ -445,20 +462,20 @@ class CompoundPoisson(object):
 
         a = numpy.zeros((2, 4), dtype=numpy.complex128)
 
-        # c3 = z * a1 * a2
+        # c3 = z * t1 * t2
         a[0, 3] = 0.0
-        a[1, 3] = a1 * a2
+        a[1, 3] = t1 * t2
 
-        # c2 = -z (a1+a2) - a1 a2 (1 - (lam1+lam2))
-        a[0, 2] = -(a1 * a2) * (1.0 - (lam1 + lam2))
-        a[1, 2] = -(a1 + a2)
+        # c2 = z (t1+t2) + t1 t2 (1 - (lam1+lam2))
+        a[0, 2] = (t1 * t2) * (1.0 - (lam1 + lam2))
+        a[1, 2] = (t1 + t2)
 
-        # c1 = z + (a1+a2) - (lam1 a1 + lam2 a2)
-        a[0, 1] = (a1 + a2) - (lam1 * a1 + lam2 * a2)
+        # c1 = z + (t1+t2) - (lam1 t1 + lam2 t2)
+        a[0, 1] = (t1 + t2) - (lam1 * t1 + lam2 * t2)
         a[1, 1] = 1.0
 
-        # c0 = -1
-        a[0, 0] = -1.0
+        # c0 = 1
+        a[0, 0] = 1.0
         a[1, 0] = 0.0
 
         return a
