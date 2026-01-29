@@ -8,13 +8,13 @@
 
 from ._free_form import FreeForm, eigvalsh, cond, norm, trace, slogdet, supp, \
     sample, kde
-from ._algebraic_form import AlgebraicForm
+from ._algebraic_form import AlgebraicForm, decompress_newton
 from ._geometric_form import GeometricForm
 from . import visualization
 from . import distributions
 
 __all__ = ['FreeForm', 'distributions', 'visualization', 'eigvalsh', 'cond',
            'norm', 'trace', 'slogdet', 'supp', 'sample', 'kde',
-           'AlgebraicForm', 'GeometricForm']
+           'AlgebraicForm', 'GeometricForm', 'decompress_newton']
 
 from .__version__ import __version__                          # noqa: F401 E402

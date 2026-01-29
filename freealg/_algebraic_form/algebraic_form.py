@@ -18,9 +18,32 @@ from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, \
         sanity_check_stieltjes_branch, eval_P
 from ._edge import evolve_edges, merge_edges
-from ._decompress import build_time_grid, decompress_newton
+from ._cusp_wrap import cusp_wrap
+
+# Decompress with Newton
+# from ._decompress import build_time_grid, decompress_newton
+from ._decompress_util import build_time_grid
+# from ._decompress4 import decompress_newton # WORKS (mass issue)
+# from ._decompress5 import build_time_grid, decompress_newton
+# from ._decompress6 import build_time_grid, decompress_newton
+# from ._decompress4_2 import build_time_grid, decompress_newton
+# from ._decompress_new_2 import build_time_grid, decompress_newton
+# from ._decompress_new import build_time_grid, decompress_newton
+# from ._decompress6 import decompress_newton
+# from ._decompress7 import decompress_newton
+# from ._decompress8 import decompress_newton
+from ._decompress9 import decompress_newton  # With Predictor/Corrector
+
+# Decompress with coefficients
 from ._decompress2 import decompress_coeffs, plot_candidates
-from ._homotopy import StieltjesPoly
+
+# Homotopy
+# from ._homotopy import StieltjesPoly
+# from ._homotopy2 import StieltjesPoly
+# from ._homotopy3 import StieltjesPoly  # Viterbi
+# from ._homotopy4 import StieltjesPoly
+from ._homotopy5 import StieltjesPoly
+
 from ._branch_points import compute_branch_points
 from ._support import compute_support
 from ._moments import Moments, AlgebraicStieltjesMoments
@@ -189,10 +212,10 @@ class AlgebraicForm(object):
 
             # Detect support
             self.lam_m, self.lam_p = supp(self.eig, **kwargs)
-            self.broad_support = (self.lam_m, self.lam_p)
+            self.broad_support = (float(self.lam_m), float(self.lam_p))
         else:
-            self.lam_m = min([s[0] for s in self.support])
-            self.lam_p = max([s[1] for s in self.support])
+            self.lam_m = float(min([s[0] for s in self.support]))
+            self.lam_p = float(max([s[1] for s in self.support]))
             self.broad_support = (self.lam_m, self.lam_p)
 
         # Initialize
@@ -257,7 +280,7 @@ class AlgebraicForm(object):
         if self.support is not None:
             possible_support = self.support
         else:
-            possible_support = self.broad_support
+            possible_support = [self.broad_support]
 
         for sup in possible_support:
             a, b = sup
@@ -351,7 +374,7 @@ class AlgebraicForm(object):
     # estimate support
     # ================
 
-    def estimate_support(self, a_coeffs=None, n_scan=4000):
+    def estimate_support(self, a_coeffs=None, scan_range=None, n_scan=4000):
         """
         """
 
@@ -362,7 +385,10 @@ class AlgebraicForm(object):
                 a_coeffs = self.a_coeffs
 
         # Inflate a bit to make sure all points are searched
-        x_min, x_max = self._inflate_broad_support(inflate=0.2)
+        if scan_range is not None:
+            x_min, x_max = scan_range
+        else:
+            x_min, x_max = self._inflate_broad_support(inflate=0.2)
 
         est_support, info = compute_support(a_coeffs, x_min=x_min, x_max=x_max,
                                             n_scan=n_scan)
@@ -373,7 +399,7 @@ class AlgebraicForm(object):
     # estimate branch points
     # ======================
 
-    def estimate_branch_points(self):
+    def estimate_branch_points(self, tol=1e-15, real_tol=None):
         """
         Compute global branch points and zeros of leading a_j
         """
@@ -382,7 +408,7 @@ class AlgebraicForm(object):
             raise RuntimeError('Call "fit" first.')
 
         bp, leading_zeros, info = compute_branch_points(
-            self.a_coeffs, tol=1e-12, real_tol=None)
+            self.a_coeffs, tol=tol, real_tol=real_tol)
 
         return bp, leading_zeros, info
 
@@ -462,7 +488,8 @@ class AlgebraicForm(object):
             x = self._generate_grid(1.25)
 
         # Preallocate density to zero
-        rho = self._stieltjes(x).imag / numpy.pi
+        z = x.astype(complex) + 1j * self.delta
+        rho = self._stieltjes(z).imag / numpy.pi
 
         if plot:
             plot_density(x, rho, eig=self.eig, support=self.broad_support,
@@ -656,10 +683,10 @@ class AlgebraicForm(object):
     # ==========
 
     def decompress(self, size, x=None, method='one', plot=False, latex=False,
-                   save=False, verbose=False, newton_opt={
-                       'min_n_time': 10, 'max_iter': 50, 'tol': 1e-12,
-                       'armijo': 1e-4, 'min_lam': 1e-6, 'w_min': 1e-14,
-                       'sweep': True}):
+                   save=False, verbose=False, min_n_times=10,
+                   newton_opt={'max_iter': 50, 'tol': 1e-12, 'armijo': 1e-4,
+                               'min_lam': 1e-6, 'w_min': 1e-14,
+                               'sweep': True}):
         """
         Free decompression of spectral density.
         """
@@ -706,7 +733,7 @@ class AlgebraicForm(object):
             # Ensure there are at least min_n_times time t, including requested
             # times, and especially time t = 0
             t_all, idx_req = build_time_grid(
-                size, self.n, min_n_time=newton_opt.get("min_n_time", 0))
+                size, self.n, min_n_times=min_n_times)
 
             # Evolve
             W, ok = decompress_newton(
@@ -808,6 +835,9 @@ class AlgebraicForm(object):
              verbose=False):
         """
         Evolves spectral edges.
+
+        Fix: if t is a scalar or length-1 array, we prepend t=0 internally so
+        evolve_edges actually advances from the initialization at t=0.
         """
 
         if self.support is not None:
@@ -817,18 +847,53 @@ class AlgebraicForm(object):
         else:
             raise RuntimeError('Call "fit" first.')
 
-        edges, ok_edges = evolve_edges(t, self.a_coeffs,
-                                       support=known_support, eta=eta,
-                                       dt_max=dt_max, max_iter=max_iter,
-                                       tol=tol)
+        t = numpy.asarray(t, dtype=float).ravel()
 
-        # Remove spurious edges, where two edge cross and are no longer valid.
-        edges2, active_k = merge_edges(edges, tol=1e-4)
+        if t.size == 1:
+            t1 = float(t[0])
+            if t1 == 0.0:
+                t_grid = numpy.array([0.0], dtype=float)
+                complex_edges, ok_edges = evolve_edges(
+                    t_grid, self.a_coeffs, support=known_support, eta=eta,
+                    dt_max=dt_max, max_iter=max_iter, tol=tol
+                )
+            else:
+                # prepend 0 and drop it after evolution
+                t_grid = numpy.array([0.0, t1], dtype=float)
+                complex_edges2, ok_edges2 = evolve_edges(
+                    t_grid, self.a_coeffs, support=known_support, eta=eta,
+                    dt_max=dt_max, max_iter=max_iter, tol=tol
+                )
+                complex_edges = complex_edges2[-1:, :]
+                ok_edges = ok_edges2[-1:, :]
+        else:
+            # For vector t, require it starts at 0 for correct initialization
+            # (you can relax this if you want by prepending 0 similarly).
+            complex_edges, ok_edges = evolve_edges(
+                t, self.a_coeffs, support=known_support, eta=eta,
+                dt_max=dt_max, max_iter=max_iter, tol=tol
+            )
+
+        real_edges = complex_edges.real
+
+        # Remove spurious edges / merges for plotting
+        real_merged_edges, active_k = merge_edges(real_edges, tol=1e-4)
 
         if verbose:
             print("edge success rate:", ok_edges.mean())
 
-        return edges2, active_k
+        return complex_edges, real_merged_edges, active_k
+
+    # ====
+    # cusp
+    # ====
+
+    def cusp(self, t_grid):
+        """
+        """
+
+        return cusp_wrap(self, t_grid, edge_kwargs=None, max_iter=50,
+                         tol=1.0e-12)
 
     # ========
     # eigvalsh

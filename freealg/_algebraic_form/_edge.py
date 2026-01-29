@@ -13,7 +13,7 @@
 
 import numpy
 from ._continuation_algebraic import eval_roots
-from ._decompress import eval_P_partials
+from ._decompress_util import eval_P_partials
 
 __all__ = ['evolve_edges', 'merge_edges']
 
@@ -129,65 +129,28 @@ def _init_edge_point_from_support(x_edge, a_coeffs, eta=1e-3):
 # evolve edges
 # ============
 
-def evolve_edges(t_grid, a_coeffs, support=None, eta=1e-3, dt_max=0.1,
-                 max_iter=30, tol=1e-12):
+def evolve_edges(
+        t_grid,
+        a_coeffs,
+        support=None,
+        eta=1e-3,
+        dt_max=0.1,
+        max_iter=30,
+        tol=1e-12,
+        return_preimage=False):
     """
-    Evolve spectral edges under free decompression using the fitted
-    polynomial P.
+    Evolve spectral edges under free decompression using the fitted polynomial
+    P.
 
-    At time t, edges are computed as critical values of the FD map restricted
-    to the spectral curve P(zeta,y)=0. We solve for (zeta(t), y(t)):
-
+    Solves for (zeta(t), y(t)) on the spectral curve:
         P(zeta,y) = 0,
         y^2 * Py(zeta,y) - (exp(t)-1) * Pzeta(zeta,y) = 0,
 
-    then map to the physical coordinate:
+    then maps to physical coordinate:
         z_edge(t) = zeta - (exp(t)-1)/y.
 
-    Parameters
-    ----------
-    t_grid : array_like of float
-        Strictly increasing time grid.
-    a_coeffs : ndarray
-        Coefficients defining P(zeta,y).
-    support : list of (float, float), optional
-        List of intervals [(a1,b1),...,(ak,bk)] at t=0. If provided, these
-        endpoints are used as labels/initial guesses and all are tracked.
-        If omitted, this function currently raises ValueError (auto-detection
-        is intentionally not implemented here to avoid fragile heuristics).
-    eta : float, optional
-        Small imaginary part used only to pick an initial physical root near
-        each endpoint at t=0.
-    dt_max : float, optional
-        Maximum internal time step used for substepping in t.
-    max_iter : int, optional
-        Newton iterations per time step.
-    tol : float, optional
-        Tolerance for the 2x2 Newton solve.
-
-    Returns
-    -------
-    edges : ndarray, shape (len(t_grid), 2*k)
-        Tracked edges in the order [a1,b1,a2,b2,...] for each time.
-    ok : ndarray of bool, same shape as edges
-        Flags indicating whether each edge solve succeeded.
-
-    Notes
-    -----
-    The solve is done by continuation in time. If two edges merge, the Newton
-    system may become ill-conditioned near the merge time.
-
-    Examples
-    --------
-    .. code-block:: python
-
-        t_grid = numpy.linspace(0.0, 3.0, 61)
-        support = [(a1,b1)]
-        edges, ok = fd_evolve_edges(t_grid, a_coeffs, support=support,
-                                    eta=1e-3)
-
-        a_t = edges[:, 0]
-        b_t = edges[:, 1]
+    If return_preimage=True, also returns zeta_hist and y_hist of shape
+    (nt, 2k).
     """
 
     t_grid = numpy.asarray(t_grid, dtype=float).ravel()
@@ -197,32 +160,43 @@ def evolve_edges(t_grid, a_coeffs, support=None, eta=1e-3, dt_max=0.1,
         raise ValueError("t_grid must be strictly increasing.")
 
     if support is None:
-        raise ValueError(
-            "support must be provided (auto-detection not implemented).")
+        raise ValueError("support must be provided (auto-detection not " +
+                         "implemented).")
 
-    # Flatten endpoints in the order [a1,b1,a2,b2,...]
+    # Flatten endpoints in fixed order [a1,b1,a2,b2,...]
     endpoints0 = []
     for a, b in support:
         endpoints0.append(float(a))
         endpoints0.append(float(b))
 
     m = len(endpoints0)
-    edges = numpy.empty((t_grid.size, m), dtype=float)
+    complex_edges = numpy.empty((t_grid.size, m), dtype=numpy.complex128)
     ok = numpy.zeros((t_grid.size, m), dtype=bool)
 
-    # Initialize spectral points (zeta,y) at t=0 for each endpoint
-    zeta = numpy.empty(m, dtype=complex)
-    y = numpy.empty(m, dtype=complex)
+    if return_preimage:
+        zeta_hist = numpy.empty((t_grid.size, m), dtype=numpy.complex128)
+        y_hist = numpy.empty((t_grid.size, m), dtype=numpy.complex128)
+    else:
+        zeta_hist = None
+        y_hist = None
+
+    # Initialize (zeta,y) at t=0 from support endpoints
+    zeta = numpy.empty(m, dtype=numpy.complex128)
+    y = numpy.empty(m, dtype=numpy.complex128)
 
     for j in range(m):
         z0, y0, ok0 = _init_edge_point_from_support(endpoints0[j], a_coeffs,
                                                     eta=eta)
         zeta[j] = z0
         y[j] = y0
-        edges[0, j] = float(numpy.real(z0))  # at t=0, z_edge = zeta
         ok[0, j] = ok0
+        complex_edges[0, j] = z0  # at t=0, tau-1 = 0 => z_edge = zeta
 
-    # Time continuation
+    if return_preimage:
+        zeta_hist[0, :] = zeta
+        y_hist[0, :] = y
+
+    # Time stepping
     for it in range(1, t_grid.size):
         t0 = float(t_grid[it - 1])
         t1 = float(t_grid[it])
@@ -236,19 +210,22 @@ def evolve_edges(t_grid, a_coeffs, support=None, eta=1e-3, dt_max=0.1,
             t = t0 + dt * (ks / float(n_sub))
             for j in range(m):
                 zeta[j], y[j], okj = _edge_newton_step(
-                    t, zeta[j], y[j], a_coeffs,
-                    max_iter=max_iter, tol=tol
+                    t, zeta[j], y[j], a_coeffs, max_iter=max_iter, tol=tol
                 )
                 ok[it, j] = okj
 
         tau = float(numpy.exp(t1))
         c = tau - 1.0
-        z_edge = zeta - c / y
+        complex_edges[it, :] = zeta - c / y
 
-        edges[it, :] = numpy.real(z_edge)
-        # ok[it,:] already set in last substep loop
+        if return_preimage:
+            zeta_hist[it, :] = zeta
+            y_hist[it, :] = y
 
-    return edges, ok
+    if return_preimage:
+        return complex_edges, ok, zeta_hist, y_hist
+
+    return complex_edges, ok
 
 
 # ===========
@@ -282,6 +259,7 @@ def merge_edges(edges, tol=0.0):
     active_k : ndarray, shape (nt,)
         Number of remaining bulks (connected components) at each time.
     """
+
     edges = numpy.asarray(edges, dtype=float)
     nt, m = edges.shape
     if m % 2 != 0:

@@ -673,3 +673,54 @@ class DeformedMarchenkoPastur(object):
         S = X @ X.T
 
         return S
+
+    # ====
+    # poly
+    # ====
+
+    def poly(self):
+        """
+        Return a_coeffs for the exact cubic P(z,m)=0 of the two-atom deformed
+        MP model.
+
+        This is the eliminated polynomial in m (not underline{m}).
+        a_coeffs[i, j] is the coefficient of z^i m^j.
+        Shape is (3, 4).
+        """
+
+        t1 = float(self.t1)
+        t2 = float(self.t2)
+        w1 = float(self.w1)
+        w2 = 1.0 - w1
+        c = float(self.c)
+
+        # mu1 = w1 * t1 + w2 * t2
+
+        a = numpy.zeros((3, 4), dtype=numpy.complex128)
+
+        # NOTE: This polynomial is defined up to a global nonzero factor.
+        # The scaling below is chosen so that the m^3 term is (-c^3 t1 t2) z^2.
+
+        # ---- m^3:  (-c^3 t1 t2) z^2
+        a[2, 3] = -(c**3) * t1 * t2
+
+        # ---- m^2:  -( 2 c^3 t1 t2 z - 2 c^2 t1 t2 z + c^2 (t1+t2) z^2 )
+        a[0, 2] = 0.0
+        a[1, 2] = -(2.0 * (c**3) * t1 * t2 - 2.0 * (c**2) * t1 * t2)
+        a[2, 2] = -(c**2) * (t1 + t2)
+
+        # ---- m^1:
+        #   -c * [ c^2 t1 t2 - 2 c t1 t2 + t1 t2
+        #          + z^2
+        #          + z*( -c*w1*t1 + 2c*t1 + c*w1*t2 + c*t2 - t1 - t2 ) ]
+        a[0, 1] = -c * ((c**2) * t1 * t2 - 2.0 * c * t1 * t2 + t1 * t2)
+        a[1, 1] = -c * ((-c * w1 * t1) + (2.0 * c * t1) + (c * w1 * t2) +
+                        (c * t2) - t1 - t2)
+        a[2, 1] = -c * (1.0)
+
+        # ---- m^0:  -c z + c(1-c) (w2 t1 + w1 t2)
+        a[0, 0] = c * (1.0 - c) * (w2 * t1 + w1 * t2)
+        a[1, 0] = -c
+        a[2, 0] = 0.0
+
+        return a

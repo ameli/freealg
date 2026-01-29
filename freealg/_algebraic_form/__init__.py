@@ -7,5 +7,6 @@
 # directory of this source tree.
 
 from .algebraic_form import AlgebraicForm
+from ._decompress7 import decompress_newton
 
-__all__ = ['AlgebraicForm']
+__all__ = ['AlgebraicForm', 'decompress_newton']

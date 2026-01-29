@@ -340,3 +340,47 @@ class DeformedWigner(object):
         A = T + sigma * W
 
         return A
+
+    # ====
+    # poly
+    # ====
+
+    def poly(self):
+        """
+        Return a_coeffs for the exact cubic P(z,m)=0 of the two-atom deformed
+        Wigner model.
+
+        a_coeffs[i, j] is the coefficient of z^i m^j.
+        Shape is (deg_z+1, deg_m+1) = (3, 4).
+        """
+
+        t1 = float(self.t1)
+        t2 = float(self.t2)
+        w1 = float(self.w1)
+        w2 = 1.0 - w1
+        sigma = float(self.sigma)
+        s2 = sigma * sigma
+
+        a = numpy.zeros((3, 4), dtype=numpy.complex128)
+
+        # m^0 column (a0(z) = z - (w1 t2 + w2 t1))
+        a[0, 0] = -(w1 * t2 + w2 * t1)
+        a[1, 0] = 1.0
+        a[2, 0] = 0.0
+
+        # m^1 column (a1(z) = z^2 - (t1+t2)z + t1 t2 + s2)
+        a[0, 1] = t1 * t2 + s2
+        a[1, 1] = -(t1 + t2)
+        a[2, 1] = 1.0
+
+        # m^2 column (a2(z) = s2 z - s2 (t1+t2))
+        a[0, 2] = -s2 * (t1 + t2)
+        a[1, 2] = 2.0 * s2
+        a[2, 2] = 0.0
+
+        # m^3 column (a3(z) = s2^2)
+        a[0, 3] = s2 * s2
+        a[1, 3] = 0.0
+        a[2, 3] = 0.0
+
+        return a
