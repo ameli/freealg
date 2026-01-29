@@ -323,7 +323,26 @@ class AlgebraicForm(object):
         status['res_99_9'] = float(res_99_9)
         status['fit_metrics'] = fit_metrics
         self.status = status
-        self._stieltjes = StieltjesPoly(self.a_coeffs)  # NOTE overwrite init
+
+        # -----------------
+
+        # Inflate a bit to make sure all points are searched
+        # x_min, x_max = self._inflate_broad_support(inflate=0.2)
+        # scale = float(max(1.0, abs(x_max - x_min), abs(x_min), abs(x_max)))
+        # eta = 1e-6 * scale
+        #
+        # vopt = {
+        #     'lam_space': 1.0,
+        #     'lam_asym': 1.0,
+        #     'lam_tiny_im': 200.0,
+        #     'tiny_im': 0.5 * eta,
+        #     'tol_im': 1e-14,
+        # }
+
+        # NOTE overwrite init
+        self._stieltjes = StieltjesPoly(self.a_coeffs)
+        # self._stieltjes = StieltjesPoly(self.a_coeffs, viterbi_opt=vopt)
+
         self._moments_base = AlgebraicStieltjesMoments(a_coeffs)
         self.moments = Moments(self._moments_base)
 
@@ -760,7 +779,7 @@ class AlgebraicForm(object):
 
                 def mom(k):
                     return self.moments(k, t_i)
-                
+
                 stieltjes_i = StieltjesPoly(coeffs_i, mom)
                 rho[i, :] = stieltjes_i(x).imag
 

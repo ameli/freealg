@@ -35,6 +35,7 @@ def decompress_coeffs(a, t, normalize=True):
             sum_{r=0..L} sum_{s=0..L+K} A[r, s](t) z^r m^s = 0,
         normalized by normalize_coefficients.
     """
+
     a = numpy.asarray(a)
     a[-1, 0] = 0.0
     if a.ndim != 2:
@@ -123,6 +124,7 @@ def plot_candidates(a, x, delta=1e-4, size=None, latex=False, verbose=False):
     ax : matplotlib.axes.Axes
         The axes the scatter plot was drawn on.
     """
+
     if not (isinstance(delta, (float, int)) and delta > 0):
         raise ValueError("delta must be a positive scalar.")
 

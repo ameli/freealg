@@ -248,7 +248,6 @@ class Moments(object):
         a_n = self.coeffs(n)
         k = numpy.arange(n, dtype=float)
         return float(numpy.dot(a_n, numpy.exp(k * t)))
-    
 
 
 # ===========================

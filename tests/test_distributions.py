@@ -61,6 +61,8 @@ def _test_distribution(dist):
     if not dist.__class__.__name__.startswith('Meixner'):
         _ = dist.matrix(100, seed=None)
 
+    print('')
+
 
 # ==================
 # test distributions

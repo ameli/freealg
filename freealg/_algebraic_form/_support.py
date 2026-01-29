@@ -13,16 +13,16 @@
 
 import numpy
 import numpy.polynomial.polynomial as poly
+from ._homotopy5 import StieltjesPoly
 
 __all__ = ['compute_support']
 
 
-# ======================
-# poly coeffs in m and z
-# ======================
+# =====================
+# poly coeffs in m at z
+# =====================
 
 def _poly_coeffs_in_m_at_z(a_coeffs, z):
-
     s = a_coeffs.shape[1] - 1
     a = numpy.empty(s + 1, dtype=numpy.complex128)
     for j in range(s + 1):
@@ -30,48 +30,11 @@ def _poly_coeffs_in_m_at_z(a_coeffs, z):
     return a
 
 
-# ===============
-# roots poly in m
-# ===============
-
-def _roots_poly_in_m(c_asc, tol=0.0):
-
-    c = numpy.asarray(c_asc, dtype=numpy.complex128).ravel()
-    if c.size <= 1:
-        return numpy.array([], dtype=numpy.complex128)
-
-    k = c.size - 1
-    while k > 0 and abs(c[k]) <= tol:
-        k -= 1
-    c = c[:k + 1]
-    if c.size <= 1:
-        return numpy.array([], dtype=numpy.complex128)
-
-    return numpy.roots(c[::-1])
-
-
-# ================
-# dPdm coeffs at z
-# ================
-
-def _dPdm_coeffs_at_z(a_coeffs, z):
-
-    a = _poly_coeffs_in_m_at_z(a_coeffs, z)
-    s = a.size - 1
-    if s <= 0:
-        return numpy.array([0.0 + 0.0j], dtype=numpy.complex128)
-    d = numpy.empty(s, dtype=numpy.complex128)
-    for j in range(1, s + 1):
-        d[j - 1] = j * a[j]
-    return d
-
-
 # ==============
 # P and partials
 # ==============
 
 def _P_and_partials(a_coeffs, z, m):
-
     s = a_coeffs.shape[1] - 1
 
     a = numpy.empty(s + 1, dtype=numpy.complex128)
@@ -97,7 +60,7 @@ def _P_and_partials(a_coeffs, z, m):
     for j in range(2, s + 1):
         Pmm += j * (j - 1) * a[j] * (m ** (j - 2))
 
-    return P, Pz, Pm, Pzm, Pmm, a
+    return P, Pz, Pm, Pzm, Pmm
 
 
 # ===========
@@ -105,13 +68,12 @@ def _P_and_partials(a_coeffs, z, m):
 # ===========
 
 def _newton_edge(a_coeffs, x0, m0, tol=1e-12, max_iter=50):
-
     x = float(x0)
     m = float(m0)
 
     for _ in range(max_iter):
         z = x + 0.0j
-        P, Pz, Pm, Pzm, Pmm, _ = _P_and_partials(a_coeffs, z, m)
+        P, Pz, Pm, Pzm, Pmm = _P_and_partials(a_coeffs, z, m)
 
         f0 = float(numpy.real(P))
         f1 = float(numpy.real(Pm))
@@ -142,10 +104,8 @@ def _newton_edge(a_coeffs, x0, m0, tol=1e-12, max_iter=50):
 # =============
 
 def _cluster_edges(edges, x_tol):
-
     if len(edges) == 0:
         return numpy.array([], dtype=float)
-
     edges = numpy.array(sorted(edges), dtype=float)
     out = [edges[0]]
     for e in edges[1:]:
@@ -154,156 +114,151 @@ def _cluster_edges(edges, x_tol):
     return numpy.array(out, dtype=float)
 
 
-# =======================
-# pick physical root at z
-# =======================
+# ===========
+# bisect edge
+# ===========
 
-def _pick_physical_root_at_z(a_coeffs, z, im_sign=+1):
+def _bisect_edge(stieltjes_poly, x_lo, x_hi, eta, im_thr, max_iter=60):
+    z_lo = x_lo + 1j * eta
+    z_hi = x_hi + 1j * eta
+    f_lo = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_lo)) - im_thr)
+    f_hi = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_hi)) - im_thr)
 
-    a = _poly_coeffs_in_m_at_z(a_coeffs, z)
-    r = _roots_poly_in_m(a)
-    if r.size == 0:
-        return numpy.nan + 1j * numpy.nan
+    if (not numpy.isfinite(f_lo)) or (not numpy.isfinite(f_hi)):
+        return 0.5 * (x_lo + x_hi)
+    if f_lo == 0.0:
+        return float(x_lo)
+    if f_hi == 0.0:
+        return float(x_hi)
+    if f_lo * f_hi > 0.0:
+        return 0.5 * (x_lo + x_hi)
 
-    w_ref = -1.0 / z
-    idx = int(numpy.argmin(numpy.abs(r - w_ref)))
-    w = r[idx]
+    a = float(x_lo)
+    b = float(x_hi)
+    fa = f_lo
+    # fb = f_hi
 
-    # optional strictness: if it violates Herglotz, declare failure
-    if not numpy.isfinite(w.real) or not numpy.isfinite(w.imag):
-        return w
-    if (im_sign * w.imag) <= 0.0:
-        return w
+    for _ in range(max_iter):
+        c = 0.5 * (a + b)
+        z_c = c + 1j * eta
+        fc = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_c)) - im_thr)
+        if not numpy.isfinite(fc):
+            return c
+        if fc == 0.0 or (b - a) < 1e-14 * (1.0 + abs(c)):
+            return c
+        if fa * fc <= 0.0:
+            b = c
+            # fb = fc
+        else:
+            a = c
+            fa = fc
 
-    return w
+    return 0.5 * (a + b)
 
 
 # ===============
 # compute support
 # ===============
 
-def compute_support(a_coeffs,
-                    x_min,
-                    x_max,
-                    n_scan=4000,
-                    y_eps=1e-3,
-                    im_sign=+1,
-                    root_tol=0.0,
-                    edge_rel_tol=1e-6,
-                    edge_x_cluster_tol=1e-3,
-                    newton_tol=1e-12):
-    """
-    Fast support from fitted polynomial using branch-point system P=0, Pm=0.
+def compute_support(a_coeffs, x_min, x_max, n_scan=4000, **kwargs):
 
-    Returns
-    -------
-    support : list of (a,b)
-    info    : dict (edges, rel_res_curve, etc.)
-    """
+    a_coeffs = numpy.asarray(a_coeffs, dtype=numpy.complex128)
 
-    a_coeffs = numpy.asarray(a_coeffs)
-    x_grid = numpy.linspace(float(x_min), float(x_max), int(n_scan))
+    x_min = float(x_min)
+    x_max = float(x_max)
+    n_scan = int(n_scan)
 
-    # For each x, find best real critical point m (Pm=0) minimizing rel
-    # residual.
-    rel = numpy.full(x_grid.size, numpy.inf, dtype=float)
-    m_star = numpy.full(x_grid.size, numpy.nan, dtype=float)
+    scale = max(1.0, abs(x_max - x_min), abs(x_min), abs(x_max))
+    eta = kwargs.get('eta', None)
+    if eta is None:
+        eta = 1e-6 * scale
+    eta = float(eta)
 
-    for i, x in enumerate(x_grid):
-        z = x + 0.0j
-        dcoef = _dPdm_coeffs_at_z(a_coeffs, z)
-        mr = _roots_poly_in_m(dcoef, tol=root_tol)
+    vopt = {
+        'lam_space': 1.0,
+        'lam_asym': 1.0,
+        'lam_tiny_im': 200.0,
+        'tiny_im': 0.5 * eta,
+        'tol_im': 1e-14,
+    }
+    vopt.update(kwargs.get('viterbi_opt', {}) or {})
+    stieltjes = StieltjesPoly(a_coeffs, viterbi_opt=vopt)
 
-        best = numpy.inf
-        best_m = numpy.nan
+    x_grid = numpy.linspace(x_min, x_max, n_scan)
+    z_grid = x_grid + 1j * eta
+    m_grid = stieltjes(z_grid)
+    im_grid = numpy.imag(m_grid)
 
-        for w in mr:
-            # accept nearly-real roots; numerical roots can have small imag
-            # part
-            if abs(w.imag) > 1e-6 * (1.0 + abs(w.real)):
-                continue
-            m = float(w.real)
-            P, _, _, _, _, a = _P_and_partials(a_coeffs, z, m)
+    max_im = float(numpy.nanmax(im_grid)) \
+        if numpy.any(numpy.isfinite(im_grid)) else 0.0
 
-            denom = 1.0
-            am = 1.0
-            for j in range(a.size):
-                denom += abs(a[j]) * abs(am)
-                am *= m
+    thr_rel = float(kwargs.get('thr_rel', 1e-3))
+    thr_abs = kwargs.get('thr_abs', None)
 
-            r = abs(numpy.real(P)) / denom
-            if numpy.isfinite(r) and r < best:
-                best = float(r)
-                best_m = m
+    im_thr = thr_rel * max_im
+    im_thr = max(im_thr, 10.0 * eta)
+    if thr_abs is not None:
+        im_thr = max(im_thr, float(thr_abs))
 
-        rel[i] = best
-        m_star[i] = best_m
+    mask = numpy.isfinite(im_grid) & (im_grid > im_thr)
 
-    # Pick candidate edges as local minima of rel(x), below an automatic scale.
-    rel_f = rel[numpy.isfinite(rel)]
-    if rel_f.size == 0:
-        return [], {"edges": numpy.array([], dtype=float), "n_edges": 0}
-
-    med = float(numpy.median(rel_f))
-    min_rel = float(numpy.min(rel_f))
-
-    # accept local minima up to a factor above the best one, but never abov
-    # background scale
-    thr = min(0.1 * med, max(float(edge_rel_tol), 1e4 * min_rel))
-
-    edges0 = []
-    seeds = []
-
-    for i in range(1, x_grid.size - 1):
-        if not numpy.isfinite(rel[i]):
+    runs = []
+    i = 0
+    while i < mask.size:
+        if not mask[i]:
+            i += 1
             continue
-        if rel[i] <= rel[i - 1] and rel[i] <= rel[i + 1] and rel[i] < thr and \
-                numpy.isfinite(m_star[i]):
-            edges0.append(float(x_grid[i]))
-            seeds.append((float(x_grid[i]), float(m_star[i])))
+        j = i
+        while j + 1 < mask.size and mask[j + 1]:
+            j += 1
+        runs.append((i, j))
+        i = j + 1
 
-    # Refine each seed by 2D Newton (x,m)
     edges = []
-    for x0, m0 in seeds:
-        xe, me, ok = _newton_edge(a_coeffs, x0, m0, tol=newton_tol)
-        if ok and numpy.isfinite(xe) and numpy.isfinite(me):
-            edges.append(float(xe))
-
-    edges = _cluster_edges(edges, edge_x_cluster_tol)
-    edges.sort()
-
-    # Build support by testing midpoints between consecutive real edges
-    support = []
-    m_im_tol = 1e-10
-
-    for i in range(edges.size - 1):
-        a = float(edges[i])
-        b = float(edges[i + 1])
-        if b <= a:
+    for i0, i1 in runs:
+        if i0 == 0 or i1 == mask.size - 1:
             continue
 
-        xmid = 0.5 * (a + b)
+        xL = _bisect_edge(stieltjes, x_grid[i0 - 1], x_grid[i0], eta, im_thr)
+        xR = _bisect_edge(stieltjes, x_grid[i1], x_grid[i1 + 1], eta, im_thr)
 
-        # roots of P(xmid, m) with real coefficients
-        a_m = _poly_coeffs_in_m_at_z(a_coeffs, xmid + 0.0j)
-        r = _roots_poly_in_m(a_m, tol=root_tol)
+        edges.append(float(xL))
+        edges.append(float(xR))
 
-        # interval is support iff there exists a non-real root (complex pair)
-        if numpy.any(numpy.abs(numpy.imag(r)) > m_im_tol):
+    edge_x_cluster_tol = float(kwargs.get('edge_x_cluster_tol', 1e-8 * scale))
+    edges = _cluster_edges(edges, edge_x_cluster_tol)
+
+    refine = bool(kwargs.get('refine', True))
+    if refine and edges.size > 0:
+        newton_tol = float(kwargs.get('newton_tol', 1e-12))
+        edges_ref = []
+        for x0 in edges:
+            m0 = float(numpy.real(stieltjes.evaluate_scalar(x0 + 1j * eta)))
+            xe, _, ok = _newton_edge(a_coeffs, x0, m0, tol=newton_tol)
+            edges_ref.append(float(xe)
+                             if ok and numpy.isfinite(xe) else float(x0))
+        edges = _cluster_edges(edges_ref, edge_x_cluster_tol)
+
+    edges.sort()
+    support = []
+    for k in range(0, edges.size - 1, 2):
+        a = float(edges[k])
+        b = float(edges[k + 1])
+        if b > a:
             support.append((a, b))
 
     info = {
-        "edges": edges,
-        "n_edges": int(edges.size),
-        "support": support,
-        "n_support": int(len(support)),
-        "x_grid": x_grid,
-        "rel": rel,
-        "thr": float(thr),
-        "x_min": float(x_min),
-        "x_max": float(x_max),
-        "n_scan": int(n_scan),
-        "y_eps": float(y_eps),
+        'x_grid': x_grid,
+        'eta': eta,
+        'm_grid': m_grid,
+        'im_grid': im_grid,
+        'im_thr': float(im_thr),
+        'edges': edges,
+        'support': support,
+        'x_min': x_min,
+        'x_max': x_max,
+        'n_scan': n_scan,
+        'scale': scale,
     }
 
     return support, info
