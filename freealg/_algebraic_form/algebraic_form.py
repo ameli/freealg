@@ -245,15 +245,15 @@ class AlgebraicForm(object):
         ----------
 
         deg_m : int
-            Degree :math:`\\deg_m(P)`
+            Degree :math:`\\mathrm{deg}_m(P)`
 
         deg_z : int
-            Degree :math:`\\deg_z(P)`
+            Degree :math:`\\mathrm{deg}_z(P)`
 
         mu : array_like, default=None
-            If an array :math:`[\\mu_0, \\mu_`, \\dots, \\mu_r]` is given,
+            If an array :math:`[\\mu_0, \\mu_1`, \\dots, \\mu_r]` is given,
             it enforces the first :math:`r+1` moments. Note that :math:`\\mu_0`
-            should be :math:`1` to ensure unit mass. See also ``mu_reg`.
+            should be :math:`1` to ensure unit mass. See also ``mu_reg``.
 
         mu_reg: float, default=None
             If `None`, the constraints ``mu`` are applied as hard constraint.

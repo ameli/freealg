@@ -334,7 +334,7 @@ class DeformedWigner(object):
 
         # W part: Symmetric Wigner with variance 1/n (up to symmetry)
         G = rng.standard_normal((n, n))
-        W = (G + G.T) * (0.5 / numpy.sqrt(n))
+        W = (G + G.T) / numpy.sqrt(2.0 * n)
 
         # Compose
         A = T + sigma * W
@@ -373,7 +373,7 @@ class DeformedWigner(object):
         a[1, 1] = -(t1 + t2)
         a[2, 1] = 1.0
 
-        # m^2 column (a2(z) = s2 z - s2 (t1+t2))
+        # m^2 column (a2(z) = 2 s2 z - s2 (t1+t2))
         a[0, 2] = -s2 * (t1 + t2)
         a[1, 2] = 2.0 * s2
         a[2, 2] = 0.0
