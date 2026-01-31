@@ -139,50 +139,13 @@ class DeformedWigner(object):
         """
         """
 
-        # Unpack parameters
-        t1 = self.t1
-        t2 = self.t2
-        w1 = self.w1
-        sigma = self.sigma
-
         x = numpy.asarray(x, dtype=numpy.float64)
         z = x + 1j * float(eta)
 
-        zf = z.ravel()
-        m = numpy.empty_like(zf, dtype=numpy.complex128)
-
-        m_prev = None
-        for i in range(zf.size):
-            zi = zf[i]
-            if m_prev is None:
-                mi = -1.0 / zi
-            else:
-                mi = complex(m_prev)
-
-            for _ in range(80):
-                d1 = (t1 - zi - (sigma * sigma) * mi)
-                d2 = (t2 - zi - (sigma * sigma) * mi)
-
-                f = mi - (w1 / d1 + (1.0 - w1) / d2)
-                fp = 1.0 - (
-                    w1 * (sigma * sigma) / (d1 * d1) +
-                    (1.0 - w1) * (sigma * sigma) / (d2 * d2)
-                )
-
-                step = f / fp
-                mi2 = mi - step
-                if abs(step) < 1e-12 * (1.0 + abs(mi2)):
-                    mi = mi2
-                    break
-                mi = mi2
-
-            m[i] = mi
-            m_prev = mi
-
-        m = m.reshape(z.shape)
+        m = self.stieltjes(z)
         rho = numpy.imag(m) / numpy.pi
-        rho = numpy.maximum(rho, 0.0)
-        return rho
+
+        return numpy.maximum(rho, 0.0)
 
     # =====
     # roots

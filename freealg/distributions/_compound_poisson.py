@@ -372,23 +372,6 @@ class CompoundPoisson(object):
         """
         Generate a symmetric random matrix whose ESD approximates this law.
 
-        Construction
-        ------------
-        Use a sum of two independent (rotationally invariant) Wishart terms,
-        which are asymptotically free:
-
-            A = s1 * (1/m1) Z1 Z1^T + s2 * (1/m2) Z2 Z2^T,
-
-        where Zi are n x mi i.i.d. N(0,1). Choose aspect ratios ci = n/mi and
-        scales si so each term has R-transform
-
-            Ri(w) = lam_i * a_i / (1 - a_i w),
-
-        with lam_1 = lam*w1, lam_2 = lam*(1-w1). This is achieved by setting
-
-            c_i = 1/lam_i,
-            s_i = a_i * lam_i.
-
         Parameters
         ----------
         size : int
@@ -401,6 +384,33 @@ class CompoundPoisson(object):
         -------
         A : numpy.ndarray
             Symmetric matrix (n x n).
+
+        Notes
+        -----
+
+        Use a sum of two independent (rotationally invariant) Wishart terms,
+        which are asymptotically free:
+
+        .. math::
+
+            A = s_1 \\frac{1}{m_1} \\mathbf{Z}_1 \\mathbf{Z}_1^{\\intercal} +
+            s_2 * \\frac{1}{m_2} \\mathbf{Z}_2 \\mathbf{Z}_2^{\\intefcal},
+
+        where :math:`\\mathbf{Z}_i` are :math:`n \\times m_`i` i.i.d.
+        :math:`N(0,1)`. Choose aspect ratios :math:`c_i = n/m_i` and
+        scales :math:`s_i` so each term has R-transform
+
+        .. math::
+
+            R_i(w) = \\lambda_i \\frac{a_i}{(1 - a_i w},
+
+        with :math:`\\lambda_1 = \\lambda w1`,
+        :math:`\\lambda_2 = \\lambda (1-w_1)`. This is achieved by setting
+
+        .. math::
+
+            c_i = 1 / \\lambda_i,
+            s_i = a_i * \\lambda_i.
         """
 
         n = int(size)

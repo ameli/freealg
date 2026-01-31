@@ -246,91 +246,35 @@ class DeformedMarchenkoPastur(object):
     # density
     # =======
 
-    def density(self, x, eta=1e-3):
+    def density(self, x, eta=1e-3, ac_only=True):
         """
         Density via Stieltjes inversion with robust x-continuation.
 
-        Notes:
+        Notes
+        -----
+
           - Do not warm-start across x<0 (MP-type support is >=0).
           - Reset warm-start when previous u is (nearly) real.
           - If Newton lands on a non-Herglotz root, fall back to cubic roots +
             pick.
+
+        If ac_only is True and c < 1, subtract the smeared atom at zero of mass
+        (1-c) for visualization.
         """
 
-        # Unpack parameters
-        t1 = self.t1
-        t2 = self.t2
-        w1 = self.w1
-        c = self.c
-
         x = numpy.asarray(x, dtype=numpy.float64)
-        rho = numpy.zeros_like(x, dtype=numpy.float64)
+        z = x + 1j * float(eta)
 
-        c = float(c)
-        if c < 0.0:
-            raise ValueError("c must be >= 0.")
-        if c == 0.0:
-            # Degenerate: μ = H when c=0, so m(z)=E[1/(t-z)] and rho from Im m.
-            z = x + 1j * float(eta)
-            w2 = 1.0 - w1
-            m = (w1 / (t1 - z)) + (w2 / (t2 - z))
-            rho = numpy.maximum(numpy.imag(m) / numpy.pi, 0.0)
-            return rho
+        m = self.stieltjes(z)
+        rho = numpy.imag(m) / numpy.pi
 
-        # MP-type spectra live on x>=0; probing code includes x<0 (x_min<0),
-        # so we keep rho(x<0)=0 and DO NOT carry warm-start across 0.
-        mask = (x >= 0.0)
-        if not numpy.any(mask):
-            return rho
+        # Optional: remove the atom at zero (only for visualization of AC part)
+        if ac_only and (self.c > 1.0):
+            w0 = 1.0 - 1.0 / self.c
+            rho = rho - w0 * (float(eta) / numpy.pi) / \
+                (x * x + float(eta) * float(eta))
 
-        xp = x[mask]
-
-        # Preserve original order (support probing uses increasing xp).
-        order = numpy.argsort(xp)
-        inv = numpy.empty_like(order)
-        inv[order] = numpy.arange(order.size)
-
-        xp_sorted = xp[order]
-        z = xp_sorted + 1j * float(eta)
-        zf = z.ravel()
-
-        u = numpy.empty_like(zf, dtype=numpy.complex128)
-        u_prev = None
-
-        # thresholds
-        imag_eps = 1e-14
-
-        w2 = 1.0 - w1
-
-        for i in range(zf.size):
-            zi = zf[i]
-
-            # Warm start only if previous iterate had meaningful imaginary part
-            # (otherwise we risk sticking to a real branch across the bulk).
-            if (u_prev is None) or (abs(u_prev.imag) <= imag_eps):
-                ui0 = -1.0 / zi
-            else:
-                ui0 = complex(u_prev)
-
-            ui, _ = self._solve_u_newton(zi, u0=ui0, max_iter=120, tol=1e-13)
-
-            # Enforce Herglotz: sign(Im z) == sign(Im u) (eta>0 => Im u must be
-            # >0)
-            if (not numpy.isfinite(ui)) or (ui.imag <= 0.0):
-                u_roots = self._roots_cubic_u_scalar(zi)
-                ui = _pick_physical_root_scalar(zi, u_roots)
-
-            u[i] = ui
-            u_prev = ui
-
-        m = (u + (1.0 - c) / zf) / c
-        rh = numpy.maximum(numpy.imag(m) / numpy.pi, 0.0)
-
-        # Unsort back
-        rh = rh.reshape(xp_sorted.shape)
-        rho[mask] = rh[inv]
-
-        return rho
+        return numpy.maximum(rho, 0.0)
 
     # =====
     # roots
