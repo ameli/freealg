@@ -8,9 +8,6 @@
 
 from .free_form import FreeForm
 from ._linalg import eigvalsh, cond, norm, trace, slogdet
-from ._support import supp
-from ._sample import sample
 from ._density_util import kde
 
-__all__ = ['FreeForm', 'eigvalsh', 'cond', 'norm', 'trace', 'slogdet', 'supp',
-           'sample', 'kde']
+__all__ = ['FreeForm', 'eigvalsh', 'cond', 'norm', 'trace', 'slogdet', 'kde']

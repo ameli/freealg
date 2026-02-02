@@ -62,7 +62,7 @@ def build_time_grid(sizes, n0, min_n_times=0):
 
 
 
-def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
+def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
                armijo=1e-4, min_lam=1e-6, w_min=1e-14):
     """
     Solve for w = m(t,z) from the implicit FD equation using damped Newton.
@@ -83,7 +83,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
         Query point in the complex plane.
     t : float
         Time parameter (tau = exp(t)).
-    a_coeffs : ndarray
+    coeffs : ndarray
         Coefficients defining P(zeta,y) in the monomial basis.
     w_init : complex
         Initial guess for w.
@@ -117,7 +117,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
     .. code-block:: python
 
         w, ok = fd_solve_w(
-            z=0.5 + 1e-6j, t=2.0, a_coeffs=a_coeffs, w_init=m1_fn(0.5 + 1e-6j),
+            z=0.5 + 1e-6j, t=2.0, coeffs=coeffs, w_init=m1_fn(0.5 + 1e-6j),
             max_iter=50, tol=1e-12
         )
     """
@@ -132,7 +132,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
 
     for _ in range(max_iter):
 
-        a = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+        a = numpy.asarray(coeffs, dtype=numpy.complex128)
         deg_z = a.shape[0] - 1
         deg_m = a.shape[1] - 1
 
@@ -195,13 +195,13 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
         w = complex(best)
 
         # final residual check
-        F_end = eval_P_partials(z + alpha / w, tau * w, a_coeffs)[0]
+        F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
         return w, (abs(F_end) <= 1e3 * tol)
 
     # -------------------
 
 
-    F_end = eval_P_partials(z + alpha / w, tau * w, a_coeffs)[0]
+    F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
     return w, (abs(F_end) <= 10.0 * tol)
 
 
@@ -209,7 +209,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
 # NEW FUNCTION
 # ============
 
-def fd_candidates_w(z, t, a_coeffs, w_min=1e-14):
+def fd_candidates_w(z, t, coeffs, w_min=1e-14):
     """
     Return candidate roots w solving P(z + alpha/w, tau*w)=0 with Im(w)>0 (if Im(z)>0).
     """
@@ -218,7 +218,7 @@ def fd_candidates_w(z, t, a_coeffs, w_min=1e-14):
     alpha = 1.0 - 1.0 / tau
     want_pos_imag = (z.imag > 0.0)
 
-    a = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+    a = numpy.asarray(coeffs, dtype=numpy.complex128)
     deg_z = a.shape[0] - 1
     deg_m = a.shape[1] - 1
 
@@ -256,7 +256,7 @@ def fd_candidates_w(z, t, a_coeffs, w_min=1e-14):
         # residual filter (optional but helps)
         # -------------
         # TEST
-        # F = eval_P_partials(z + alpha / w, tau * w, a_coeffs)[0]
+        # F = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
         # if abs(F) < 1e-6:
         #     cands.append(complex(w))
         # ---------------
@@ -271,7 +271,7 @@ def fd_candidates_w(z, t, a_coeffs, w_min=1e-14):
 # decompress newton
 # =================
 
-def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
+def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
                       dt_max=0.1, sweep=True, time_rel_tol=5.0,
                       active_imag_eps=None, sweep_pad=20,
                       max_iter=50, tol=1e-12, armijo=1e-4,
@@ -285,7 +285,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
         Query points z (typically x + 1j*eta with eta > 0), ordered along x.
     t_grid : array_like of float
         Strictly increasing time grid.
-    a_coeffs : ndarray
+    coeffs : ndarray
         Coefficients defining P(zeta,y) in the monomial basis.
     w0_list : array_like of complex
         Initial values at t_grid[0] (typically m0(z_list) on the physical
@@ -351,14 +351,14 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
     # def solve_with_choice(iz, w_seed):
     #     # Neighbor-seeded candidate (spatial continuity)
     #     w_a, ok_a = fd_solve_w(
-    #         z_list[iz], t, a_coeffs, w_seed,
+    #         z_list[iz], t, coeffs, w_seed,
     #         max_iter=max_iter, tol=tol, armijo=armijo,
     #         min_lam=min_lam, w_min=w_min
     #     )
     #
     #     # Time-seeded candidate (time continuation)
     #     w_b, ok_b = fd_solve_w(
-    #         z_list[iz], t, a_coeffs, w_prev[iz],
+    #         z_list[iz], t, coeffs, w_prev[iz],
     #         max_iter=max_iter, tol=tol, armijo=armijo,
     #         min_lam=min_lam, w_min=w_min
     #     )
@@ -387,7 +387,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
     # TEST
     def solve_with_choice(iz, w_seed):
         # candidate roots at this (t,z)
-        cands = fd_candidates_w(z_list[iz], t, a_coeffs, w_min=w_min)
+        cands = fd_candidates_w(z_list[iz], t, coeffs, w_min=w_min)
 
         # ---------------------
         # TEST
@@ -402,7 +402,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
         if len(cands) == 0:
             # fallback to your existing single-root solver
             w, success = fd_solve_w(
-                z_list[iz], t, a_coeffs, w_prev[iz],
+                z_list[iz], t, coeffs, w_prev[iz],
                 max_iter=max_iter, tol=tol, armijo=armijo,
                 min_lam=min_lam, w_min=w_min
             )
@@ -452,7 +452,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
                 # problems.
                 for iz in range(nz):
                     w, success = fd_solve_w(
-                        z_list[iz], t, a_coeffs, w_prev[iz],
+                        z_list[iz], t, coeffs, w_prev[iz],
                         max_iter=max_iter, tol=tol, armijo=armijo,
                         min_lam=min_lam, w_min=w_min
                     )

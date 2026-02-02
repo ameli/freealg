@@ -14,37 +14,42 @@
 import numpy
 import matplotlib
 
-__all__ = ['rgb_hsv']
+__all__ = ['domain_coloring']
 
 
-# =======
-# rgb hsv
-# =======
+# ===============
+# domain coloring
+# ===============
 
-def rgb_hsv(c, shift=0.0, thresh=numpy.inf, n_mod=12.0, n_ph=12.0, vmin=0.35,
-            vmax=1.0, tile_gamma=1.0, tile_mix=1.0):
+def domain_coloring(c, shift=0.0, thresh=numpy.inf, n_mod=12.0, n_ph=12.0,
+                    vmin=0.35, vmax=1.0, tile_gamma=1.0, tile_mix=1.0):
     """
     Convert complex field c to RGB via HSV domain coloring.
 
     Parameters
     ----------
+
     c : array_like of complex
         Complex field.
 
     shift : float, default 0.0
-        Phase offset in turns (1.0 = full 2*pi rotation). Applied to hue.
+        Phase offset in turns (1.0 = full :math:`2 \\pi` rotation). Applied to
+        hue.
 
     thresh : float, default numpy.inf
-        Optional cap on |c| used for magnitude-related terms. Use to prevent
-        very large magnitudes from dominating the encoding.
+        Optional cap on :math:`\\vert c \\vert` used for magnitude-related
+        terms. Use to prevent very large magnitudes from dominating the
+        encoding.
 
     n_mod : float, default 12.0
-        Number of modulus steps per 2*pi in log(|c|). Higher -> more concentric
-        rings. Set to 0.0 to disable modulus stepping.
+        Number of modulus steps per :math:`2 \\pi` in
+        :math:`\\log(\\vert c \\vert`). Higher means more concentric rings. Set
+        to 0.0 to disable modulus stepping.
 
     n_ph : float, default 12.0
-        Number of phase steps per 2*pi in arg(c). Higher -> more angular
-        sectors. Set to 0.0 to disable phase stepping.
+        Number of phase steps per :math:`2 \\pi` in :math:`\\mathrm{arg}(c)`.
+        Higher means more angular sectors. Set to 0.0 to disable phase
+        stepping.
 
     vmin : float, default 0.35
         Minimum brightness for the tiling shading (darkest parts of tiles).
@@ -54,14 +59,17 @@ def rgb_hsv(c, shift=0.0, thresh=numpy.inf, n_mod=12.0, n_ph=12.0, vmin=0.35,
         Lowering vmax (e.g. 0.8-0.9) can reduce the "neon" look.
 
     tile_gamma : float, default 1.0
-        Shapes the within-tile ramp. 1.0 = linear sawtooth. >1.0 makes tiles
-        stay darker longer and brighten sharply near boundaries. <1.0 brightens
-        earlier.
+        Shapes the within-tile ramp. 1.0 = linear sawtooth. Larger than 1.0
+        makes tiles stay darker longer and brighten sharply near boundaries.
+        Smaller than  1.0 brightens earlier.
 
     tile_mix : float in [0, 1], default 1.0
         Mix between original magnitude brightness and tiling shading:
-          0.0 -> value = 1 - exp(-|c|) (your original, no tiling influence)
-          1.0 -> value = tiling shading only (Wegert-style tiling look)
+
+        * 0.0:  value is :math:`1 - \\exp(- \\vert c \\vert)` (original
+          coloring, no tiling influence)
+        * 1.0:  value is tiling shading only (Wegert-style tiling look)
+
         Intermediate values overlay tiling onto the original magnitude shading.
 
     Notes
@@ -72,9 +80,9 @@ def rgb_hsv(c, shift=0.0, thresh=numpy.inf, n_mod=12.0, n_ph=12.0, vmin=0.35,
     References
     ----------
 
-    [1] Wegert, E. (2015) "Visual Complex Functions: An Introduction +with
-        Phase Portraits", Springer.
-        doi: https://doi.org/10.1007/978-3-0348-0180-5
+    .. [1] Wegert, E. (2015) "Visual Complex Functions: An Introduction +with
+           Phase Portraits", Springer.
+           doi: https://doi.org/10.1007/978-3-0348-0180-5
     """
 
     hue = (numpy.angle(c) + numpy.pi) / (2.0 * numpy.pi)

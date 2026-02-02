@@ -69,3 +69,20 @@ The following classes define classical random ensembles.
     freealg.distributions.ChiralBlock
     freealg.distributions.DeformedWigner
     freealg.distributions.DeformedMarchenkoPastur
+    freealg.distributions.DeformedJacobi
+    freealg.distributions.CompoundPoisson
+    freealg.distributions.FussCatalan
+
+Visualization
+-------------
+
+Function utilities for visualizing complex functions.
+
+.. autosummary::
+    :toctree: generated
+    :caption: Visualization
+    :recursive:
+    :template: autosummary/member.rst
+
+    freealg.visualization.domain_coloring
+    freealg.visualization.glue_branches

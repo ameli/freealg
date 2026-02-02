@@ -15,7 +15,8 @@ from ._chiral_block import ChiralBlock
 from ._deformed_wigner import DeformedWigner
 from ._deformed_marchenko_pastur import DeformedMarchenkoPastur
 from ._compound_poisson import CompoundPoisson
+from ._fuss_catalan import FussCatalan
 
 __all__ = ['MarchenkoPastur', 'Wigner', 'KestenMcKay', 'Wachter', 'Meixner',
            'ChiralBlock', 'DeformedWigner', 'DeformedMarchenkoPastur',
-           'CompoundPoisson']
+           'CompoundPoisson', 'FussCatalan']

@@ -28,34 +28,34 @@ def _poly_powers(z, deg):
     return zp
 
 
-def _eval_P_dP(z, m, a_coeffs):
+def _eval_P_dP(z, m, coeffs):
     """
-    Evaluate P(z,m), dP/dz, dP/dm for polynomial coefficients a_coeffs.
+    Evaluate P(z,m), dP/dz, dP/dm for polynomial coefficients coeffs.
 
-    a_coeffs has shape (deg_z+1, s+1), where
+    coeffs has shape (deg_z+1, s+1), where
         P(z,m) = sum_{j=0}^s a_j(z) m^j
-        a_j(z) = sum_{i=0}^{deg_z} a_coeffs[i,j] z^i
+        a_j(z) = sum_{i=0}^{deg_z} coeffs[i,j] z^i
     """
     z = numpy.asarray(z, dtype=complex).ravel()
     m = numpy.asarray(m, dtype=complex).ravel()
 
-    deg_z = int(a_coeffs.shape[0] - 1)
-    s = int(a_coeffs.shape[1] - 1)
+    deg_z = int(coeffs.shape[0] - 1)
+    s = int(coeffs.shape[1] - 1)
 
     zp = _poly_powers(z, deg_z)                 # (n, deg_z+1)
     # a_j(z) for all j
-    a = zp @ a_coeffs                            # (n, s+1)
+    a = zp @ coeffs                            # (n, s+1)
 
     # derivative a_j'(z)
     if deg_z >= 1:
         # coeffs multiplied by power index
         idx = numpy.arange(deg_z + 1, dtype=float)
-        a_coeffs_dz = a_coeffs * idx[:, None]
+        coeffs_dz = coeffs * idx[:, None]
         # powers z^{i-1}: shift zp right
         zp_m1 = numpy.zeros_like(zp)
         zp_m1[:, 0] = 0.0
         zp_m1[:, 1:] = zp[:, :-1]
-        a_dz = zp_m1 @ a_coeffs_dz              # (n, s+1)
+        a_dz = zp_m1 @ coeffs_dz              # (n, s+1)
     else:
         a_dz = numpy.zeros_like(a)
 
@@ -87,7 +87,7 @@ def _eval_P_dP(z, m, a_coeffs):
 # 2x2 complex Newton (correct)
 # ===========================
 
-def _newton_corrector(z_fixed, tau, a_coeffs, zeta0, y0,
+def _newton_corrector(z_fixed, tau, coeffs, zeta0, y0,
                       max_iter=50, tol=1e-12,
                       armijo=1e-4, min_lam=1e-6):
     """
@@ -103,7 +103,7 @@ def _newton_corrector(z_fixed, tau, a_coeffs, zeta0, y0,
     eps_y = 0.0
 
     for it in range(int(max_iter)):
-        P, Pz, Py = _eval_P_dP(numpy.array([zeta]), numpy.array([y]), a_coeffs)
+        P, Pz, Py = _eval_P_dP(numpy.array([zeta]), numpy.array([y]), coeffs)
         F1 = P[0]
         F2 = zeta - (tau - 1.0) / (y + eps_y) - z_fixed
 
@@ -139,7 +139,7 @@ def _newton_corrector(z_fixed, tau, a_coeffs, zeta0, y0,
             zeta_try = zeta + lam * dzeta
             y_try = y + lam * dy
 
-            P_try, _, _ = _eval_P_dP(numpy.array([zeta_try]), numpy.array([y_try]), a_coeffs)
+            P_try, _, _ = _eval_P_dP(numpy.array([zeta_try]), numpy.array([y_try]), coeffs)
             F1_try = P_try[0]
             F2_try = zeta_try - (tau - 1.0) / (y_try + eps_y) - z_fixed
             norm_try = max(abs(F1_try), abs(F2_try))
@@ -163,7 +163,7 @@ def _newton_corrector(z_fixed, tau, a_coeffs, zeta0, y0,
 # predictor step (tangent ODE)
 # ===========================
 
-def _predictor_step(z_fixed, tau0, tau1, a_coeffs, zeta0, y0):
+def _predictor_step(z_fixed, tau0, tau1, coeffs, zeta0, y0):
     """
     One explicit Euler predictor from tau0 to tau1 along the sheet.
 
@@ -175,7 +175,7 @@ def _predictor_step(z_fixed, tau0, tau1, a_coeffs, zeta0, y0):
     if dtau == 0.0:
         return zeta0, y0
 
-    P, Pz, Py = _eval_P_dP(numpy.array([zeta0]), numpy.array([y0]), a_coeffs)
+    P, Pz, Py = _eval_P_dP(numpy.array([zeta0]), numpy.array([y0]), coeffs)
     Pz = Pz[0]
     Py = Py[0]
 
@@ -202,7 +202,7 @@ def _predictor_step(z_fixed, tau0, tau1, a_coeffs, zeta0, y0):
 # decompress newton
 # =================
 
-def decompress_newton(z_query, t, a_coeffs, w0_list=None,
+def decompress_newton(z_query, t, coeffs, w0_list=None,
                      max_iter=50, tol=1e-12,
                      armijo=1e-4, min_lam=1e-6,
                      w_min=1e-14,
@@ -219,7 +219,7 @@ def decompress_newton(z_query, t, a_coeffs, w0_list=None,
         Query points z = x + i*delta (typically slightly above real axis).
     t : array_like (n_t,)
         Time grid (must be sorted increasing; should include 0).
-    a_coeffs : ndarray
+    coeffs : ndarray
         Polynomial coefficients of P(z,m)=0 as in AlgebraicForm.fit.
     w0_list : array_like (n_z,)
         Initial condition m(t=0, z_query) on the physical branch.
@@ -312,7 +312,7 @@ def decompress_newton(z_query, t, a_coeffs, w0_list=None,
 
                 # Predictor from a_tau to b_tau
                 zeta_pred, y_pred = _predictor_step(
-                    z_query[j], a_tau, b_tau, a_coeffs, a_zeta, a_y
+                    z_query[j], a_tau, b_tau, coeffs, a_zeta, a_y
                 )
 
                 # Guard tiny y_pred
@@ -321,7 +321,7 @@ def decompress_newton(z_query, t, a_coeffs, w0_list=None,
 
                 # Corrector at b_tau
                 zeta_corr, y_corr, ok1, _ = _newton_corrector(
-                    z_fixed=z_query[j], tau=b_tau, a_coeffs=a_coeffs,
+                    z_fixed=z_query[j], tau=b_tau, coeffs=coeffs,
                     zeta0=zeta_pred, y0=y_pred,
                     max_iter=max_iter, tol=tol, armijo=armijo, min_lam=min_lam
                 )

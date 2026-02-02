@@ -13,7 +13,7 @@
 
 import numpy
 
-__all__ = ['compute_branch_points']
+__all__ = ['estimate_branch_points']
 
 
 # =========
@@ -154,19 +154,19 @@ def _det_bareiss_poly(M, tol):
 # resultant discriminant
 # ======================
 
-def _resultant_discriminant(a_coeffs, tol):
+def _resultant_discriminant(coeffs, tol):
     """
     Numerically compute Disc_m(P)(z) as a polynomial in z (ascending coeffs),
     via Sylvester determinant evaluation on a circle + interpolation.
 
-    a_coeffs[i,j] is coeff of z^i m^j, shape (deg_z+1, s+1).
+    coeffs[i,j] is coeff of z^i m^j, shape (deg_z+1, s+1).
     """
 
     import numpy
 
-    a_coeffs = numpy.asarray(a_coeffs, dtype=numpy.complex128)
-    deg_z = a_coeffs.shape[0] - 1
-    s = a_coeffs.shape[1] - 1
+    coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
+    deg_z = coeffs.shape[0] - 1
+    s = coeffs.shape[1] - 1
     if s < 1 or deg_z < 0:
         return numpy.zeros(1, dtype=numpy.complex128)
 
@@ -180,7 +180,7 @@ def _resultant_discriminant(a_coeffs, tol):
         # m^(s-k)
         p_asc = numpy.zeros(s + 1, dtype=numpy.complex128)
         for j in range(s + 1):
-            p_asc[j] = numpy.polyval(a_coeffs[:, j][::-1], z)  # a_j(z)
+            p_asc[j] = numpy.polyval(coeffs[:, j][::-1], z)  # a_j(z)
         p_desc = p_asc[::-1]
 
         # Q(m) = dP/dm, descending
@@ -207,8 +207,8 @@ def _resultant_discriminant(a_coeffs, tol):
     # Sample points on a circle; scale radius using coefficient magnitude
     # (simple heuristic) (This only affects conditioning of interpolation, not
     # correctness.)
-    scale = float(numpy.max(numpy.abs(a_coeffs))) \
-        if numpy.max(numpy.abs(a_coeffs)) > 0 else 1.0
+    scale = float(numpy.max(numpy.abs(coeffs))) \
+        if numpy.max(numpy.abs(coeffs)) > 0 else 1.0
     R = 1.0 + 0.1 * scale
 
     N = D + 1
@@ -228,7 +228,7 @@ def _resultant_discriminant(a_coeffs, tol):
         c = numpy.zeros(1, dtype=numpy.complex128)
 
     # If numerics leave small imag, kill it (disc should be real-coeff if
-    # a_coeffs real)
+    # coeffs real)
     if numpy.linalg.norm(c.imag) <= \
             1e3 * tol * max(1.0, numpy.linalg.norm(c.real)):
         c = c.real.astype(numpy.float64)
@@ -236,11 +236,11 @@ def _resultant_discriminant(a_coeffs, tol):
     return c
 
 
-# =====================
-# compute branch points
-# =====================
+# ======================
+# estimate branch points
+# ======================
 
-def compute_branch_points(a_coeffs, tol=1e-12, real_tol=None):
+def estimate_branch_points(coeffs, tol=1e-12, real_tol=None):
     """
     Compute global branch points of the affine curve P(z,m)=0 by
     z-roots of Disc_m(P)(z) = Res_m(P, dP/dm).
@@ -252,8 +252,8 @@ def compute_branch_points(a_coeffs, tol=1e-12, real_tol=None):
     info : dict
     """
 
-    a_coeffs = numpy.asarray(a_coeffs, dtype=float)
-    s = a_coeffs.shape[1] - 1
+    coeffs = numpy.asarray(coeffs, dtype=float)
+    s = coeffs.shape[1] - 1
     if s < 1:
         if real_tol is None:
             real_tol = 1e3 * tol
@@ -269,11 +269,11 @@ def compute_branch_points(a_coeffs, tol=1e-12, real_tol=None):
     if real_tol is None:
         real_tol = 1e3 * tol
 
-    a_s = _poly_trim(a_coeffs[:, s], tol)
+    a_s = _poly_trim(coeffs[:, s], tol)
     a_s_zero = numpy.roots(a_s[::-1]) if a_s.size > 1 else \
         numpy.array([], dtype=complex)
 
-    disc = _resultant_discriminant(a_coeffs, tol)
+    disc = _resultant_discriminant(coeffs, tol)
     if disc.size <= 1:
         z_bp = numpy.array([], dtype=complex)
     else:

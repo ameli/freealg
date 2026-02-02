@@ -22,14 +22,14 @@ __all__ = ['decompress_newton']
 # eval P partials
 # ===============
 
-def eval_P_partials(z, m, a_coeffs):
+def eval_P_partials(z, m, coeffs):
     """
     Evaluate P(z,m) and its partial derivatives dP/dz and dP/dm.
 
-    This assumes P is represented by `a_coeffs` in the monomial basis
+    This assumes P is represented by `coeffs` in the monomial basis
 
         P(z, m) = sum_{j=0..s} a_j(z) * m^j,
-        a_j(z) = sum_{i=0..deg_z} a_coeffs[i, j] * z^i.
+        a_j(z) = sum_{i=0..deg_z} coeffs[i, j] * z^i.
 
     The function returns P, dP/dz, dP/dm with broadcasting over z and m.
 
@@ -39,7 +39,7 @@ def eval_P_partials(z, m, a_coeffs):
         First argument to P.
     m : complex or array_like of complex
         Second argument to P. Must be broadcast-compatible with `z`.
-    a_coeffs : ndarray, shape (deg_z+1, s+1)
+    coeffs : ndarray, shape (deg_z+1, s+1)
         Coefficient matrix for P in the monomial basis.
 
     Returns
@@ -61,14 +61,14 @@ def eval_P_partials(z, m, a_coeffs):
     --------
     .. code-block:: python
 
-        P, Pz, Pm = eval_P_partials(1.0 + 1j, 0.2 + 0.3j, a_coeffs)
+        P, Pz, Pm = eval_P_partials(1.0 + 1j, 0.2 + 0.3j, coeffs)
     """
 
     z = numpy.asarray(z, dtype=complex)
     m = numpy.asarray(m, dtype=complex)
 
-    deg_z = int(a_coeffs.shape[0] - 1)
-    s = int(a_coeffs.shape[1] - 1)
+    deg_z = int(coeffs.shape[0] - 1)
+    s = int(coeffs.shape[1] - 1)
 
     if (z.ndim == 0) and (m.ndim == 0):
         zz = complex(z)
@@ -78,7 +78,7 @@ def eval_P_partials(z, m, a_coeffs):
         ap = numpy.empty(s + 1, dtype=complex)
 
         for j in range(s + 1):
-            c = a_coeffs[:, j]
+            c = coeffs[:, j]
 
             val = 0.0 + 0.0j
             for i in range(deg_z, -1, -1):
@@ -118,10 +118,10 @@ def eval_P_partials(z, m, a_coeffs):
     Pm = numpy.zeros(zz.size, dtype=complex)
 
     for j in range(s + 1):
-        aj = zp @ a_coeffs[:, j]
+        aj = zp @ coeffs[:, j]
         P += aj * mp[:, j]
 
-        ajp = dzp @ a_coeffs[:, j]
+        ajp = dzp @ coeffs[:, j]
         Pz += ajp * mp[:, j]
 
         if j >= 1:
@@ -134,7 +134,7 @@ def eval_P_partials(z, m, a_coeffs):
 # fd solve w
 # ==========
 
-# def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
+# def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
 #                armijo=1e-4, min_lam=1e-6, w_min=1e-14):
 #     """
 #     Solve for w = m(t,z) from the implicit FD equation using damped Newton.
@@ -155,7 +155,7 @@ def eval_P_partials(z, m, a_coeffs):
 #         Query point in the complex plane.
 #     t : float
 #         Time parameter (tau = exp(t)).
-#     a_coeffs : ndarray
+#     coeffs : ndarray
 #         Coefficients defining P(zeta,y) in the monomial basis.
 #     w_init : complex
 #         Initial guess for w.
@@ -189,7 +189,7 @@ def eval_P_partials(z, m, a_coeffs):
 #     .. code-block:: python
 #
 #         w, ok = fd_solve_w(
-#             z=0.5 + 1e-6j, t=2.0, a_coeffs=a_coeffs, w_init=m1_fn(0.5 + 1e-6j),
+#             z=0.5 + 1e-6j, t=2.0, coeffs=coeffs, w_init=m1_fn(0.5 + 1e-6j),
 #             max_iter=50, tol=1e-12
 #         )
 #     """
@@ -213,7 +213,7 @@ def eval_P_partials(z, m, a_coeffs):
 #         zeta = z + alpha / w
 #         y = tau * w
 #
-#         F, Pz, Py = eval_P_partials(zeta, y, a_coeffs)
+#         F, Pz, Py = eval_P_partials(zeta, y, coeffs)
 #         F = complex(F)
 #         Pz = complex(Pz)
 #         Py = complex(Py)
@@ -243,7 +243,7 @@ def eval_P_partials(z, m, a_coeffs):
 #             zeta_new = z + alpha / w_new
 #             y_new = tau * w_new
 #
-#             F_new = eval_P_partials(zeta_new, y_new, a_coeffs)[0]
+#             F_new = eval_P_partials(zeta_new, y_new, coeffs)[0]
 #             F_new = complex(F_new)
 #
 #             if abs(F_new) <= (1.0 - armijo * lam) * F_abs:
@@ -256,10 +256,10 @@ def eval_P_partials(z, m, a_coeffs):
 #         if not ok:
 #             return w, False
 #
-#     F_end = eval_P_partials(z + alpha / w, tau * w, a_coeffs)[0]
+#     F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
 #     return w, (abs(F_end) <= 10.0 * tol)
 
-def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
+def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
                armijo=1e-4, min_lam=1e-6, w_min=1e-14):
     """
     Solve for w = m(t,z) from the implicit FD equation using damped Newton.
@@ -280,7 +280,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
         Query point in the complex plane.
     t : float
         Time parameter (tau = exp(t)).
-    a_coeffs : ndarray
+    coeffs : ndarray
         Coefficients defining P(zeta,y) in the monomial basis.
     w_init : complex
         Initial guess for w.
@@ -314,7 +314,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
     .. code-block:: python
 
         w, ok = fd_solve_w(
-            z=0.5 + 1e-6j, t=2.0, a_coeffs=a_coeffs, w_init=m1_fn(0.5 + 1e-6j),
+            z=0.5 + 1e-6j, t=2.0, coeffs=coeffs, w_init=m1_fn(0.5 + 1e-6j),
             max_iter=50, tol=1e-12
         )
     """
@@ -341,7 +341,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
         # zeta = z + alpha / w
         # y = tau * w
         #
-        # F, Pz, Py = eval_P_partials(zeta, y, a_coeffs)
+        # F, Pz, Py = eval_P_partials(zeta, y, coeffs)
         # F = complex(F)
         # Pz = complex(Pz)
         # Py = complex(Py)
@@ -371,7 +371,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
         #     zeta_new = z + alpha / w_new
         #     y_new = tau * w_new
         #
-        #     F_new = eval_P_partials(zeta_new, y_new, a_coeffs)[0]
+        #     F_new = eval_P_partials(zeta_new, y_new, coeffs)[0]
         #     F_new = complex(F_new)
         #
         #     if abs(F_new) <= (1.0 - armijo * lam) * F_abs:
@@ -397,7 +397,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
         #     P(z + beta/y, y) = 0,  beta = tau - 1.
         # Multiply by y^deg_z to clear denominators and get a polynomial in y.
 
-        a = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+        a = numpy.asarray(coeffs, dtype=numpy.complex128)
         deg_z = a.shape[0] - 1
         deg_m = a.shape[1] - 1
 
@@ -460,13 +460,13 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
         w = complex(best)
 
         # final residual check
-        F_end = eval_P_partials(z + alpha / w, tau * w, a_coeffs)[0]
+        F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
         return w, (abs(F_end) <= 1e3 * tol)
 
     # -------------------
 
 
-    F_end = eval_P_partials(z + alpha / w, tau * w, a_coeffs)[0]
+    F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
     return w, (abs(F_end) <= 10.0 * tol)
 
 
@@ -474,7 +474,7 @@ def fd_solve_w(z, t, a_coeffs, w_init, max_iter=50, tol=1e-12,
 # NEW FUNCTION
 # ============
 
-def fd_candidates_w(z, t, a_coeffs, w_min=1e-14):
+def fd_candidates_w(z, t, coeffs, w_min=1e-14):
     """
     Return candidate roots w solving P(z + alpha/w, tau*w)=0 with Im(w)>0 (if Im(z)>0).
     """
@@ -483,7 +483,7 @@ def fd_candidates_w(z, t, a_coeffs, w_min=1e-14):
     alpha = 1.0 - 1.0 / tau
     want_pos_imag = (z.imag > 0.0)
 
-    a = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+    a = numpy.asarray(coeffs, dtype=numpy.complex128)
     deg_z = a.shape[0] - 1
     deg_m = a.shape[1] - 1
 
@@ -521,7 +521,7 @@ def fd_candidates_w(z, t, a_coeffs, w_min=1e-14):
         # residual filter (optional but helps)
         # -------------
         # TEST
-        # F = eval_P_partials(z + alpha / w, tau * w, a_coeffs)[0]
+        # F = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
         # if abs(F) < 1e-6:
         #     cands.append(complex(w))
         # ---------------
@@ -536,7 +536,7 @@ def fd_candidates_w(z, t, a_coeffs, w_min=1e-14):
 # decompress newton
 # =================
 
-def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
+def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
                       dt_max=0.1, sweep=True, time_rel_tol=5.0,
                       active_imag_eps=None, sweep_pad=20,
                       max_iter=50, tol=1e-12, armijo=1e-4,
@@ -556,7 +556,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
         Query points z (typically x + 1j*eta with eta > 0), ordered along x.
     t_grid : array_like of float
         Strictly increasing time grid.
-    a_coeffs : ndarray
+    coeffs : ndarray
         Coefficients defining P(z,m) in the monomial basis.
     w0_list : array_like of complex
         Initial values w(t0,z) at t_grid[0].
@@ -616,7 +616,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
     # -----------------
 
     def _candidates(iz, t):
-        cands = fd_candidates_w(z_list[iz], t, a_coeffs, w_min=w_min)
+        cands = fd_candidates_w(z_list[iz], t, coeffs, w_min=w_min)
         if len(cands) == 0:
             # fallback: carry previous value as a candidate
             return [complex(w_prev[iz])]
@@ -724,7 +724,7 @@ def decompress_newton(z_list, t_grid, a_coeffs, w0_list=None,
         if refine_newton:
             for iz in range(nz):
                 w_sol, success = fd_solve_w(
-                    z_list[iz], t, a_coeffs, w_row[iz],
+                    z_list[iz], t, coeffs, w_row[iz],
                     max_iter=max_iter, tol=tol, armijo=armijo,
                     min_lam=min_lam, w_min=w_min)
                 w_row[iz] = w_sol

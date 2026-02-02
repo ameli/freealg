@@ -12,13 +12,14 @@
 # =======
 
 import numpy
-from .._util import resolve_complex_dtype, compute_eig
+from .._util import compute_eig
 # from .._util import compute_eig
 from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, \
         sanity_check_stieltjes_branch, eval_P
 from ._edge import evolve_edges, merge_edges
 from ._cusp_wrap import cusp_wrap
+from ._admissible import precheck_laurent
 
 # Decompress with Newton
 # from ._decompress import build_time_grid, decompress_newton
@@ -44,11 +45,12 @@ from ._decompress2 import decompress_coeffs, plot_candidates
 # from ._homotopy4 import StieltjesPoly
 from ._homotopy5 import StieltjesPoly
 
-from ._branch_points import compute_branch_points
-from ._support import compute_support
+from ._branch_points import estimate_branch_points
+from ._support import estimate_support
+from .._support import supp as estimate_broad_supp
 from ._moments import Moments, AlgebraicStieltjesMoments
-from .._free_form._support import supp
 from .._free_form._plot_util import plot_density, plot_hilbert, plot_stieltjes
+from .._base_form import BaseForm
 
 # Fallback to previous numpy API
 if not hasattr(numpy, 'trapezoid'):
@@ -61,7 +63,7 @@ __all__ = ['AlgebraicForm']
 # Algebraic Form
 # ==============
 
-class AlgebraicForm(object):
+class AlgebraicForm(BaseForm):
     """
     Algebraic surrogate for ensemble models.
 
@@ -104,7 +106,7 @@ class AlgebraicForm(object):
     eig : numpy.array
         Eigenvalues of the matrix
 
-    support: tuple
+    supp: tuple
         The predicted (or given) support :math:`(\\lambda_{\\min},
         \\lambda_{\\max})` of the eigenvalue density.
 
@@ -116,10 +118,16 @@ class AlgebraicForm(object):
     -------
 
     fit
-        Fit the Jacobi polynomials to the empirical density.
+        Fit an algenraic structure to the input data
+
+    support
+        Estimate the spectral edges of the density
+
+    branch_points
+        Compute global branch points and zeros of leading coefficinet
 
     density
-        Compute the spectral density of the matrix.
+        Evaluate spectral density
 
     hilbert
         Compute Hilbert transform of the spectral density
@@ -129,6 +137,18 @@ class AlgebraicForm(object):
 
     decompress
         Free decompression of spectral density
+
+    candicates
+        Candicate densities of free decompression from all possible roots
+
+    admissible
+        Check if the free decompression admits a valid Stieltjes root
+
+    edge
+        Evolves spectral edges
+
+    cusp
+        Find cusp (merge) point of evolcing spectral edges
 
     eigvalsh
         Estimate the eigenvalues
@@ -150,7 +170,7 @@ class AlgebraicForm(object):
 
     .. code-block:: python
 
-        >>> from freealg import FreeForm
+        >>> from freealg import AlgebraicForm
     """
 
     # ====
@@ -163,21 +183,17 @@ class AlgebraicForm(object):
         Initialization.
         """
 
-        self.A = None
-        self.eig = None
+        super().__init__(delta, dtype)
+
         self._stieltjes = None
         self._moments = None
-        self.support = support
-        self.est_support = None  # Estimated from polynmial after fitting
-        self.delta = delta    # Offset above real axis to apply Plemelj formula
-
-        # Data type for complex arrays
-        self.dtype = resolve_complex_dtype(dtype)
+        self.supp = support
+        self.est_supp = None  # Estimated from polynmial after fitting
 
         if hasattr(A, 'stieltjes') and callable(getattr(A, 'stieltjes', None)):
             # This is one of the distribution objects, like MarchenkoPastur
             self._stieltjes = A.stieltjes
-            self.support = A.support()
+            self.supp = A.support()
             self.n = 1
 
         elif callable(A):
@@ -206,22 +222,21 @@ class AlgebraicForm(object):
             self._moments = Moments(self.eig)  # NOTE (never used)
 
         # broad support
-        if self.support is None:
+        if self.supp is None:
             if self.eig is None:
                 raise RuntimeError("Support must be provided without data")
 
             # Detect support
-            self.lam_m, self.lam_p = supp(self.eig, **kwargs)
-            self.broad_support = (float(self.lam_m), float(self.lam_p))
+            self.lam_m, self.lam_p = estimate_broad_supp(self.eig, **kwargs)
+            self.broad_supp = (float(self.lam_m), float(self.lam_p))
         else:
-            self.lam_m = float(min([s[0] for s in self.support]))
-            self.lam_p = float(max([s[1] for s in self.support]))
-            self.broad_support = (self.lam_m, self.lam_p)
+            self.lam_m = float(min([s[0] for s in self.supp]))
+            self.lam_p = float(max([s[1] for s in self.supp]))
+            self.broad_supp = (self.lam_m, self.lam_p)
 
         # Initialize
-        self.a_coeffs = None               # Polynomial coefficients
+        self.coeffs = None                 # Polynomial coefficients
         self.status = None                 # Fitting status
-        self.cache = {}                    # Cache inner-computations
 
     # ===
     # fit
@@ -239,7 +254,7 @@ class AlgebraicForm(object):
             normalize=False,
             verbose=False):
         """
-        Fit polynomial.
+        Fit an algenraic structure to the input data.
 
         Parameters
         ----------
@@ -277,12 +292,12 @@ class AlgebraicForm(object):
         # Sampling around support, or broad_support. This is only needed to
         # ensure sampled points are not hiting the support itself is not used
         # in any computation. If support is not known, use broad support.
-        if self.support is not None:
-            possible_support = self.support
+        if self.supp is not None:
+            possible_supp = self.supp
         else:
-            possible_support = [self.broad_support]
+            possible_supp = [self.broad_supp]
 
-        for sup in possible_support:
+        for sup in possible_supp:
             a, b = sup
 
             for i in range(len(r)):
@@ -292,30 +307,28 @@ class AlgebraicForm(object):
         z_fit = numpy.concatenate(z_fits)
 
         # Remove points too close to any cut
-        z_fit = filter_z_away_from_cuts(z_fit, possible_support, y_eps=y_eps,
+        z_fit = filter_z_away_from_cuts(z_fit, possible_supp, y_eps=y_eps,
                                         x_pad=x_pad)
 
         # Fitting (w_inf = None means adaptive weight selection)
         m1_fit = self._stieltjes(z_fit)
-        a_coeffs, fit_metrics = fit_polynomial_relation(
+        self.coeffs, fit_metrics = fit_polynomial_relation(
                 z_fit, m1_fit, s=deg_m, deg_z=deg_z, ridge_lambda=reg,
                 triangular=triangular, normalize=normalize, mu=mu,
                 mu_reg=mu_reg)
 
-        self.a_coeffs = a_coeffs
-
         # Estimate support from the fitted polynomial
-        self.est_support, _ = self.estimate_support(a_coeffs)
+        self.est_supp, _ = self.support(self.coeffs)
 
         # Reporting error
-        P_res = numpy.abs(eval_P(z_fit, m1_fit, a_coeffs))
+        P_res = numpy.abs(eval_P(z_fit, m1_fit, self.coeffs))
         res_max = numpy.max(P_res[numpy.isfinite(P_res)])
         res_99_9 = numpy.quantile(P_res[numpy.isfinite(P_res)], 0.999)
 
         # Check polynomial has Stieltjes root
         x_min = self.lam_m - 1.0
         x_max = self.lam_p + 1.0
-        status = sanity_check_stieltjes_branch(a_coeffs, x_min, x_max,
+        status = sanity_check_stieltjes_branch(self.coeffs, x_min, x_max,
                                                eta=max(y_eps, 1e-2), n_x=128,
                                                max_bad_frac=0.05)
 
@@ -327,7 +340,7 @@ class AlgebraicForm(object):
         # -----------------
 
         # Inflate a bit to make sure all points are searched
-        # x_min, x_max = self._inflate_broad_support(inflate=0.2)
+        # x_min, x_max = self._inflate_broad_supp(inflate=0.2)
         # scale = float(max(1.0, abs(x_max - x_min), abs(x_min), abs(x_max)))
         # eta = 1e-6 * scale
         #
@@ -340,10 +353,10 @@ class AlgebraicForm(object):
         # }
 
         # NOTE overwrite init
-        self._stieltjes = StieltjesPoly(self.a_coeffs)
-        # self._stieltjes = StieltjesPoly(self.a_coeffs, viterbi_opt=vopt)
+        self._stieltjes = StieltjesPoly(self.coeffs)
+        # self._stieltjes = StieltjesPoly(self.coeffs, viterbi_opt=vopt)
 
-        self._moments_base = AlgebraicStieltjesMoments(a_coeffs)
+        self._moments_base = AlgebraicStieltjesMoments(self.coeffs)
         self.moments = Moments(self._moments_base)
 
         if verbose:
@@ -352,14 +365,14 @@ class AlgebraicForm(object):
 
             print('\nCoefficients (real)')
             with numpy.printoptions(precision=8, suppress=True):
-                for i in range(a_coeffs.shape[0]):
-                    for j in range(a_coeffs.shape[1]):
-                        v = a_coeffs[i, j]
+                for i in range(self.coeffs.shape[0]):
+                    for j in range(self.coeffs.shape[1]):
+                        v = self.coeffs[i, j]
                         print(f'{v.real:>+0.8f}', end=' ')
                     print('')
 
-            a_coeffs_img_norm = numpy.linalg.norm(a_coeffs.imag, ord='fro')
-            print(f'\nCoefficients (imag) norm: {a_coeffs_img_norm:>0.4e}')
+            coeffs_img_norm = numpy.linalg.norm(self.coeffs.imag, ord='fro')
+            print(f'\nCoefficients (imag) norm: {coeffs_img_norm:>0.4e}')
 
             if not status['ok']:
                 print("\nWARNING: sanity check failed:\n" +
@@ -369,15 +382,20 @@ class AlgebraicForm(object):
             else:
                 print('\nStieltjes sanity check: OK')
 
-        return a_coeffs, self.est_support, status
+        return self.coeffs, self.est_supp, status
 
-    # =====================
-    # inflate broad support
-    # =====================
+    # ==================
+    # inflate broad supp
+    # ==================
 
-    def _inflate_broad_support(self, inflate=0.0):
+    def _inflate_broad_supp(self, inflate=0.0):
         """
+        Inflate the broad support for better post-processing, such as detecting
+        branch points, spectral edges, etc.
         """
+
+        if inflate < 0:
+            raise ValueError('"inflate" should be non-negative.')
 
         min_supp, max_supp = self.broad_support
 
@@ -389,68 +407,48 @@ class AlgebraicForm(object):
 
         return x_min, x_max
 
-    # ================
-    # estimate support
-    # ================
+    # =======
+    # support
+    # =======
 
-    def estimate_support(self, a_coeffs=None, scan_range=None, n_scan=4000):
+    def support(self, coeffs=None, scan_range=None, n_scan=4000):
         """
+        Estimate the spectral edges of the density.
         """
 
-        if a_coeffs is None:
-            if self.a_coeffs is None:
+        if coeffs is None:
+            if self.coeffs is None:
                 raise RuntimeError('Call "fit" first.')
             else:
-                a_coeffs = self.a_coeffs
+                coeffs = self.coeffs
 
         # Inflate a bit to make sure all points are searched
         if scan_range is not None:
             x_min, x_max = scan_range
         else:
-            x_min, x_max = self._inflate_broad_support(inflate=0.2)
+            x_min, x_max = self._inflate_broad_supp(inflate=0.2)
 
-        est_support, info = compute_support(a_coeffs, x_min=x_min, x_max=x_max,
-                                            n_scan=n_scan)
+        est_supp, info = estimate_support(coeffs, x_min=x_min, x_max=x_max,
+                                          n_scan=n_scan)
 
-        return est_support, info
+        return est_supp, info
 
-    # ======================
-    # estimate branch points
-    # ======================
+    # =============
+    # branch points
+    # =============
 
-    def estimate_branch_points(self, tol=1e-15, real_tol=None):
+    def branch_points(self, tol=1e-15, real_tol=None):
         """
-        Compute global branch points and zeros of leading a_j
+        Compute global branch points and zeros of leading coefficinet.
         """
 
-        if self.a_coeffs is None:
+        if self.coeffs is None:
             raise RuntimeError('Call "fit" first.')
 
-        bp, leading_zeros, info = compute_branch_points(
-            self.a_coeffs, tol=tol, real_tol=real_tol)
+        bp, leading_zeros, info = estimate_branch_points(
+            self.coeffs, tol=tol, real_tol=real_tol)
 
         return bp, leading_zeros, info
-
-    # =============
-    # generate grid
-    # =============
-
-    def _generate_grid(self, scale, extend=1.0, N=500):
-        """
-        Generate a grid of points to evaluate density / Hilbert / Stieltjes
-        transforms.
-        """
-
-        radius = 0.5 * (self.lam_p - self.lam_m)
-        center = 0.5 * (self.lam_p + self.lam_m)
-
-        x_min = numpy.floor(extend * (center - extend * radius * scale))
-        x_max = numpy.ceil(extend * (center + extend * radius * scale))
-
-        x_min /= extend
-        x_max /= extend
-
-        return numpy.linspace(x_min, x_max, N)
 
     # =======
     # density
@@ -498,7 +496,7 @@ class AlgebraicForm(object):
             >>> from freealg import FreeForm
         """
 
-        if self.a_coeffs is None:
+        if self.coeffs is None:
             raise RuntimeError('The model needs to be fit using the .fit() ' +
                                'function.')
 
@@ -511,7 +509,7 @@ class AlgebraicForm(object):
         rho = self._stieltjes(z).imag / numpy.pi
 
         if plot:
-            plot_density(x, rho, eig=self.eig, support=self.broad_support,
+            plot_density(x, rho, eig=self.eig, support=self.broad_supp,
                          label='Estimate', latex=latex, save=save)
 
         return rho
@@ -563,7 +561,7 @@ class AlgebraicForm(object):
             >>> from freealg import FreeForm
         """
 
-        if self.a_coeffs is None:
+        if self.coeffs is None:
             raise RuntimeError('The model needs to be fit using the .fit() ' +
                                'function.')
 
@@ -575,7 +573,7 @@ class AlgebraicForm(object):
         hilb = -self._stieltjes(x).real / numpy.pi
 
         if plot:
-            plot_hilbert(x, hilb, support=self.broad_support, latex=latex,
+            plot_hilbert(x, hilb, support=self.broad_supp, latex=latex,
                          save=save)
 
         return hilb
@@ -586,7 +584,7 @@ class AlgebraicForm(object):
 
     def stieltjes(self, x=None, y=None, plot=False, latex=False, save=False):
         """
-        Compute Stieltjes transform of the spectral density on a grid.
+        Compute Stieltjes transform of the spectral density
 
         This function evaluates Stieltjes transform on an array of points, or
         over a 2D Cartesian grid on the complex plane.
@@ -635,7 +633,7 @@ class AlgebraicForm(object):
             >>> from freealg import FreeForm
         """
 
-        if self.a_coeffs is None:
+        if self.coeffs is None:
             raise RuntimeError('The model needs to be fit using the .fit() ' +
                                'function.')
 
@@ -659,43 +657,10 @@ class AlgebraicForm(object):
         m = self._stieltjes(z, progress=True)
 
         if plot:
-            plot_stieltjes(x, y, m, m, self.broad_support, latex=latex,
+            plot_stieltjes(x, y, m, m, self.broad_supp, latex=latex,
                            save=save)
 
         return m
-
-    # ==============
-    # eval stieltjes
-    # ==============
-
-    def _eval_stieltjes(self, z, branches=False):
-        """
-        Compute Stieltjes transform of the spectral density.
-
-        Parameters
-        ----------
-
-        z : numpy.array
-            The z values in the complex plan where the Stieltjes transform is
-            evaluated.
-
-        branches : bool, default = False
-            Return both the principal and secondary branches of the Stieltjes
-            transform. The default ``branches=False`` will return only
-            the secondary branch.
-
-        Returns
-        -------
-
-        m_p : numpy.ndarray
-            The Stieltjes transform on the principal branch if
-            ``branches=True``.
-
-        m_m : numpy.ndarray
-            The Stieltjes transform continued to the secondary branch.
-        """
-
-        pass
 
     # ==========
     # decompress
@@ -756,7 +721,7 @@ class AlgebraicForm(object):
 
             # Evolve
             W, ok = decompress_newton(
-                z_query, t_all, self.a_coeffs,
+                z_query, t_all, self.coeffs,
                 w0_list=w0_list, **newton_opt)
 
             rho_all = W.imag / numpy.pi
@@ -775,7 +740,7 @@ class AlgebraicForm(object):
             # Decompress to each alpha
             for i in range(alpha.size):
                 t_i = numpy.log(alpha[i])
-                coeffs_i = decompress_coeffs(self.a_coeffs, t_i)
+                coeffs_i = decompress_coeffs(self.coeffs, t_i)
 
                 def mom(k):
                     return self.moments(k, t_i)
@@ -808,6 +773,9 @@ class AlgebraicForm(object):
     # ==========
 
     def candidates(self, size, x=None, verbose=False):
+        """
+        Candicate densities of free decompression from all possible roots
+        """
 
         # Check size argument
         if numpy.isscalar(size):
@@ -842,9 +810,161 @@ class AlgebraicForm(object):
 
         for i in range(alpha.size):
             t_i = numpy.log(alpha[i])
-            coeffs_i = decompress_coeffs(self.a_coeffs, t_i)
+            coeffs_i = decompress_coeffs(self.coeffs, t_i)
             plot_candidates(coeffs_i, x, size=int(alpha[i]*self.n),
                             verbose=verbose)
+
+    # ==========
+    # admissible
+    # ==========
+
+    def admissible(self, t=(1.0005, 1.001, 1.01, 1.1), K=(6, 8, 10), L=3,
+                   tol=1e-8, verbose=False):
+        """
+        Check if the free decompression admits a valid Stieltjes root.
+
+        Parameters
+        ----------
+
+        t : sequence of float, default=(0, 1e-4, 1e-3, 1e-2, 1e-1, 1)
+            Time ``t`` to test. Values should satisfy ``t >= 0``. The case
+            ``t = 0`` corresponds to the base polynomial.
+
+        K : sequence of int, default=(6, 8, 10)
+            Truncation orders ``K`` used to build the Laurent cancellation
+            system. Each ``K`` enforces powers ``p`` in ``[-L, ..., K]``.
+
+        L : int, default=3
+            Number of negative powers to enforce. The enforced power range is
+            ``p in [-L, ..., K]`` for each ``K``.
+
+        tol : float, default=1e-10
+            Pass threshold for the best residual over ``K``. The residual
+            is ``max_p |c_p|`` over enforced powers, where ``c_p`` are the
+            Laurent coefficients of :math:`P_t(1/w, m(w))`.
+
+        verbose : bool, default=True
+            If True, print a per-``t`` summary and the per-``K`` diagnostics.
+
+        Returns
+        -------
+
+        status : array
+            Boolean array of `True` or `False for each time in ``t``.
+            `True` means admissible, and `False` means inadmissible.
+
+        out : dict
+            Dictionary keyed by each entry in ``t``. Each value is a dict with:
+
+            * ``best`` : dict
+                Diagnostics for the best ``K`` (smallest residual). Keys:
+                ``K``, ``alpha``, ``max_abs``, ``worst_p``, ``ok_solve``.
+            * ``perK`` : list of tuples
+                Per-``K`` results as
+                ``(K, alpha, max_abs, worst_p, ok_solve)``.
+            * ``alpha_std`` : float
+                Standard deviation of ``alpha`` across ``K`` list.
+            * ``alpha_span`` : float
+                Span (max-min) of ``alpha`` across ``K`` list.
+
+        Raises
+        ------
+
+        ValueError
+            If ``K`` is empty, or if any ``K`` or ``L`` is not positive.
+
+        See Also
+        --------
+
+        branch_points :
+            Geometric branch-point estimation; complementary to this asymptotic
+            check.
+
+        Notes
+        -----
+
+        This is a ""no-FD-run" diagnostic: it only uses the base algebraic
+        relation :math:`P(z,m)=0` (stored in ``self.coeffs``) and tests the
+        pushed relation under free decompression (FD) at selected expansion
+        factors ``t``.
+
+        The FD pushforward used here is the characteristic change-of-variables
+
+        * :math:`\\tau = e^t`
+        * :math:`y = \\tau * m`
+        * :math:`\\zeta = z + (1 - 1/\\tau) / m`
+        * :math:`P_t(z, m) = P(\\zeta, y)`
+
+        A necessary condition for FD tracking to remain well-posed is that, for
+        each :math:`\\tau > 1`), the pushed relation admits a "Stieltjes branch
+        at infinity", i.e., a solution branch with the large
+        :math:`\\vert z \\vert` behavior
+
+        .. math::
+
+            m(z) = -1/z + O(1/z^2)
+
+        as :math:`\\vert z \\vert \\to \\infty` in :math:`\\Im(z) > 0`.
+
+        This routine enforces that asymptotic structure by constructing a
+        truncated Laurent expansion in :math:`w = 1/z`. It solves for
+        coefficients in
+
+        .. math::
+
+            m(z) = -(alpha/z + mu_1/z^2 + mu_2/z^3 + ...)
+
+        so that the Laurent series of :math:`P_t(1/w, m(w))` cancels on a
+        prescribed range of powers. Concretely, for each truncation order
+        ``K``, we enforce the cancellation of powers ``p`` in ``[-L, ..., K]``
+        and measure the maximum absolute residual among those enforced
+        coefficients. The best (smallest) residual across ``K`` is used for the
+        main pass/fail decision.
+
+        * ``K`` controls how many asymptotic constraints are enforced. Larger
+          ``K`` is usually stricter but can become sensitive to coefficient
+          noise (e.g. from a fitted polynomial).
+        * ``L`` controls how many negative powers are enforced. A safe default
+          is ``deg_z + 2``; here we expose it directly so you can tune it per
+          model.
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> import freealg AlgebraicForm
+            >>> from freealg.distributions import CompoundPoisson
+
+            >>> # Create compounbd free Poisson law
+            >>> cp = CompoundPoisson(t1=2.0, t2=5.5, w1=0.75, c=0.1)
+            >>> af = AlgebraicForm(cp)
+
+            >>> # Check adminibility of compound free Poisson
+            >>> status, info = af.adminisble(
+            ...     t=(0, 1e-4, 1e-3, 1e-2, 1e-1, 1), K=(6, 8, 10),
+            ...     L=3, tol=1e-10, verbose=True)
+
+            >>> out[1.001]["ok"]
+            True
+        """
+
+        if self.coeffs is None:
+            raise RuntimeError('"fit" model first.')
+
+        status = []
+        info = {}
+        for t_i in t:
+            ok, info_ = precheck_laurent(self.coeffs, t_i, K=K, L=L, tol=tol,
+                                         verbose=verbose)
+
+            status.append(ok)
+            info[t_i] = info_
+
+            if verbose:
+                print("")
+
+        return status, info
 
     # ====
     # edge
@@ -859,10 +979,10 @@ class AlgebraicForm(object):
         evolve_edges actually advances from the initialization at t=0.
         """
 
-        if self.support is not None:
-            known_support = self.support
-        elif self.est_support is not None:
-            known_support = self.est_support
+        if self.supp is not None:
+            known_supp = self.supp
+        elif self.est_supp is not None:
+            known_supp = self.est_supp
         else:
             raise RuntimeError('Call "fit" first.')
 
@@ -873,25 +993,24 @@ class AlgebraicForm(object):
             if t1 == 0.0:
                 t_grid = numpy.array([0.0], dtype=float)
                 complex_edges, ok_edges = evolve_edges(
-                    t_grid, self.a_coeffs, support=known_support, eta=eta,
+                    t_grid, self.coeffs, support=known_supp, eta=eta,
                     dt_max=dt_max, max_iter=max_iter, tol=tol
                 )
             else:
                 # prepend 0 and drop it after evolution
                 t_grid = numpy.array([0.0, t1], dtype=float)
                 complex_edges2, ok_edges2 = evolve_edges(
-                    t_grid, self.a_coeffs, support=known_support, eta=eta,
-                    dt_max=dt_max, max_iter=max_iter, tol=tol
-                )
+                    t_grid, self.coeffs, support=known_supp, eta=eta,
+                    dt_max=dt_max, max_iter=max_iter, tol=tol)
+
                 complex_edges = complex_edges2[-1:, :]
                 ok_edges = ok_edges2[-1:, :]
         else:
             # For vector t, require it starts at 0 for correct initialization
             # (you can relax this if you want by prepending 0 similarly).
             complex_edges, ok_edges = evolve_edges(
-                t, self.a_coeffs, support=known_support, eta=eta,
-                dt_max=dt_max, max_iter=max_iter, tol=tol
-            )
+                t, self.coeffs, support=known_supp, eta=eta,
+                dt_max=dt_max, max_iter=max_iter, tol=tol)
 
         real_edges = complex_edges.real
 
@@ -909,343 +1028,8 @@ class AlgebraicForm(object):
 
     def cusp(self, t_grid):
         """
+        Find cusp (merge) point of evolcing spectral edges
         """
 
         return cusp_wrap(self, t_grid, edge_kwargs=None, max_iter=50,
                          tol=1.0e-12)
-
-    # ========
-    # eigvalsh
-    # ========
-
-    def eigvalsh(self, size=None, seed=None, **kwargs):
-        """
-        Estimate the eigenvalues.
-
-        This function estimates the eigenvalues of the freeform matrix
-        or a larger matrix containing it using free decompression.
-
-        Parameters
-        ----------
-
-        size : int, default=None
-            The size of the matrix containing :math:`\\mathbf{A}` to estimate
-            eigenvalues of. If None, returns estimates of the eigenvalues of
-            :math:`\\mathbf{A}` itself.
-
-        seed : int, default=None
-            The seed for the Quasi-Monte Carlo sampler.
-
-        **kwargs : dict, optional
-            Pass additional options to the underlying
-            :func:`FreeForm.decompress` function.
-
-        Returns
-        -------
-
-        eigs : numpy.array
-            Eigenvalues of decompressed matrix
-
-        See Also
-        --------
-
-        FreeForm.decompress
-        FreeForm.cond
-
-        Notes
-        -----
-
-        All arguments to the `.decompress()` procedure can be provided.
-
-        Examples
-        --------
-
-        .. code-block:: python
-            :emphasize-lines: 1
-
-            >>> from freealg import FreeForm
-        """
-
-        # if size is None:
-        #     size = self.n
-        #
-        # rho, x = self.decompress(size, **kwargs)
-        # eigs = numpy.sort(sample(x, rho, size, method='qmc', seed=seed))
-        #
-        # return eigs
-        pass
-
-    # ====
-    # cond
-    # ====
-
-    def cond(self, size=None, seed=None, **kwargs):
-        """
-        Estimate the condition number.
-
-        This function estimates the condition number of the matrix
-        :math:`\\mathbf{A}` or a larger matrix containing :math:`\\mathbf{A}`
-        using free decompression.
-
-        Parameters
-        ----------
-
-        size : int, default=None
-            The size of the matrix containing :math:`\\mathbf{A}` to estimate
-            eigenvalues of. If None, returns estimates of the eigenvalues of
-            :math:`\\mathbf{A}` itself.
-
-        **kwargs : dict, optional
-            Pass additional options to the underlying
-            :func:`FreeForm.decompress` function.
-
-        Returns
-        -------
-
-        c : float
-            Condition number
-
-        See Also
-        --------
-
-        FreeForm.eigvalsh
-        FreeForm.norm
-        FreeForm.slogdet
-        FreeForm.trace
-
-        Examples
-        --------
-
-        .. code-block:: python
-            :emphasize-lines: 1
-
-            >>> from freealg import FreeForm
-        """
-
-        eigs = self.eigvalsh(size=size, **kwargs)
-        return eigs.max() / eigs.min()
-
-    # =====
-    # trace
-    # =====
-
-    def trace(self, size=None, p=1.0, seed=None, **kwargs):
-        """
-        Estimate the trace of a power.
-
-        This function estimates the trace of the matrix power
-        :math:`\\mathbf{A}^p` of the freeform or that of a larger matrix
-        containing it.
-
-        Parameters
-        ----------
-
-        size : int, default=None
-            The size of the matrix containing :math:`\\mathbf{A}` to estimate
-            eigenvalues of. If None, returns estimates of the eigenvalues of
-            :math:`\\mathbf{A}` itself.
-
-        p : float, default=1.0
-            The exponent :math:`p` in :math:`\\mathbf{A}^p`.
-
-        seed : int, default=None
-            The seed for the Quasi-Monte Carlo sampler.
-
-        **kwargs : dict, optional
-            Pass additional options to the underlying
-            :func:`FreeForm.decompress` function.
-
-        Returns
-        -------
-
-        trace : float
-            matrix trace
-
-        See Also
-        --------
-
-        FreeForm.eigvalsh
-        FreeForm.cond
-        FreeForm.slogdet
-        FreeForm.norm
-
-        Notes
-        -----
-
-        The trace is highly amenable to subsampling: under free decompression
-        the average eigenvalue is assumed constant, so the trace increases
-        linearly. Traces of powers fall back to :func:`eigvalsh`.
-        All arguments to the `.decompress()` procedure can be provided.
-
-        Examples
-        --------
-
-        .. code-block:: python
-            :emphasize-lines: 1
-
-            >>> from freealg import FreeForm
-        """
-
-        if numpy.isclose(p, 1.0):
-            return numpy.mean(self.eig) * (size / self.n)
-
-        eig = self.eigvalsh(size=size, seed=seed, **kwargs)
-        return numpy.sum(eig ** p)
-
-    # =======
-    # slogdet
-    # =======
-
-    def slogdet(self, size=None, seed=None, **kwargs):
-        """
-        Estimate the sign and logarithm of the determinant.
-
-        This function estimates the *slogdet* of the freeform or that of
-        a larger matrix containing it using free decompression.
-
-        Parameters
-        ----------
-
-        size : int, default=None
-            The size of the matrix containing :math:`\\mathbf{A}` to estimate
-            eigenvalues of. If None, returns estimates of the eigenvalues of
-            :math:`\\mathbf{A}` itself.
-
-        seed : int, default=None
-            The seed for the Quasi-Monte Carlo sampler.
-
-        Returns
-        -------
-
-        sign : float
-            Sign of determinant
-
-        ld : float
-            natural logarithm of the absolute value of the determinant
-
-        See Also
-        --------
-
-        FreeForm.eigvalsh
-        FreeForm.cond
-        FreeForm.trace
-        FreeForm.norm
-
-        Notes
-        -----
-
-        All arguments to the `.decompress()` procedure can be provided.
-
-        Examples
-        --------
-
-        .. code-block:: python
-            :emphasize-lines: 1
-
-            >>> from freealg import FreeForm
-        """
-
-        eigs = self.eigvalsh(size=size, seed=seed, **kwargs)
-        sign = numpy.prod(numpy.sign(eigs))
-        ld = numpy.sum(numpy.log(numpy.abs(eigs)))
-        return sign, ld
-
-    # ====
-    # norm
-    # ====
-
-    def norm(self, size=None, order=2, seed=None, **kwargs):
-        """
-        Estimate the Schatten norm.
-
-        This function estimates the norm of the freeform or a larger
-        matrix containing it using free decompression.
-
-        Parameters
-        ----------
-
-        size : int, default=None
-            The size of the matrix containing :math:`\\mathbf{A}` to estimate
-            eigenvalues of. If None, returns estimates of the eigenvalues of
-            :math:`\\mathbf{A}` itself.
-
-        order : {float, ``''inf``, ``'-inf'``, ``'fro'``, ``'nuc'``}, default=2
-            Order of the norm.
-
-            * float :math:`p`: Schatten p-norm.
-            * ``'inf'``: Largest absolute eigenvalue
-              :math:`\\max \\vert \\lambda_i \\vert)`
-            * ``'-inf'``: Smallest absolute eigenvalue
-              :math:`\\min \\vert \\lambda_i \\vert)`
-            * ``'fro'``: Frobenius norm corresponding to :math:`p=2`
-            * ``'nuc'``: Nuclear (or trace) norm corresponding to :math:`p=1`
-
-        seed : int, default=None
-            The seed for the Quasi-Monte Carlo sampler.
-
-        **kwargs : dict, optional
-            Pass additional options to the underlying
-            :func:`FreeForm.decompress` function.
-
-        Returns
-        -------
-
-        norm : float
-            matrix norm
-
-        See Also
-        --------
-
-        FreeForm.eigvalsh
-        FreeForm.cond
-        FreeForm.slogdet
-        FreeForm.trace
-
-        Notes
-        -----
-
-        Thes Schatten :math:`p`-norm is defined by
-
-        .. math::
-
-            \\Vert \\mathbf{A} \\Vert_p = \\left(
-            \\sum_{i=1}^N \\vert \\lambda_i \\vert^p \\right)^{1/p}.
-
-        Examples
-        --------
-
-        .. code-block:: python
-            :emphasize-lines: 1
-
-            >>> from freealg import FreeForm
-        """
-
-        eigs = self.eigvalsh(size, seed=seed, **kwargs)
-
-        # Check order type and convert to float
-        if order == 'nuc':
-            order = 1
-        elif order == 'fro':
-            order = 2
-        elif order == 'inf':
-            order = float('inf')
-        elif order == '-inf':
-            order = -float('inf')
-        elif not isinstance(order,
-                            (int, float, numpy.integer, numpy.floating)) \
-                and not isinstance(order, (bool, numpy.bool_)):
-            raise ValueError('"order" is invalid.')
-
-        # Compute norm
-        if numpy.isinf(order) and not numpy.isneginf(order):
-            norm_ = max(numpy.abs(eigs))
-
-        elif numpy.isneginf(order):
-            norm_ = min(numpy.abs(eigs))
-
-        elif isinstance(order, (int, float, numpy.integer, numpy.floating)) \
-                and not isinstance(order, (bool, numpy.bool_)):
-            norm_q = numpy.sum(numpy.abs(eigs)**order)
-            norm_ = norm_q**(1.0 / order)
-
-        return norm_

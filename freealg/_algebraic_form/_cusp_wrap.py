@@ -19,15 +19,15 @@ import scipy.optimize as opt
 # poly coeffs in y
 # ================
 
-def _poly_coeffs_in_y(a_coeffs, zeta):
+def _poly_coeffs_in_y(coeffs, zeta):
     """
     Build coefficients c_j(zeta) so that P(zeta, y) = sum_j c_j(zeta) y^j.
 
-    Assumes a_coeffs[i, j] multiplies z^i y^j (same layout as eval_P in
+    Assumes coeffs[i, j] multiplies z^i y^j (same layout as eval_P in
     _continuation_algebraic). Returns coefficients in ascending powers of y.
     """
 
-    a = numpy.asarray(a_coeffs)
+    a = numpy.asarray(coeffs)
     deg_z = a.shape[0] - 1
     deg_y = a.shape[1] - 1
 
@@ -44,14 +44,14 @@ def _poly_coeffs_in_y(a_coeffs, zeta):
 # pick realish root y
 # ===================
 
-def _pick_realish_root_y(a_coeffs, zeta):
+def _pick_realish_root_y(coeffs, zeta):
     """
     Pick a reasonable real-ish root y of P(zeta, y)=0 to seed Newton.
 
     Returns a float (real part of the selected root).
     """
 
-    c_asc = _poly_coeffs_in_y(a_coeffs, zeta)  # ascending in y
+    c_asc = _poly_coeffs_in_y(coeffs, zeta)  # ascending in y
     # numpy.roots wants descending order
     c_desc = c_asc[::-1]
     # strip leading ~0 coefficients
@@ -138,7 +138,7 @@ def cusp_wrap(self, t_grid, edge_kwargs=None, max_iter=80, tol=1e-12,
     tau = float(numpy.exp(t_star))
     c = tau - 1.0
 
-    a = numpy.asarray(self.a_coeffs, dtype=numpy.complex128)
+    a = numpy.asarray(self.coeffs, dtype=numpy.complex128)
     deg_z = a.shape[0] - 1
     deg_y = a.shape[1] - 1
 

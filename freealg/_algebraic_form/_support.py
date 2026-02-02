@@ -15,18 +15,18 @@ import numpy
 import numpy.polynomial.polynomial as poly
 from ._homotopy5 import StieltjesPoly
 
-__all__ = ['compute_support']
+__all__ = ['estimate_support']
 
 
 # =====================
 # poly coeffs in m at z
 # =====================
 
-def _poly_coeffs_in_m_at_z(a_coeffs, z):
-    s = a_coeffs.shape[1] - 1
+def _poly_coeffs_in_m_at_z(coeffs, z):
+    s = coeffs.shape[1] - 1
     a = numpy.empty(s + 1, dtype=numpy.complex128)
     for j in range(s + 1):
-        a[j] = poly.polyval(z, a_coeffs[:, j])
+        a[j] = poly.polyval(z, coeffs[:, j])
     return a
 
 
@@ -34,14 +34,14 @@ def _poly_coeffs_in_m_at_z(a_coeffs, z):
 # P and partials
 # ==============
 
-def _P_and_partials(a_coeffs, z, m):
-    s = a_coeffs.shape[1] - 1
+def _P_and_partials(coeffs, z, m):
+    s = coeffs.shape[1] - 1
 
     a = numpy.empty(s + 1, dtype=numpy.complex128)
     da = numpy.empty(s + 1, dtype=numpy.complex128)
     for j in range(s + 1):
-        a[j] = poly.polyval(z, a_coeffs[:, j])
-        da[j] = poly.polyval(z, poly.polyder(a_coeffs[:, j]))
+        a[j] = poly.polyval(z, coeffs[:, j])
+        da[j] = poly.polyval(z, poly.polyder(coeffs[:, j]))
 
     mpow = 1.0 + 0.0j
     P = 0.0 + 0.0j
@@ -67,13 +67,13 @@ def _P_and_partials(a_coeffs, z, m):
 # newton edge
 # ===========
 
-def _newton_edge(a_coeffs, x0, m0, tol=1e-12, max_iter=50):
+def _newton_edge(coeffs, x0, m0, tol=1e-12, max_iter=50):
     x = float(x0)
     m = float(m0)
 
     for _ in range(max_iter):
         z = x + 0.0j
-        P, Pz, Pm, Pzm, Pmm = _P_and_partials(a_coeffs, z, m)
+        P, Pz, Pm, Pzm, Pmm = _P_and_partials(coeffs, z, m)
 
         f0 = float(numpy.real(P))
         f1 = float(numpy.real(Pm))
@@ -157,12 +157,12 @@ def _bisect_edge(stieltjes_poly, x_lo, x_hi, eta, im_thr, max_iter=60):
 
 
 # ===============
-# compute support
+# estimate support
 # ===============
 
-def compute_support(a_coeffs, x_min, x_max, n_scan=4000, **kwargs):
+def estimate_support(coeffs, x_min, x_max, n_scan=4000, **kwargs):
 
-    a_coeffs = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+    coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
 
     x_min = float(x_min)
     x_max = float(x_max)
@@ -182,7 +182,7 @@ def compute_support(a_coeffs, x_min, x_max, n_scan=4000, **kwargs):
         'tol_im': 1e-14,
     }
     vopt.update(kwargs.get('viterbi_opt', {}) or {})
-    stieltjes = StieltjesPoly(a_coeffs, viterbi_opt=vopt)
+    stieltjes = StieltjesPoly(coeffs, viterbi_opt=vopt)
 
     x_grid = numpy.linspace(x_min, x_max, n_scan)
     z_grid = x_grid + 1j * eta
@@ -234,18 +234,18 @@ def compute_support(a_coeffs, x_min, x_max, n_scan=4000, **kwargs):
         edges_ref = []
         for x0 in edges:
             m0 = float(numpy.real(stieltjes.evaluate_scalar(x0 + 1j * eta)))
-            xe, _, ok = _newton_edge(a_coeffs, x0, m0, tol=newton_tol)
+            xe, _, ok = _newton_edge(coeffs, x0, m0, tol=newton_tol)
             edges_ref.append(float(xe)
                              if ok and numpy.isfinite(xe) else float(x0))
         edges = _cluster_edges(edges_ref, edge_x_cluster_tol)
 
     edges.sort()
-    support = []
+    est_supp = []
     for k in range(0, edges.size - 1, 2):
         a = float(edges[k])
         b = float(edges[k + 1])
         if b > a:
-            support.append((a, b))
+            est_supp.append((a, b))
 
     info = {
         'x_grid': x_grid,
@@ -254,11 +254,11 @@ def compute_support(a_coeffs, x_min, x_max, n_scan=4000, **kwargs):
         'im_grid': im_grid,
         'im_thr': float(im_thr),
         'edges': edges,
-        'support': support,
+        'est_supp': est_supp,
         'x_min': x_min,
         'x_max': x_max,
         'n_scan': n_scan,
         'scale': scale,
     }
 
-    return support, info
+    return est_supp, info

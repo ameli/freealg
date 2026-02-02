@@ -54,19 +54,19 @@ def build_time_grid(sizes, n0, min_n_times=0):
 # eval P partials
 # ===============
 
-def eval_P_partials(z, m, a_coeffs):
+def eval_P_partials(z, m, coeffs):
     """
     Evaluate P(z,m) and partials dP/dz, dP/dm.
 
-    P is represented by a_coeffs in the monomial basis:
+    P is represented by coeffs in the monomial basis:
         P(z,m) = sum_{j=0..s} a_j(z) m^j
-        a_j(z) = sum_{i=0..deg_z} a_coeffs[i,j] z^i
+        a_j(z) = sum_{i=0..deg_z} coeffs[i,j] z^i
     """
     z = numpy.asarray(z, dtype=complex)
     m = numpy.asarray(m, dtype=complex)
 
-    deg_z = int(a_coeffs.shape[0] - 1)
-    s = int(a_coeffs.shape[1] - 1)
+    deg_z = int(coeffs.shape[0] - 1)
+    s = int(coeffs.shape[1] - 1)
 
     # Scalar fast path
     if (z.ndim == 0) and (m.ndim == 0):
@@ -77,7 +77,7 @@ def eval_P_partials(z, m, a_coeffs):
         ap = numpy.empty(s + 1, dtype=complex)
 
         for j in range(s + 1):
-            c = a_coeffs[:, j]
+            c = coeffs[:, j]
 
             val = 0.0 + 0.0j
             for i in range(deg_z, -1, -1):
@@ -119,10 +119,10 @@ def eval_P_partials(z, m, a_coeffs):
     Pm = numpy.zeros(zz.size, dtype=complex)
 
     for j in range(s + 1):
-        aj = zp @ a_coeffs[:, j]
+        aj = zp @ coeffs[:, j]
         P += aj * mp[:, j]
 
-        ajp = dzp @ a_coeffs[:, j]
+        ajp = dzp @ coeffs[:, j]
         Pz += ajp * mp[:, j]
 
         if j >= 1:
@@ -135,7 +135,7 @@ def eval_P_partials(z, m, a_coeffs):
 # Newton for one (z,t) pair
 # =========================
 
-def _newton_one(z, t, a_coeffs, w0, max_iter=50, tol=1e-12,
+def _newton_one(z, t, coeffs, w0, max_iter=50, tol=1e-12,
                 armijo=1e-4, min_lam=1e-6, w_min=1e-14):
     """
     Solve F_t(z,w)=0 at a single (t,z) by damped Newton.
@@ -155,7 +155,7 @@ def _newton_one(z, t, a_coeffs, w0, max_iter=50, tol=1e-12,
             return numpy.nan + 1j * numpy.nan, numpy.nan + 1j * numpy.nan
         zeta = z + beta / w_val
         y = tau * w_val
-        P, Pz, Py = eval_P_partials(zeta, y, a_coeffs)
+        P, Pz, Py = eval_P_partials(zeta, y, coeffs)
         dF = (-beta / (w_val * w_val)) * Pz + tau * Py
         return P, dF
 
@@ -240,7 +240,7 @@ def _newton_one(z, t, a_coeffs, w0, max_iter=50, tol=1e-12,
 def decompress_newton(
     z_query,
     t_all,
-    a_coeffs,
+    coeffs,
     w0_list=None,
     max_iter=50,
     tol=1e-12,
@@ -310,7 +310,7 @@ def decompress_newton(
 
         # Initial anchor solve at first time
         w_anchor_prev, ok_anchor_prev = _newton_one(
-            z_anchor, float(t_all[0]), a_coeffs, -1.0 / z_anchor,
+            z_anchor, float(t_all[0]), coeffs, -1.0 / z_anchor,
             max_iter=max_iter, tol=homotopy_tol,
             armijo=armijo, min_lam=min_lam, w_min=w_min)
         if not ok_anchor_prev:
@@ -338,7 +338,7 @@ def decompress_newton(
                 z_next = z_anchor + (z_target - z_anchor) * s_next
 
                 w_next, ok_next = _newton_one(
-                    z_next, t, a_coeffs, w_curr,
+                    z_next, t, coeffs, w_curr,
                     max_iter=max_iter, tol=homotopy_tol,
                     armijo=armijo, min_lam=min_lam, w_min=w_min)
 
@@ -369,7 +369,7 @@ def decompress_newton(
         if use_homotopy:
             # Continue anchor in time
             w_anchor, ok_anchor = _newton_one(
-                z_anchor, t, a_coeffs, w_anchor_prev,
+                z_anchor, t, coeffs, w_anchor_prev,
                 max_iter=max_iter, tol=homotopy_tol,
                 armijo=armijo, min_lam=min_lam, w_min=w_min)
             if ok_anchor:
@@ -387,7 +387,7 @@ def decompress_newton(
 
                 # Fallback: direct Newton from previous time
                 w_d, ok_d = _newton_one(
-                    zq[j], t, a_coeffs, w_prev_time[j],
+                    zq[j], t, coeffs, w_prev_time[j],
                     max_iter=max_iter, tol=tol,
                     armijo=armijo, min_lam=min_lam, w_min=w_min)
                 if ok_d:
@@ -404,7 +404,7 @@ def decompress_newton(
                 else:
                     w0 = Wk[j - 1] if okk[j - 1] else w_prev_time[j]
                 w_sol, ok_sol = _newton_one(
-                    zq[j], t, a_coeffs, w0,
+                    zq[j], t, coeffs, w0,
                     max_iter=max_iter, tol=tol,
                     armijo=armijo, min_lam=min_lam, w_min=w_min)
                 Wk[j] = w_sol
@@ -413,7 +413,7 @@ def decompress_newton(
         else:
             for j in range(n_z):
                 w_sol, ok_sol = _newton_one(
-                    zq[j], t, a_coeffs, w_prev_time[j],
+                    zq[j], t, coeffs, w_prev_time[j],
                     max_iter=max_iter, tol=tol,
                     armijo=armijo, min_lam=min_lam, w_min=w_min)
                 Wk[j] = w_sol

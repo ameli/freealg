@@ -6,7 +6,7 @@
 #
 # Public API (used by AlgebraicForm.decompress):
 #   build_time_grid(size, n0, min_n_times=0) -> (t_all, idx_req)
-#   decompress_newton(z_list, t_grid, a_coeffs, w0_list=None, **opts) -> (W, ok)
+#   decompress_newton(z_list, t_grid, coeffs, w0_list=None, **opts) -> (W, ok)
 #
 # Core equation (FD):
 #   tau = exp(t) - 1
@@ -102,13 +102,13 @@ def build_time_grid(size, n0, min_n_times=0):
 # Polynomial utilities
 # ===================
 
-def _poly_coef_in_w(z, a_coeffs):
+def _poly_coef_in_w(z, coeffs):
     """
     For fixed z, return coefficients c[j] so that P(z,w)=sum_j c[j] w^j.
-    a_coeffs[i,j] corresponds to z^i w^j.
+    coeffs[i,j] corresponds to z^i w^j.
     """
     z = complex(z)
-    a = np.asarray(a_coeffs, dtype=np.complex128)
+    a = np.asarray(coeffs, dtype=np.complex128)
     deg_z = int(a.shape[0] - 1)
     # Horner in z for each j
     zp = 1.0 + 0.0j
@@ -119,8 +119,8 @@ def _poly_coef_in_w(z, a_coeffs):
     return c  # shape (s+1,)
 
 
-def _eval_P(z, w, a_coeffs):
-    c = _poly_coef_in_w(z, a_coeffs)
+def _eval_P(z, w, coeffs):
+    c = _poly_coef_in_w(z, coeffs)
     # Horner in w
     ww = complex(w)
     out = 0.0 + 0.0j
@@ -129,11 +129,11 @@ def _eval_P(z, w, a_coeffs):
     return out
 
 
-def _eval_dP_dw(z, w, a_coeffs):
+def _eval_dP_dw(z, w, coeffs):
     """
     d/dw P(z,w)
     """
-    c = _poly_coef_in_w(z, a_coeffs)  # c[j] w^j
+    c = _poly_coef_in_w(z, coeffs)  # c[j] w^j
     ww = complex(w)
     # derivative coefficients: j*c[j]
     out = 0.0 + 0.0j
@@ -142,13 +142,13 @@ def _eval_dP_dw(z, w, a_coeffs):
     return out
 
 
-def _eval_dP_dz(z, w, a_coeffs):
+def _eval_dP_dz(z, w, coeffs):
     """
     d/dz P(z,w)
     """
     z = complex(z)
     w = complex(w)
-    a = np.asarray(a_coeffs, dtype=np.complex128)
+    a = np.asarray(coeffs, dtype=np.complex128)
     deg_z = int(a.shape[0] - 1)
     # compute b[j] = sum_{i>=1} i*a[i,j]*z^{i-1}
     if deg_z <= 0:
@@ -165,15 +165,15 @@ def _eval_dP_dz(z, w, a_coeffs):
     return out
 
 
-def _fd_F_and_dF(w, z, tau, a_coeffs):
+def _fd_F_and_dF(w, z, tau, coeffs):
     """
     F(w) = P(z - tau*w, w).
     dF/dw = dP/dz * (-tau) + dP/dw evaluated at (zeta, w).
     """
     zeta = z - tau * w
-    F = _eval_P(zeta, w, a_coeffs)
-    dPdw = _eval_dP_dw(zeta, w, a_coeffs)
-    dPdz = _eval_dP_dz(zeta, w, a_coeffs)
+    F = _eval_P(zeta, w, coeffs)
+    dPdw = _eval_dP_dw(zeta, w, coeffs)
+    dPdz = _eval_dP_dz(zeta, w, coeffs)
     dF = dPdw - tau * dPdz
     return F, dF
 
@@ -185,7 +185,7 @@ def _fd_F_and_dF(w, z, tau, a_coeffs):
 def _newton_fd_scalar(
     z,
     t,
-    a_coeffs,
+    coeffs,
     w_init,
     *,
     max_iter=60,
@@ -212,7 +212,7 @@ def _newton_fd_scalar(
         w = complex(w.real, w_min)
 
     # initial
-    F, dF = _fd_F_and_dF(w, z, tau, a_coeffs)
+    F, dF = _fd_F_and_dF(w, z, tau, coeffs)
     res0 = abs(F)
     if not np.isfinite(res0):
         return complex(np.nan, np.nan), False, 0, np.inf
@@ -239,7 +239,7 @@ def _newton_fd_scalar(
                 w_new = w + lam * step
                 if w_min > 0.0 and w_new.imag < w_min:
                     w_new = complex(w_new.real, w_min)
-                F_new, dF_new = _fd_F_and_dF(w_new, z, tau, a_coeffs)
+                F_new, dF_new = _fd_F_and_dF(w_new, z, tau, coeffs)
                 f1 = abs(F_new)
                 if np.isfinite(f1) and (f1 <= (1.0 - 1e-4 * lam) * f0):
                     w, F, dF = w_new, F_new, dF_new
@@ -252,10 +252,10 @@ def _newton_fd_scalar(
             w = w + step
             if w_min > 0.0 and w.imag < w_min:
                 w = complex(w.real, w_min)
-            F, dF = _fd_F_and_dF(w, z, tau, a_coeffs)
+            F, dF = _fd_F_and_dF(w, z, tau, coeffs)
 
     # final
-    F, _ = _fd_F_and_dF(w, z, tau, a_coeffs)
+    F, _ = _fd_F_and_dF(w, z, tau, coeffs)
     ok = np.isfinite(F.real) and np.isfinite(F.imag) and (abs(F) <= 1e3 * tol * (1.0 + res0))
     return w, bool(ok), max_iter, abs(F)
 
@@ -294,7 +294,7 @@ def _dedup_cands(cands, tol=1e-10):
 def _fd_candidates(
     z,
     t,
-    a_coeffs,
+    coeffs,
     seeds,
     *,
     max_iter=60,
@@ -313,7 +313,7 @@ def _fd_candidates(
     ress = []
     for s in seeds:
         w, ok, _, res = _newton_fd_scalar(
-            z, t, a_coeffs, s,
+            z, t, coeffs, s,
             max_iter=max_iter, tol=tol,
             armijo=armijo, min_lam=min_lam, w_min=w_min
         )
@@ -525,7 +525,7 @@ def _renormalize_density(z_list, w_path, target_mass=1.0):
 def decompress_newton(
     z_list: np.ndarray,
     t_grid: np.ndarray,
-    a_coeffs: np.ndarray,
+    coeffs: np.ndarray,
     w0_list: np.ndarray | None = None,
     *,
     dt_max: float = 0.05,
@@ -633,7 +633,7 @@ def decompress_newton(
                 seeds.append(complex(-1.0 / (z_list[iz] - tau * w_prev[iz] + 1e-30)))
 
                 cands, oks, ress = _fd_candidates(
-                    z_list[iz], float(t_sub), a_coeffs, seeds,
+                    z_list[iz], float(t_sub), coeffs, seeds,
                     max_iter=max_iter, tol=tol,
                     armijo=armijo, min_lam=min_lam, w_min=w_min,
                     keep_best=keep_best,

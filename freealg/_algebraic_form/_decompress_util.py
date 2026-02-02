@@ -64,14 +64,14 @@ def build_time_grid(sizes, n0, min_n_times=0):
 # eval P partials
 # ===============
 
-def eval_P_partials(z, m, a_coeffs):
+def eval_P_partials(z, m, coeffs):
     """
     Evaluate P(z,m) and its partial derivatives dP/dz and dP/dm.
 
-    This assumes P is represented by `a_coeffs` in the monomial basis
+    This assumes P is represented by `coeffs` in the monomial basis
 
         P(z, m) = sum_{j=0..s} a_j(z) * m^j,
-        a_j(z) = sum_{i=0..deg_z} a_coeffs[i, j] * z^i.
+        a_j(z) = sum_{i=0..deg_z} coeffs[i, j] * z^i.
 
     The function returns P, dP/dz, dP/dm with broadcasting over z and m.
 
@@ -81,7 +81,7 @@ def eval_P_partials(z, m, a_coeffs):
         First argument to P.
     m : complex or array_like of complex
         Second argument to P. Must be broadcast-compatible with `z`.
-    a_coeffs : ndarray, shape (deg_z+1, s+1)
+    coeffs : ndarray, shape (deg_z+1, s+1)
         Coefficient matrix for P in the monomial basis.
 
     Returns
@@ -103,14 +103,14 @@ def eval_P_partials(z, m, a_coeffs):
     --------
     .. code-block:: python
 
-        P, Pz, Pm = eval_P_partials(1.0 + 1j, 0.2 + 0.3j, a_coeffs)
+        P, Pz, Pm = eval_P_partials(1.0 + 1j, 0.2 + 0.3j, coeffs)
     """
 
     z = numpy.asarray(z, dtype=complex)
     m = numpy.asarray(m, dtype=complex)
 
-    deg_z = int(a_coeffs.shape[0] - 1)
-    s = int(a_coeffs.shape[1] - 1)
+    deg_z = int(coeffs.shape[0] - 1)
+    s = int(coeffs.shape[1] - 1)
 
     if (z.ndim == 0) and (m.ndim == 0):
         zz = complex(z)
@@ -120,7 +120,7 @@ def eval_P_partials(z, m, a_coeffs):
         ap = numpy.empty(s + 1, dtype=complex)
 
         for j in range(s + 1):
-            c = a_coeffs[:, j]
+            c = coeffs[:, j]
 
             val = 0.0 + 0.0j
             for i in range(deg_z, -1, -1):
@@ -160,10 +160,10 @@ def eval_P_partials(z, m, a_coeffs):
     Pm = numpy.zeros(zz.size, dtype=complex)
 
     for j in range(s + 1):
-        aj = zp @ a_coeffs[:, j]
+        aj = zp @ coeffs[:, j]
         P += aj * mp[:, j]
 
-        ajp = dzp @ a_coeffs[:, j]
+        ajp = dzp @ coeffs[:, j]
         Pz += ajp * mp[:, j]
 
         if j >= 1:

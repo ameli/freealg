@@ -253,10 +253,10 @@ class DeformedMarchenkoPastur(object):
         Notes
         -----
 
-          - Do not warm-start across x<0 (MP-type support is >=0).
-          - Reset warm-start when previous u is (nearly) real.
-          - If Newton lands on a non-Herglotz root, fall back to cubic roots +
-            pick.
+        * Do not warm-start across x<0 (MP-type support is >=0).
+        * Reset warm-start when previous u is (nearly) real.
+        * If Newton lands on a non-Herglotz root, fall back to cubic roots +
+          pick.
 
         If ac_only is True and c < 1, subtract the smeared atom at zero of mass
         (1-c) for visualization.

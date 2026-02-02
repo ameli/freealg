@@ -15,9 +15,9 @@ import numpy
 import matplotlib.pyplot as plt
 import texplot
 import matplotlib
-import colorsys
 import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
+from ..visualization import domain_coloring
 
 __all__ = ['plot_fit', 'plot_density', 'plot_hilbert', 'plot_stieltjes',
            'plot_stieltjes_on_disk', 'plot_samples']
@@ -246,52 +246,6 @@ def plot_hilbert(x, hilb, support=None, latex=False, save=False):
                                   show_and_save=save_status, verbose=True)
 
 
-# =======
-# rgb hsv
-# =======
-
-def _rgb_hsv(c, shift=0.0, thresh=numpy.inf):
-    """
-    Convert complex field c to rgb through hsv channel.
-    """
-
-    hue = (numpy.angle(c) + numpy.pi) / (2.0 * numpy.pi)
-    hue = (hue + shift) % 1.0
-    saturation = numpy.ones_like(hue)
-
-    # max_val = numpy.max(numpy.abs(c))
-    # max_val = numpy.min([thresh, max_val])
-    # value = numpy.abs(c) / max_val
-    # value = numpy.where(value > 1, V, value)
-    value = 1.0 - numpy.exp(-numpy.abs(c))
-
-    hsv = numpy.stack((hue, saturation, value), axis=-1)
-    rgb = matplotlib.colors.hsv_to_rgb(hsv)
-
-    return rgb
-
-
-# =======
-# rgb hsl
-# =======
-
-def _rgb_hsl(c, shift=0.0):
-    """
-    Convert complex field to rgb though hsl channel.
-    """
-
-    # Use constant lightness to avoid everything becoming white.
-    hue = (numpy.angle(c) + numpy.pi) / (2.0 * numpy.pi)
-    hue = (hue + shift) % 1.0
-    lightness = 0.5 * numpy.ones_like(hue)
-    saturation = numpy.ones_like(hue)
-    f = numpy.vectorize(lambda h_, l_, s_: colorsys.hls_to_rgb(h_, l_, s_))
-    r, g, b = f(hue, lightness, saturation)
-    rgb = numpy.stack((r, g, b), axis=-1)
-
-    return rgb
-
-
 # ===============
 # value formatter
 # ===============
@@ -335,7 +289,7 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
         shift = 0.0
 
         ax0 = fig.add_subplot(gs[0])
-        ax0.imshow(_rgb_hsv(m1, shift=shift),
+        ax0.imshow(domain_coloring(m1, shift=shift),
                    extent=[x_min, x_max, y_min, y_max], origin='lower',
                    interpolation='gaussian', rasterized=True)
         ax0.plot([lam_m, lam_p], [eps, eps], 'o', markersize=1.5,
@@ -350,7 +304,7 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
         ax0.set_ylim([y_min, y_max])
 
         ax1 = fig.add_subplot(gs[1])
-        ax1.imshow(_rgb_hsv(m2, shift=shift),
+        ax1.imshow(domain_coloring(m2, shift=shift),
                    extent=[x_min, x_max, y_min, y_max], origin='lower',
                    interpolation='gaussian', rasterized=True)
         ax1.plot([lam_m, lam_p], [eps, eps], 'o', markersize=1.5,
@@ -459,7 +413,7 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False):
         shift = 0.0
 
         ax0 = fig.add_subplot(gs[0], projection='polar')
-        ax0.pcolormesh(grid_t, grid_r, _rgb_hsv(m1_D, shift=shift),
+        ax0.pcolormesh(grid_t, grid_r, domain_coloring(m1_D, shift=shift),
                        shading='auto', rasterized=True)
         ax0.plot(theta_branch, r_branch, '-', linewidth=1, color='black')
         ax0.plot(theta_n, 0.994, 'o', markersize=1.5, color='black')
@@ -480,7 +434,7 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False):
             pad=25)
 
         ax1 = fig.add_subplot(gs[1], projection='polar')
-        ax1.pcolormesh(grid_t, grid_r, _rgb_hsv(m2_D, shift=shift),
+        ax1.pcolormesh(grid_t, grid_r, domain_coloring(m2_D, shift=shift),
                        shading='auto', rasterized=True)
         ax1.plot(theta_alt_branch, r_branch, '-', linewidth=1, color='black')
         ax1.plot(theta_n, 0.994, 'o', markersize=1.5, color='black')

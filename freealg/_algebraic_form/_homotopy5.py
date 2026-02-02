@@ -8,8 +8,8 @@
 import numpy
 
 
-def _poly_coeffs_in_m(a_coeffs, z):
-    a = a_coeffs
+def _poly_coeffs_in_m(coeffs, z):
+    a = coeffs
     dz = a.shape[0] - 1
     s = a.shape[1] - 1
     zp = numpy.array([z**i for i in range(dz + 1)], dtype=numpy.complex128)
@@ -19,8 +19,8 @@ def _poly_coeffs_in_m(a_coeffs, z):
     return coeff_m
 
 
-def _roots_m(a_coeffs, z):
-    coeff_m = _poly_coeffs_in_m(a_coeffs, z)
+def _roots_m(coeffs, z):
+    coeff_m = _poly_coeffs_in_m(coeffs, z)
     c = coeff_m[::-1]
     while c.size > 1 and numpy.abs(c[0]) == 0:
         c = c[1:]
@@ -96,12 +96,12 @@ def _viterbi_1d(z_list, roots_all, *, lam_space, lam_asym,
 class StieltjesPoly(object):
     """Callable m(z) for P(z,m)=0 using robust branch selection."""
 
-    def __init__(self, a_coeffs, *, viterbi_opt=None):
-        self.a_coeffs = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+    def __init__(self, coeffs, *, viterbi_opt=None):
+        self.coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
         self.viterbi_opt = dict(viterbi_opt or {})
 
     def evaluate_scalar(self, z, target=None):
-        r = _roots_m(self.a_coeffs, z)
+        r = _roots_m(self.coeffs, z)
         if r.size == 0:
             return numpy.nan + 1j * numpy.nan
         tol_im = float(self.viterbi_opt.get("tol_im", 1e-14))
@@ -123,11 +123,11 @@ class StieltjesPoly(object):
 
         if z.ndim == 1 and z.size >= 2:
             z_list = z.ravel()
-            s = self.a_coeffs.shape[1] - 1
+            s = self.coeffs.shape[1] - 1
             roots_all = numpy.empty((z_list.size, s), dtype=numpy.complex128)
             ok_all = numpy.ones(z_list.size, dtype=bool)
             for k in range(z_list.size):
-                r = _roots_m(self.a_coeffs, z_list[k])
+                r = _roots_m(self.coeffs, z_list[k])
                 if r.size != s:
                     ok_all[k] = False
                     if r.size == 0:

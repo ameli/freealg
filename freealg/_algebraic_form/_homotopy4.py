@@ -23,13 +23,13 @@ __all__ = ["StieltjesPoly"]
 # Poly -> roots in m for z
 # =========================
 
-def _poly_m_coeffs(a_coeffs, z):
+def _poly_m_coeffs(coeffs, z):
     """Return coefficients b_j for \sum_j b_j m^j = 0 at fixed z.
 
-    a_coeffs[i,j] is coeff of z^i m^j.
+    coeffs[i,j] is coeff of z^i m^j.
     Returns b of length (deg_m+1) with b[j] = \sum_i a[i,j] z^i.
     """
-    a = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+    a = numpy.asarray(coeffs, dtype=numpy.complex128)
     deg_z = a.shape[0] - 1
     deg_m = a.shape[1] - 1
 
@@ -47,9 +47,9 @@ def _poly_m_coeffs(a_coeffs, z):
     return b
 
 
-def _roots_m(a_coeffs, z):
+def _roots_m(coeffs, z):
     """All algebraic roots in m at fixed z."""
-    b = _poly_m_coeffs(a_coeffs, z)
+    b = _poly_m_coeffs(coeffs, z)
 
     # Drop leading zeros in highest power to keep numpy.roots stable
     # numpy.roots expects highest degree first.
@@ -239,9 +239,9 @@ def _viterbi_track(z_list, roots_list, mL, mR, *,
 class StieltjesPoly(object):
     """Callable m(z) for P(z,m)=0 using robust branch selection."""
 
-    def __init__(self, a_coeffs, *,
+    def __init__(self, coeffs, *,
                  viterbi_opt=None):
-        self.a_coeffs = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+        self.coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
         self.viterbi_opt = dict(viterbi_opt or {})
 
     # ----------
@@ -249,7 +249,7 @@ class StieltjesPoly(object):
     # ----------
 
     def evaluate_scalar(self, z, target=None):
-        r = _roots_m(self.a_coeffs, z)
+        r = _roots_m(self.coeffs, z)
         return _pick_physical_root_scalar(z, r, target=target)
 
     # ---------------
@@ -267,7 +267,7 @@ class StieltjesPoly(object):
             z_list = z.ravel()
 
             # roots for each point
-            roots_list = [_roots_m(self.a_coeffs, zi) for zi in z_list]
+            roots_list = [_roots_m(self.coeffs, zi) for zi in z_list]
 
             # boundary anchors via scalar selection
             mL = self.evaluate_scalar(z_list[0])

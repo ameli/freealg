@@ -301,7 +301,7 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
 # sanity check stieltjes branch
 # =============================
 
-def sanity_check_stieltjes_branch(a_coeffs, x_min, x_max, eta=0.1,
+def sanity_check_stieltjes_branch(coeffs, x_min, x_max, eta=0.1,
                                   n_x=64, y0=None, max_bad_frac=0.05):
     """
     Quick sanity check: does P(z,m)=0 admit a continuously trackable root with
@@ -322,7 +322,7 @@ def sanity_check_stieltjes_branch(a_coeffs, x_min, x_max, eta=0.1,
     z0 = 1j * y0
     m0_target = -1.0 / z0
 
-    c0 = _poly_coef_in_m(numpy.array([z0]), a_coeffs)[0]
+    c0 = _poly_coef_in_m(numpy.array([z0]), coeffs)[0]
     r0 = numpy.roots(c0[::-1])
     if r0.size == 0:
         return {'ok': False, 'frac_bad': 1.0, 'n_test': 0, 'n_bad': 0}
@@ -337,7 +337,7 @@ def sanity_check_stieltjes_branch(a_coeffs, x_min, x_max, eta=0.1,
     n_ok = 0
 
     for z in zs:
-        c = _poly_coef_in_m(numpy.array([z]), a_coeffs)[0]
+        c = _poly_coef_in_m(numpy.array([z]), coeffs)[0]
         r = numpy.roots(c[::-1])
         if r.size == 0 or not numpy.all(numpy.isfinite(r)):
             n_bad += 1
@@ -372,12 +372,12 @@ def sanity_check_stieltjes_branch(a_coeffs, x_min, x_max, eta=0.1,
 # eval P
 # ======
 
-def eval_P(z, m, a_coeffs):
+def eval_P(z, m, coeffs):
 
     z = numpy.asarray(z, dtype=complex)
     m = numpy.asarray(m, dtype=complex)
-    deg_z = int(a_coeffs.shape[0] - 1)
-    s = int(a_coeffs.shape[1] - 1)
+    deg_z = int(coeffs.shape[0] - 1)
+    s = int(coeffs.shape[1] - 1)
 
     shp = numpy.broadcast(z, m).shape
     zz = numpy.broadcast_to(z, shp).ravel()
@@ -388,7 +388,7 @@ def eval_P(z, m, a_coeffs):
 
     P = numpy.zeros(zz.size, dtype=complex)
     for j in range(s + 1):
-        aj = zp @ a_coeffs[:, j]
+        aj = zp @ coeffs[:, j]
         P = P + aj * mp[:, j]
 
     return P.reshape(shp)
@@ -398,16 +398,16 @@ def eval_P(z, m, a_coeffs):
 # poly coef in m
 # ==============
 
-def _poly_coef_in_m(z, a_coeffs):
+def _poly_coef_in_m(z, coeffs):
 
     z = numpy.asarray(z, dtype=complex).ravel()
-    deg_z = int(a_coeffs.shape[0] - 1)
-    s = int(a_coeffs.shape[1] - 1)
+    deg_z = int(coeffs.shape[0] - 1)
+    s = int(coeffs.shape[1] - 1)
     zp = powers(z, deg_z)
 
     c = numpy.empty((z.size, s + 1), dtype=complex)
     for j in range(s + 1):
-        c[:, j] = zp @ a_coeffs[:, j]
+        c[:, j] = zp @ coeffs[:, j]
     return c
 
 
@@ -489,10 +489,10 @@ def _roots_cubic(c0, c1, c2, c3):
 # eval roots
 # ==========
 
-def eval_roots(z, a_coeffs):
+def eval_roots(z, coeffs):
 
     z = numpy.asarray(z, dtype=complex).ravel()
-    c = _poly_coef_in_m(z, a_coeffs)
+    c = _poly_coef_in_m(z, coeffs)
 
     s = int(c.shape[1] - 1)
     if s == 1:

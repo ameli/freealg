@@ -6,7 +6,7 @@ FD decompression with correct characteristic map + robust root selection.
 
 Keeps public API:
   - build_time_grid(size, n0, min_n_times=..., include_t0=True) -> (t_all, idx_req)
-  - decompress_newton(z_list, t_grid, a_coeffs, w0_list=None, **newton_opt) -> (W, ok)
+  - decompress_newton(z_list, t_grid, coeffs, w0_list=None, **newton_opt) -> (W, ok)
 
 IMPORTANT: This implements the characteristic transform consistent with:
   τ(t)=e^t,  α(t)=1-τ^{-1},
@@ -83,13 +83,13 @@ def build_time_grid(size, n0, min_n_times=0, include_t0=True):
 # Polynomial curve utilities
 # ===========================
 
-def _poly_w_coeffs(z: complex, t: float, a_coeffs: np.ndarray) -> np.ndarray:
+def _poly_w_coeffs(z: complex, t: float, coeffs: np.ndarray) -> np.ndarray:
     """
     Build Q(w) coeffs (descending) for:
       Q(w) = w^{deg_z} * P(z + α/w, τ w)
     where τ=e^t, α=1-1/τ.
     """
-    a = np.asarray(a_coeffs, dtype=np.complex128)
+    a = np.asarray(coeffs, dtype=np.complex128)
     deg_z = a.shape[0] - 1
     deg_m = a.shape[1] - 1
 
@@ -169,8 +169,8 @@ def _newton_poly_root(coeff_desc: np.ndarray, w0: complex, max_iter: int, tol: f
     return w, bool(np.isfinite(f) and abs(f) <= float(tol) * (1.0 + abs(w)))
 
 
-def _roots_of_Q(z: complex, t: float, a_coeffs: np.ndarray):
-    coeff_desc = _poly_w_coeffs(z, t, a_coeffs)
+def _roots_of_Q(z: complex, t: float, coeffs: np.ndarray):
+    coeff_desc = _poly_w_coeffs(z, t, coeffs)
     if coeff_desc.size <= 1:
         return coeff_desc, np.empty((0,), np.complex128)
     r = np.roots(coeff_desc)
@@ -178,7 +178,7 @@ def _roots_of_Q(z: complex, t: float, a_coeffs: np.ndarray):
     return coeff_desc, r.astype(np.complex128, copy=False)
 
 
-def _physical_anchor_for_x(x: float, t: float, a_coeffs: np.ndarray,
+def _physical_anchor_for_x(x: float, t: float, coeffs: np.ndarray,
                            eta_hi: float, eta_lo: float, n_eta: int,
                            herglotz_tol: float,
                            max_iter: int, tol: float,
@@ -186,7 +186,7 @@ def _physical_anchor_for_x(x: float, t: float, a_coeffs: np.ndarray,
     etas = np.linspace(float(eta_hi), float(eta_lo), int(n_eta))
     z0 = complex(x, etas[0])
 
-    coeff0, roots0 = _roots_of_Q(z0, t, a_coeffs)
+    coeff0, roots0 = _roots_of_Q(z0, t, coeffs)
     if roots0.size == 0:
         return -1.0 / z0, False
 
@@ -203,10 +203,10 @@ def _physical_anchor_for_x(x: float, t: float, a_coeffs: np.ndarray,
 
     for eta in etas[1:]:
         z = complex(x, eta)
-        coeff, _ = _roots_of_Q(z, t, a_coeffs)
+        coeff, _ = _roots_of_Q(z, t, coeffs)
         w, ok2 = _newton_poly_root(coeff, w, max_iter=max_iter, tol=tol, armijo=armijo, min_lam=min_lam)
         if not ok2:
-            _coeff, roots = _roots_of_Q(z, t, a_coeffs)
+            _coeff, roots = _roots_of_Q(z, t, coeffs)
             if roots.size == 0:
                 return w, False
             roots = np.asarray(roots, dtype=np.complex128)
@@ -328,7 +328,7 @@ def _viterbi_path(cand_list, z_list, w_prev,
 def decompress_newton(
     z_list,
     t_grid,
-    a_coeffs,
+    coeffs,
     w0_list=None,
     *,
     dt_max=0.05,
@@ -375,7 +375,7 @@ def decompress_newton(
             from ._edge import evolve_edges, merge_edges
             if edge_support is None:
                 raise ValueError("edge_support must be provided when edge_use=True")
-            complex_edges = evolve_edges(t_grid, a_coeffs, support=edge_support)
+            complex_edges = evolve_edges(t_grid, coeffs, support=edge_support)
             # merge_edges in your package expects edges array (nt, 2k) and returns (real_merged_edges, active_k)
             real_edges, _active_k = merge_edges(complex_edges, t_grid)
         except Exception:
@@ -414,7 +414,7 @@ def decompress_newton(
             anchor_ok = np.ones((nz,), dtype=bool)
             for iz in range(nz):
                 w_a, ok_a = _physical_anchor_for_x(
-                    float(x[iz]), float(t_sub), a_coeffs,
+                    float(x[iz]), float(t_sub), coeffs,
                     eta_hi=float(eta_hi), eta_lo=float(eta_lo),
                     n_eta=int(n_eta),
                     herglotz_tol=float(herglotz_tol),
@@ -427,7 +427,7 @@ def decompress_newton(
             cand_list = []
             for iz in range(nz):
                 z = z_list[iz]
-                coeff, roots = _roots_of_Q(z, float(t_sub), a_coeffs)
+                coeff, roots = _roots_of_Q(z, float(t_sub), coeffs)
 
                 anc = anchors[iz]
                 im_floor = None

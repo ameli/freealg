@@ -32,21 +32,21 @@ __all__ = ['decompress_newton']
 # scalar poly evaluation
 # =====================
 
-def _eval_a_and_da(z: complex, a_coeffs: numpy.ndarray) -> tuple[numpy.ndarray, numpy.ndarray]:
+def _eval_a_and_da(z: complex, coeffs: numpy.ndarray) -> tuple[numpy.ndarray, numpy.ndarray]:
     """Evaluate a_j(z) and a'_j(z) for j=0..s where P(z,y)=sum_j a_j(z) y^j.
 
-    a_coeffs has shape (deg_z+1, s+1) storing coefficients in z ascending:
-        a_coeffs[i,j] = coeff of z^i in a_j(z).
+    coeffs has shape (deg_z+1, s+1) storing coefficients in z ascending:
+        coeffs[i,j] = coeff of z^i in a_j(z).
     """
-    deg_z = a_coeffs.shape[0] - 1
-    s = a_coeffs.shape[1] - 1
+    deg_z = coeffs.shape[0] - 1
+    s = coeffs.shape[1] - 1
 
     a = numpy.empty(s + 1, dtype=numpy.complex128)
     da = numpy.empty(s + 1, dtype=numpy.complex128)
 
     # Horner for each column j
     for j in range(s + 1):
-        col = a_coeffs[:, j]
+        col = coeffs[:, j]
         # a_j(z)
         v = complex(col[deg_z])
         for i in range(deg_z - 1, -1, -1):
@@ -65,10 +65,10 @@ def _eval_a_and_da(z: complex, a_coeffs: numpy.ndarray) -> tuple[numpy.ndarray, 
     return a, da
 
 
-def _eval_P_Pz_Py(z: complex, y: complex, a_coeffs: numpy.ndarray) -> tuple[complex, complex, complex]:
+def _eval_P_Pz_Py(z: complex, y: complex, coeffs: numpy.ndarray) -> tuple[complex, complex, complex]:
     """Return P(z,y), Pz(z,y)=\partial_z P, Py(z,y)=\partial_y P (scalars)."""
-    a, da = _eval_a_and_da(z, a_coeffs)
-    s = a_coeffs.shape[1] - 1
+    a, da = _eval_a_and_da(z, coeffs)
+    s = coeffs.shape[1] - 1
 
     # Build powers of y incrementally (cheap; s is small)
     ypow = 1.0 + 0.0j
@@ -100,7 +100,7 @@ def _newton_2x2(
     tau: float,
     zeta0: complex,
     y0: complex,
-    a_coeffs: numpy.ndarray,
+    coeffs: numpy.ndarray,
     *,
     max_iter: int,
     tol: float,
@@ -120,7 +120,7 @@ def _newton_2x2(
         y = (w_min + 0.0j)
 
     for it in range(max_iter):
-        P, Pz, Py = _eval_P_Pz_Py(zeta, y, a_coeffs)
+        P, Pz, Py = _eval_P_Pz_Py(zeta, y, coeffs)
         F1 = P
         F2 = z - zeta + tau_m1 / y
 
@@ -198,7 +198,7 @@ def _newton_2x2(
 def decompress_newton(
     z_query,
     t_all,
-    a_coeffs,
+    coeffs,
     *,
     w0_list=None,
     max_iter: int = 40,
@@ -298,7 +298,7 @@ def decompress_newton(
                 zeta0 = zeta_seed[j]
 
             zeta, y, okj, nit = _newton_2x2(
-                z, tau, zeta0, y0, a_coeffs,
+                z, tau, zeta0, y0, coeffs,
                 max_iter=max_iter, tol=tol,
                 damping=damping, step_clip=step_clip,
                 w_min=w_min, require_imw_pos=require_imw_pos,
@@ -311,7 +311,7 @@ def decompress_newton(
                 for k in range(1, int(max_split) + 1):
                     tau_mid = tau_prev + (tau - tau_prev) * (k / float(max_split))
                     zeta_mid, y_mid, ok_mid, _ = _newton_2x2(
-                        z, tau_mid, zeta0, y0, a_coeffs,
+                        z, tau_mid, zeta0, y0, coeffs,
                         max_iter=max_iter, tol=tol,
                         damping=damping, step_clip=step_clip,
                         w_min=w_min, require_imw_pos=require_imw_pos,
@@ -322,7 +322,7 @@ def decompress_newton(
                         zeta0b = zeta_mid
                         y0b = y_mid
                         zeta, y, okj, nit = _newton_2x2(
-                            z, tau, zeta0b, y0b, a_coeffs,
+                            z, tau, zeta0b, y0b, coeffs,
                             max_iter=max_iter, tol=tol,
                             damping=damping, step_clip=step_clip,
                             w_min=w_min, require_imw_pos=require_imw_pos,

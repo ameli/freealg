@@ -42,30 +42,30 @@ def _powers(x, deg):
     return xp
 
 
-def _poly_coef_in_y(zeta, a_coeffs):
+def _poly_coef_in_y(zeta, coeffs):
     """
     For each zeta, compute coefficients a_j(zeta) so that
         P(zeta, y) = sum_{j=0}^s a_j(zeta) y^j
     """
     zeta = numpy.asarray(zeta, dtype=numpy.complex128).ravel()
-    deg_z = int(a_coeffs.shape[0] - 1)
-    s = int(a_coeffs.shape[1] - 1)
+    deg_z = int(coeffs.shape[0] - 1)
+    s = int(coeffs.shape[1] - 1)
 
     zp = _powers(zeta, deg_z)
     a = numpy.empty((zeta.size, s + 1), dtype=numpy.complex128)
     for j in range(s + 1):
-        a[:, j] = zp @ a_coeffs[:, j]
+        a[:, j] = zp @ coeffs[:, j]
     return a
 
 
-def _poly_coef_in_y_dzeta(zeta, a_coeffs):
+def _poly_coef_in_y_dzeta(zeta, coeffs):
     """
     For each zeta, compute coefficients da_j/dzeta(zeta) so that
         d/dzeta P(zeta, y) = sum_{j=0}^s (da_j/dzeta)(zeta) y^j
     """
     zeta = numpy.asarray(zeta, dtype=numpy.complex128).ravel()
-    deg_z = int(a_coeffs.shape[0] - 1)
-    s = int(a_coeffs.shape[1] - 1)
+    deg_z = int(coeffs.shape[0] - 1)
+    s = int(coeffs.shape[1] - 1)
 
     if deg_z <= 0:
         return numpy.zeros((zeta.size, s + 1), dtype=numpy.complex128)
@@ -74,7 +74,7 @@ def _poly_coef_in_y_dzeta(zeta, a_coeffs):
     zp = _powers(zeta, deg_z - 1)  # up to zeta^(deg_z-1)
     da = numpy.empty((zeta.size, s + 1), dtype=numpy.complex128)
     for j in range(s + 1):
-        col = a_coeffs[:, j]
+        col = coeffs[:, j]
         # sum_{i=1..deg_z} i*c_{i,j} zeta^(i-1)
         # build weighted coefficients for zp @ ...
         w = numpy.arange(deg_z + 1, dtype=numpy.complex128) * col
@@ -82,7 +82,7 @@ def _poly_coef_in_y_dzeta(zeta, a_coeffs):
     return da
 
 
-def _eval_P_and_partials(zeta, y, a_coeffs):
+def _eval_P_and_partials(zeta, y, coeffs):
     """
     Evaluate P(zeta,y), P_zeta(zeta,y), P_y(zeta,y).
 
@@ -92,8 +92,8 @@ def _eval_P_and_partials(zeta, y, a_coeffs):
     zeta = numpy.asarray(zeta, dtype=numpy.complex128).ravel()
     y = numpy.asarray(y, dtype=numpy.complex128).ravel()
 
-    a = _poly_coef_in_y(zeta, a_coeffs)          # (n, s+1)
-    da = _poly_coef_in_y_dzeta(zeta, a_coeffs)   # (n, s+1)
+    a = _poly_coef_in_y(zeta, coeffs)          # (n, s+1)
+    da = _poly_coef_in_y_dzeta(zeta, coeffs)   # (n, s+1)
 
     s = int(a.shape[1] - 1)
     # powers of y up to s
@@ -120,7 +120,7 @@ def _eval_P_and_partials(zeta, y, a_coeffs):
 # 2x2 complex Newton step
 # =======================
 
-def _newton_2x2(z, tau, zeta0, y0, a_coeffs, max_iter, tol,
+def _newton_2x2(z, tau, zeta0, y0, coeffs, max_iter, tol,
                 armijo, min_lam, w_min, enforce_imag=True):
     """
     Solve for (zeta,y) at given (z,tau) using damped Newton on the 2x2 complex
@@ -136,7 +136,7 @@ def _newton_2x2(z, tau, zeta0, y0, a_coeffs, max_iter, tol,
     def F(zeta_, y_):
         P, Pz, Py = _eval_P_and_partials(numpy.array([zeta_]),
                                          numpy.array([y_]),
-                                         a_coeffs)
+                                         coeffs)
         P = P[0]
         Pz = Pz[0]
         Py = Py[0]
@@ -211,7 +211,7 @@ def _newton_2x2(z, tau, zeta0, y0, a_coeffs, max_iter, tol,
 # Public entrypoint
 # =================
 
-def decompress_newton(z_query, t_all, a_coeffs, w0_list=None,
+def decompress_newton(z_query, t_all, coeffs, w0_list=None,
                      max_iter=50, tol=1e-12,
                      armijo=1e-4, min_lam=1e-6, w_min=1e-14,
                      sweep=True, verbose=False, **kwargs):
@@ -224,7 +224,7 @@ def decompress_newton(z_query, t_all, a_coeffs, w0_list=None,
     t_all : array_like (float)
         Time grid including t=0, increasing.
 
-    a_coeffs : ndarray
+    coeffs : ndarray
         Coefficient matrix for P(z,m) in monomial basis (deg_z+1, s+1)
 
     w0_list : array_like (complex), optional
@@ -331,7 +331,7 @@ def decompress_newton(z_query, t_all, a_coeffs, w0_list=None,
 
             # Solve
             zeta, y, okj, _ = _newton_2x2(
-                z, tau, zeta0, y0, a_coeffs,
+                z, tau, zeta0, y0, coeffs,
                 max_iter=max_iter, tol=tol,
                 armijo=armijo, min_lam=min_lam, w_min=w_min,
                 enforce_imag=True
@@ -345,7 +345,7 @@ def decompress_newton(z_query, t_all, a_coeffs, w0_list=None,
                 zeta0b = z + (tau - 1.0) / y_safe0b
 
                 zeta, y, okj, _ = _newton_2x2(
-                    z, tau, zeta0b, y0b, a_coeffs,
+                    z, tau, zeta0b, y0b, coeffs,
                     max_iter=max_iter, tol=tol,
                     armijo=armijo, min_lam=min_lam, w_min=w_min,
                     enforce_imag=True

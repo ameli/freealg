@@ -95,7 +95,7 @@ def _newton_3x3(F, x0, max_iter=60, tol=1e-12, bounds=None, max_step=None):
 __all__ = ["solve_cusp"]
 
 
-def _second_partials_fd(zeta, y, a_coeffs, eps_z=None, eps_y=None):
+def _second_partials_fd(zeta, y, coeffs, eps_z=None, eps_y=None):
     zeta = float(zeta)
     y = float(y)
 
@@ -104,13 +104,13 @@ def _second_partials_fd(zeta, y, a_coeffs, eps_z=None, eps_y=None):
     if eps_y is None:
         eps_y = 1e-7 * (1.0 + abs(y))
 
-    _, Pz_p, Py_p = eval_P_partials(zeta + eps_z, y, a_coeffs)
-    _, Pz_m, Py_m = eval_P_partials(zeta - eps_z, y, a_coeffs)
+    _, Pz_p, Py_p = eval_P_partials(zeta + eps_z, y, coeffs)
+    _, Pz_m, Py_m = eval_P_partials(zeta - eps_z, y, coeffs)
     Pzz = (Pz_p - Pz_m) / (2.0 * eps_z)
     Pzy1 = (Py_p - Py_m) / (2.0 * eps_z)
 
-    _, Pz_p, Py_p = eval_P_partials(zeta, y + eps_y, a_coeffs)
-    _, Pz_m, Py_m = eval_P_partials(zeta, y - eps_y, a_coeffs)
+    _, Pz_p, Py_p = eval_P_partials(zeta, y + eps_y, coeffs)
+    _, Pz_m, Py_m = eval_P_partials(zeta, y - eps_y, coeffs)
     Pzy2 = (Pz_p - Pz_m) / (2.0 * eps_y)
     Pyy = (Py_p - Py_m) / (2.0 * eps_y)
 
@@ -118,11 +118,11 @@ def _second_partials_fd(zeta, y, a_coeffs, eps_z=None, eps_y=None):
     return float(Pzz), float(Pzy), float(Pyy)
 
 
-def _cusp_F_real(zeta, y, s, a_coeffs):
+def _cusp_F_real(zeta, y, s, coeffs):
     # tau = 1 + exp(s)  => c = tau-1 = exp(s) > 0
     c = float(numpy.exp(float(s)))
 
-    P, Pz, Py = eval_P_partials(float(zeta), float(y), a_coeffs)
+    P, Pz, Py = eval_P_partials(float(zeta), float(y), coeffs)
     P = float(numpy.real(P))
     Pz = float(numpy.real(Pz))
     Py = float(numpy.real(Py))
@@ -130,7 +130,7 @@ def _cusp_F_real(zeta, y, s, a_coeffs):
     F1 = P
     F2 = (y * y) * Py - c * Pz
 
-    Pzz, Pzy, Pyy = _second_partials_fd(zeta, y, a_coeffs)
+    Pzz, Pzy, Pyy = _second_partials_fd(zeta, y, coeffs)
     F3 = y * (Pzz * (Py * Py) - 2.0 * Pzy * Pz * Py + Pyy * (Pz * Pz)) + \
         2.0 * (Pz * Pz) * Py
 
@@ -141,8 +141,8 @@ def _cusp_F_real(zeta, y, s, a_coeffs):
 # poly coeffs in y
 # ================
 
-def _poly_coeffs_in_y(a_coeffs, zeta):
-    a = numpy.asarray(a_coeffs)
+def _poly_coeffs_in_y(coeffs, zeta):
+    a = numpy.asarray(coeffs)
     deg_z = a.shape[0] - 1
     deg_y = a.shape[1] - 1
     z_pows = numpy.power(zeta, numpy.arange(deg_z + 1, dtype=numpy.int64))
@@ -156,9 +156,9 @@ def _poly_coeffs_in_y(a_coeffs, zeta):
 # pick realish root y
 # ===================
 
-def _pick_realish_root_y(a_coeffs, zeta):
+def _pick_realish_root_y(coeffs, zeta):
 
-    c_asc = _poly_coeffs_in_y(a_coeffs, zeta)
+    c_asc = _poly_coeffs_in_y(coeffs, zeta)
     c_desc = c_asc[::-1]  # descending for numpy.roots
 
     k = 0
@@ -179,7 +179,7 @@ def _pick_realish_root_y(a_coeffs, zeta):
 # ==========
 
 def solve_cusp(
-        a_coeffs,
+        coeffs,
         t_init,
         zeta_init,
         y_init=None,
@@ -191,11 +191,11 @@ def solve_cusp(
     Exact-derivative cusp solve for (zeta, y, t) with unknowns (zeta, y, s),
     where tau = 1 + exp(s), t = log(tau), x = zeta - (tau-1)/y.
 
-    a_coeffs: array shape (deg_z+1, deg_y+1), P(zeta,y)=
+    coeffs: array shape (deg_z+1, deg_y+1), P(zeta,y)=
     sum_{i,j} a[i,j]*zeta^i*y^j
     """
 
-    a = numpy.asarray(a_coeffs, dtype=numpy.complex128)
+    a = numpy.asarray(coeffs, dtype=numpy.complex128)
     deg_z = a.shape[0] - 1
     deg_y = a.shape[1] - 1
 

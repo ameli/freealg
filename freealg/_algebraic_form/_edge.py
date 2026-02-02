@@ -22,7 +22,7 @@ __all__ = ['evolve_edges', 'merge_edges']
 # edge newton step
 # ================
 
-def _edge_newton_step(t, zeta, y, a_coeffs, max_iter=30, tol=1e-12):
+def _edge_newton_step(t, zeta, y, coeffs, max_iter=30, tol=1e-12):
     """
     """
 
@@ -30,7 +30,7 @@ def _edge_newton_step(t, zeta, y, a_coeffs, max_iter=30, tol=1e-12):
     c = tau - 1.0
 
     for _ in range(max_iter):
-        P, Pz, Py = eval_P_partials(zeta, y, a_coeffs)
+        P, Pz, Py = eval_P_partials(zeta, y, coeffs)
 
         # F1 = P(zeta,y)
         F1 = complex(P)
@@ -45,11 +45,11 @@ def _edge_newton_step(t, zeta, y, a_coeffs, max_iter=30, tol=1e-12):
         eps_z = 1e-8 * (1.0 + abs(zeta))
         eps_y = 1e-8 * (1.0 + abs(y))
 
-        Pp, Pzp, Pyp = eval_P_partials(zeta + eps_z, y, a_coeffs)
+        Pp, Pzp, Pyp = eval_P_partials(zeta + eps_z, y, coeffs)
         F1_zp = (complex(Pp) - F1) / eps_z
         F2_zp = (complex((y * y) * Pyp - c * Pzp) - F2) / eps_z
 
-        Pp, Pzp, Pyp = eval_P_partials(zeta, y + eps_y, a_coeffs)
+        Pp, Pzp, Pyp = eval_P_partials(zeta, y + eps_y, coeffs)
         F1_yp = (complex(Pp) - F1) / eps_y
         F2_yp = (complex(((y + eps_y) * (y + eps_y)) * Pyp - c * Pzp) - F2) / \
             eps_y
@@ -102,7 +102,7 @@ def _pick_physical_root(z, roots):
 # init edge point from support
 # ============================
 
-def _init_edge_point_from_support(x_edge, a_coeffs, eta=1e-3):
+def _init_edge_point_from_support(x_edge, coeffs, eta=1e-3):
     """
     Initialize (zeta,y) at t=0 for an edge near x_edge.
 
@@ -111,7 +111,7 @@ def _init_edge_point_from_support(x_edge, a_coeffs, eta=1e-3):
     """
 
     z = complex(x_edge + 1j * eta)
-    roots = eval_roots(numpy.array([z]), a_coeffs)[0]
+    roots = eval_roots(numpy.array([z]), coeffs)[0]
     y = _pick_physical_root(z, roots)
 
     # Move zeta to real axis as initial guess
@@ -119,7 +119,7 @@ def _init_edge_point_from_support(x_edge, a_coeffs, eta=1e-3):
 
     # Refine zeta,y to satisfy P=0 and Py=0 at t=0 (branch point)
     # This uses the same Newton system with c=0, i.e. F2 = y^2 Py.
-    zeta, y, ok = _edge_newton_step(0.0, zeta, y, a_coeffs, max_iter=50,
+    zeta, y, ok = _edge_newton_step(0.0, zeta, y, coeffs, max_iter=50,
                                     tol=1e-10)
 
     return zeta, y, ok
@@ -131,7 +131,7 @@ def _init_edge_point_from_support(x_edge, a_coeffs, eta=1e-3):
 
 def evolve_edges(
         t_grid,
-        a_coeffs,
+        coeffs,
         support=None,
         eta=1e-3,
         dt_max=0.1,
@@ -185,7 +185,7 @@ def evolve_edges(
     y = numpy.empty(m, dtype=numpy.complex128)
 
     for j in range(m):
-        z0, y0, ok0 = _init_edge_point_from_support(endpoints0[j], a_coeffs,
+        z0, y0, ok0 = _init_edge_point_from_support(endpoints0[j], coeffs,
                                                     eta=eta)
         zeta[j] = z0
         y[j] = y0
@@ -210,7 +210,7 @@ def evolve_edges(
             t = t0 + dt * (ks / float(n_sub))
             for j in range(m):
                 zeta[j], y[j], okj = _edge_newton_step(
-                    t, zeta[j], y[j], a_coeffs, max_iter=max_iter, tol=tol
+                    t, zeta[j], y[j], coeffs, max_iter=max_iter, tol=tol
                 )
                 ok[it, j] = okj
 
