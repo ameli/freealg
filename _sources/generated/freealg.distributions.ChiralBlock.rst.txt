@@ -15,6 +15,7 @@
       
          ChiralBlock.density
          ChiralBlock.matrix
+         ChiralBlock.sample
          ChiralBlock.stieltjes
          ChiralBlock.stieltjes_on_torus
          ChiralBlock.support

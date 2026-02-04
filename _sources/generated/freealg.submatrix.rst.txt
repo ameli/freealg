@@ -1,0 +1,6 @@
+﻿freealg.submatrix
+=================
+
+.. currentmodule:: freealg
+
+.. autofunction:: submatrix

@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.AlgebraicForm.atoms
+===========================
+
+.. currentmodule:: freealg
+
+.. automethod:: AlgebraicForm.atoms

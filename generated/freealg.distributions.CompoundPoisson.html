@@ -1,0 +1,562 @@
+
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<meta property="og:title" content="freealg.distributions.CompoundPoisson" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://ameli.github.io/generated/freealg.distributions.CompoundPoisson.html" />
+<meta property="og:site_name" content="FreeAlg" />
+<meta property="og:image" content="https://raw.githubusercontent.com/ameli/freealg/main/docs/source/_static/images/icons/logo-freealg-light.svg" />
+<meta property="og:image:alt" content="FreeAlg" />
+<meta property="og:title" content="freealg">
+<meta property="og:description" content="FreeAlg is a python package for applying free probability on large matrices.">
+
+    <title>freealg.distributions.CompoundPoisson &#8212; freealg Manual</title>
+<script>
+  document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+  document.documentElement.dataset.theme = localStorage.getItem("theme") || "light"
+</script>
+
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=92025949c220c2e29695" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=92025949c220c2e29695" rel="stylesheet">
+
+
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom-pydata.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.5ea377869091fd0449014c60fc090103.min.css" />
+
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=92025949c220c2e29695">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/toggleprompt.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script src="../_static/js/custom-pydata.js"></script>
+    <script src="../_static/design-tabs.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex2jax": {"inlineMath": [["\\(", "\\)"]], "displayMath": [["\\[", "\\]"]]}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/custom-pydata.css"></script>
+    <link rel="canonical" href="https://ameli.github.io/freealg/generated/freealg.distributions.CompoundPoisson.html" />
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="freealg.distributions.CompoundPoisson.density" href="freealg.distributions.CompoundPoisson.density.html" />
+    <link rel="prev" title="freealg.distributions.DeformedMarchenkoPastur.poly" href="freealg.distributions.DeformedMarchenkoPastur.poly.html" />
+
+    <!-- Robots -->
+	<meta name="robots" content="index,follow">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-4JHJ15SKEY"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-4JHJ15SKEY');
+    </script>
+
+    <!-- My custom JS -->
+    <script type="text/javascript" src="../_static/js/custom-pydata.js"></script>
+
+    <!-- Syntax highlighting for BibTex code blocks -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/themes/prism-solarizedlight.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs-bibtex@2.0.1/prism-bibtex.min.js"></script>
+
+    
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="docsearch:language" content="en">
+
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="auto">
+    <div class="bd-header-announcement container-fluid" id="banner">
+      
+
+    </div>
+
+    
+    <nav class="bd-header navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="bd-header__inner container-xl">
+
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+    <img src="../_static/images/icons/logo-freealg-light.png" class="logo__image only-light" alt="Logo image">
+    <img src="../_static/images/icons/logo-freealg-dark.png" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="fas fa-bars"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../api.html">
+  API Reference
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <span id="theme-switch" class="btn btn-sm btn-outline-primary navbar-btn rounded-circle">
+    <a class="theme-switch" data-mode="light"><i class="fas fa-sun"></i></a>
+    <a class="theme-switch" data-mode="dark"><i class="far fa-moon"></i></a>
+    <a class="theme-switch" data-mode="auto"><i class="fas fa-adjust"></i></a>
+</span>
+      </div>
+      
+      <div class="navbar-end-item">
+        <form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/ameli/freealg" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="https://pypi.org/project/freealg/" rel="noopener" target="_blank" title="PyPI"><span><i class="fab fa-python"></i></span>
+            <label class="sr-only">PyPI</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="bd-container container-xl">
+      <div class="bd-container__inner row">
+          
+
+<!-- Only show if we have sidebars configured, else just a small margin  -->
+<div class="bd-sidebar-primary col-12 col-md-3 bd-sidebar">
+  <div class="sidebar-start-items"><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+    <p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Model
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.FreeForm.html">
+   freealg.FreeForm
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.AlgebraicForm.html">
+   freealg.AlgebraicForm
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.GeometricForm.html">
+   freealg.GeometricForm
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Linear Algebra
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.eigvalsh.html">
+   freealg.eigvalsh
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.cond.html">
+   freealg.cond
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.norm.html">
+   freealg.norm
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.trace.html">
+   freealg.trace
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.slogdet.html">
+   freealg.slogdet
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Distribution Tools
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.supp.html">
+   freealg.supp
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.sample.html">
+   freealg.sample
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.submatrix.html">
+   freealg.submatrix
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.kde.html">
+   freealg.kde
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Classical Distributions
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.MarchenkoPastur.html">
+   freealg.distributions.MarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.Wigner.html">
+   freealg.distributions.Wigner
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.KestenMcKay.html">
+   freealg.distributions.KestenMcKay
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.Wachter.html">
+   freealg.distributions.Wachter
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.Meixner.html">
+   freealg.distributions.Meixner
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.ChiralBlock.html">
+   freealg.distributions.ChiralBlock
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.DeformedWigner.html">
+   freealg.distributions.DeformedWigner
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.html">
+   freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1 current active has-children">
+  <a class="current reference internal" href="#">
+   freealg.distributions.CompoundPoisson
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.CompoundPoisson.density.html">
+     freealg.distributions.CompoundPoisson.density
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.CompoundPoisson.roots.html">
+     freealg.distributions.CompoundPoisson.roots
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.CompoundPoisson.stieltjes.html">
+     freealg.distributions.CompoundPoisson.stieltjes
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.CompoundPoisson.support.html">
+     freealg.distributions.CompoundPoisson.support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.CompoundPoisson.sample.html">
+     freealg.distributions.CompoundPoisson.sample
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.CompoundPoisson.matrix.html">
+     freealg.distributions.CompoundPoisson.matrix
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.CompoundPoisson.poly.html">
+     freealg.distributions.CompoundPoisson.poly
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
+  </a>
+ </li>
+</ul>
+
+    
+  </div>
+</nav>
+  </div>
+  <div class="sidebar-end-items">
+  </div>
+</div>
+
+
+          
+
+
+<div class="bd-sidebar-secondary d-none d-xl-block col-xl-2 bd-toc">
+  
+    
+    <div class="toc-item">
+      
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#freealg.distributions.CompoundPoisson">
+   <code class="docutils literal notranslate">
+    <span class="pre">
+     CompoundPoisson
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+</nav>
+    </div>
+    
+    <div class="toc-item">
+      
+
+<div class="tocsection editthispage">
+    <a href="https://github.com/ameli/freealg/edit/main/docs/source/generated/freealg.distributions.CompoundPoisson.rst">
+        <i class="fas fa-pencil-alt"></i> Edit this page
+    </a>
+</div>
+
+    </div>
+    
+  
+</div>
+
+
+          
+          
+          <div class="bd-content col-12 col-md-9 col-xl-7">
+              
+              <article class="bd-article" role="main">
+                
+  <section id="freealg-distributions-compoundpoisson">
+<h1>freealg.distributions.CompoundPoisson<a class="headerlink" href="#freealg-distributions-compoundpoisson" title="Permalink to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="freealg.distributions.CompoundPoisson">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.distributions.</span></span><span class="sig-name descname"><span class="pre">CompoundPoisson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lam</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.CompoundPoisson" title="Permalink to this definition">#</a></dt>
+<dd><p>Compound free Poisson distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>t1, t2</strong><span class="classifier">float</span></dt><dd><p>Jump sizes (must be &gt; 0). For PSD-like support, keep them &gt; 0.</p>
+</dd>
+<dt><strong>w1</strong><span class="classifier">float</span></dt><dd><p>Mixture weight in (0, 1) for <code class="docutils literal notranslate"><span class="pre">t1</span></code>. Second weight is <code class="docutils literal notranslate"><span class="pre">1-w1</span></code>.</p>
+</dd>
+<dt><strong>lam</strong><span class="classifier">float</span></dt><dd><p>Total rate (intensity), must be &gt; 0.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This model has atom at zero with mass <span class="math notranslate nohighlight">\(\max(1-\lambda, 0)\)</span>.</p>
+<p>This model is the additive free compound Poisson law whose R-transform is</p>
+<div class="math notranslate nohighlight">
+\[R(w) = \lambda \left(
+    w_1 \frac{t_1}{1-t_1 w} + (1-w_1) \frac{t_2}{1-t_2 w}
+\right),\]</div>
+<p>where <span class="math notranslate nohighlight">\(\lambda&gt;0\)</span> is the total rate (intensity),
+<span class="math notranslate nohighlight">\(t_1,t_2&gt;0\)</span> are jump sizes, and <span class="math notranslate nohighlight">\(w_1 \in (0,1)\)</span> is the mixture
+weight for the first jump.</p>
+<p>The Stieltjes transform <span class="math notranslate nohighlight">\(m(z)\)</span> satisfies</p>
+<div class="math notranslate nohighlight">
+\[R(-m(z)) = z + 1/m(z).\]</div>
+<p>For two atoms, clearing denominators yields a cubic polynomial in
+<span class="math notranslate nohighlight">\(m\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[a_3(z)m^3 + t_2(z)m^2 + t_1(z)m + a_0(z) = 0.\]</div>
+<dl class="simple">
+<dt>FD-closure (free decompression):</dt><dd><p>Under the FD rule that scales the argument of R, this family stays
+closed by scaling the jump sizes: <span class="math notranslate nohighlight">\(a_i(t) = e^{-t} a_i\)</span>
+(keeping <span class="math notranslate nohighlight">\(\lambda,w_1\)</span> fixed). If your convention uses
+<span class="math notranslate nohighlight">\(R_t(w)=R_0(e^{+t}w)\)</span>, then use <span class="math notranslate nohighlight">\(a_i(t)=e^{+t}a_i\)</span> instead.</p>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.CompoundPoisson.density.html#freealg.distributions.CompoundPoisson.density" title="freealg.distributions.CompoundPoisson.density"><code class="xref py py-obj docutils literal notranslate"><span class="pre">density</span></code></a>([x, eta, max_iter, tol, ac_only, ...])</p></td>
+<td><p>Density of distribution.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.CompoundPoisson.roots.html#freealg.distributions.CompoundPoisson.roots" title="freealg.distributions.CompoundPoisson.roots"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roots</span></code></a>(z)</p></td>
+<td><p>Roots of polynomial implicitly representing Stieltjes transform</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.CompoundPoisson.stieltjes.html#freealg.distributions.CompoundPoisson.stieltjes" title="freealg.distributions.CompoundPoisson.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a>(z[, max_iter, tol])</p></td>
+<td><p>Stieltjes transform</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.CompoundPoisson.support.html#freealg.distributions.CompoundPoisson.support" title="freealg.distributions.CompoundPoisson.support"><code class="xref py py-obj docutils literal notranslate"><span class="pre">support</span></code></a>([eta, n_probe, thr, x_max, x_pad, ...])</p></td>
+<td><p>Support intervals of distribution</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.CompoundPoisson.sample.html#freealg.distributions.CompoundPoisson.sample" title="freealg.distributions.CompoundPoisson.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(size[, x_min, x_max, method, seed, ...])</p></td>
+<td><p>Sample from distribution.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.CompoundPoisson.matrix.html#freealg.distributions.CompoundPoisson.matrix" title="freealg.distributions.CompoundPoisson.matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix</span></code></a>(size[, seed])</p></td>
+<td><p>Generate matrix with the spectral density of the distribution.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.CompoundPoisson.poly.html#freealg.distributions.CompoundPoisson.poly" title="freealg.distributions.CompoundPoisson.poly"><code class="xref py py-obj docutils literal notranslate"><span class="pre">poly</span></code></a>()</p></td>
+<td><p>Polynomial coefficients implicitly representing the Stieltjes</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</section>
+
+
+              </article>
+              
+
+              
+              <footer class="bd-footer-article">
+                  <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="freealg.distributions.DeformedMarchenkoPastur.poly.html" title="previous page">
+      <i class="fas fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">freealg.distributions.DeformedMarchenkoPastur.poly</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="freealg.distributions.CompoundPoisson.density.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">freealg.distributions.CompoundPoisson.density</p>
+  </div>
+  <i class="fas fa-angle-right"></i>
+  </a>
+</div>
+              </footer>
+              
+          </div>
+          
+      </div>
+    </div>
+
+  
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/pydata-sphinx-theme.js?digest=92025949c220c2e29695"></script>
+
+
+    <!-- Adobe Embed API -->
+    
+    <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+
+
+  </body>
+</html>

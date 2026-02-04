@@ -63,7 +63,8 @@
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="prev" title="freealg.distributions.DeformedWigner" href="freealg.distributions.DeformedWigner.html" />
+    <link rel="next" title="freealg.distributions.DeformedMarchenkoPastur.density" href="freealg.distributions.DeformedMarchenkoPastur.density.html" />
+    <link rel="prev" title="freealg.distributions.DeformedWigner.poly" href="freealg.distributions.DeformedWigner.poly.html" />
 
     <!-- Robots -->
 	<meta name="robots" content="index,follow">
@@ -259,6 +260,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="freealg.submatrix.html">
+   freealg.submatrix
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="freealg.kde.html">
    freealg.kde
   </a>
@@ -305,9 +311,78 @@
    freealg.distributions.DeformedWigner
   </a>
  </li>
- <li class="toctree-l1 current active">
+ <li class="toctree-l1 current active has-children">
   <a class="current reference internal" href="#">
    freealg.distributions.DeformedMarchenkoPastur
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.density.html">
+     freealg.distributions.DeformedMarchenkoPastur.density
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.roots.html">
+     freealg.distributions.DeformedMarchenkoPastur.roots
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.stieltjes.html">
+     freealg.distributions.DeformedMarchenkoPastur.stieltjes
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.support.html">
+     freealg.distributions.DeformedMarchenkoPastur.support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.sample.html">
+     freealg.distributions.DeformedMarchenkoPastur.sample
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.matrix.html">
+     freealg.distributions.DeformedMarchenkoPastur.matrix
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.poly.html">
+     freealg.distributions.DeformedMarchenkoPastur.poly
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
+   freealg.distributions.CompoundPoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
   </a>
  </li>
 </ul>
@@ -375,7 +450,19 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="freealg.distributions.DeformedMarchenkoPastur">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.distributions.</span></span><span class="sig-name descname"><span class="pre">DeformedMarchenkoPastur</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.DeformedMarchenkoPastur" title="Permalink to this definition">#</a></dt>
-<dd><p>Deformed Marchenko-Pastur model.</p>
+<dd><p>Deformed Marchenko-Pastur distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>t1, t2</strong><span class="classifier">float</span></dt><dd><p>Jump sizes (must be &gt; 0). For PSD-like support, keep them &gt; 0.</p>
+</dd>
+<dt><strong>w1</strong><span class="classifier">float</span></dt><dd><p>Mixture weight in (0, 1) for <code class="docutils literal notranslate"><span class="pre">t1</span></code>. Second weight is <code class="docutils literal notranslate"><span class="pre">1-w1</span></code>.</p>
+</dd>
+<dt><strong>c</strong><span class="classifier">float</span></dt><dd><p>Ratio parameter of Marchenko-Pastur distribution, must be &gt; 0.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 <p class="rubric">Notes</p>
 <p>Silverstein / companion Stieltjes variable</p>
 <p>For sample-covariance, free multiplicative convolution with <span class="math notranslate nohighlight">\(MP_c\)</span>:
@@ -394,6 +481,32 @@ Let <span class="math notranslate nohighlight">\(u(z)\)</span> be the <em>compan
 <p>Reference for the Silverstein equation form:</p>
 <div class="math notranslate nohighlight">
 \[z = -1/u + c \int t/(1 + t u) dH(t).\]</div>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.density.html#freealg.distributions.DeformedMarchenkoPastur.density" title="freealg.distributions.DeformedMarchenkoPastur.density"><code class="xref py py-obj docutils literal notranslate"><span class="pre">density</span></code></a>([x, eta, ac_only, plot, latex, ...])</p></td>
+<td><p>Density of distribution.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.roots.html#freealg.distributions.DeformedMarchenkoPastur.roots" title="freealg.distributions.DeformedMarchenkoPastur.roots"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roots</span></code></a>(z)</p></td>
+<td><p>Roots of polynomial implicitly representing Stieltjes transform</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.stieltjes.html#freealg.distributions.DeformedMarchenkoPastur.stieltjes" title="freealg.distributions.DeformedMarchenkoPastur.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a>(z[, max_iter, tol])</p></td>
+<td><p>Stieltjes transform</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.support.html#freealg.distributions.DeformedMarchenkoPastur.support" title="freealg.distributions.DeformedMarchenkoPastur.support"><code class="xref py py-obj docutils literal notranslate"><span class="pre">support</span></code></a>([eta, n_probe, thr, x_max, x_pad, ...])</p></td>
+<td><p>Support intervals of distribution</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.sample.html#freealg.distributions.DeformedMarchenkoPastur.sample" title="freealg.distributions.DeformedMarchenkoPastur.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(size[, x_min, x_max, method, seed, ...])</p></td>
+<td><p>Sample from distribution.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.matrix.html#freealg.distributions.DeformedMarchenkoPastur.matrix" title="freealg.distributions.DeformedMarchenkoPastur.matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix</span></code></a>(size[, seed])</p></td>
+<td><p>Generate matrix with the spectral density of the distribution.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.poly.html#freealg.distributions.DeformedMarchenkoPastur.poly" title="freealg.distributions.DeformedMarchenkoPastur.poly"><code class="xref py py-obj docutils literal notranslate"><span class="pre">poly</span></code></a>()</p></td>
+<td><p>Polynomial coefficients implicitly representing the Stieltjes</p></td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </section>
@@ -406,12 +519,19 @@ Let <span class="math notranslate nohighlight">\(u(z)\)</span> be the <em>compan
               <footer class="bd-footer-article">
                   <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="freealg.distributions.DeformedWigner.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="freealg.distributions.DeformedWigner.poly.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">freealg.distributions.DeformedWigner</p>
+          <p class="prev-next-title">freealg.distributions.DeformedWigner.poly</p>
       </div>
+  </a>
+  <a class='right-next' id="next-link" href="freealg.distributions.DeformedMarchenkoPastur.density.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">freealg.distributions.DeformedMarchenkoPastur.density</p>
+  </div>
+  <i class="fas fa-angle-right"></i>
   </a>
 </div>
               </footer>

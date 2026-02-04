@@ -13,16 +13,22 @@
       .. autosummary::
          :toctree:
       
+         AlgebraicForm.atoms
+         AlgebraicForm.branch_points
+         AlgebraicForm.candidates
          AlgebraicForm.cond
+         AlgebraicForm.cusp
          AlgebraicForm.decompress
          AlgebraicForm.density
          AlgebraicForm.edge
          AlgebraicForm.eigvalsh
          AlgebraicForm.fit
          AlgebraicForm.hilbert
+         AlgebraicForm.is_decompressible
          AlgebraicForm.norm
          AlgebraicForm.slogdet
          AlgebraicForm.stieltjes
+         AlgebraicForm.support
          AlgebraicForm.trace
       
   

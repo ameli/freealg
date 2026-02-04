@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.CompoundPoisson.density
+=============================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: CompoundPoisson.density

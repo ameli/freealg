@@ -216,6 +216,21 @@
     </a>
    </li>
    <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.support.html">
+     freealg.AlgebraicForm.support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.branch_points.html">
+     freealg.AlgebraicForm.branch_points
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.atoms.html">
+     freealg.AlgebraicForm.atoms
+    </a>
+   </li>
+   <li class="toctree-l2">
     <a class="reference internal" href="freealg.AlgebraicForm.density.html">
      freealg.AlgebraicForm.density
     </a>
@@ -233,6 +248,21 @@
    <li class="toctree-l2">
     <a class="reference internal" href="freealg.AlgebraicForm.decompress.html">
      freealg.AlgebraicForm.decompress
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.is_decompressible.html">
+     freealg.AlgebraicForm.is_decompressible
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.edge.html">
+     freealg.AlgebraicForm.edge
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.cusp.html">
+     freealg.AlgebraicForm.cusp
     </a>
    </li>
    <li class="toctree-l2">
@@ -317,6 +347,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="freealg.submatrix.html">
+   freealg.submatrix
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="freealg.kde.html">
    freealg.kde
   </a>
@@ -366,6 +401,33 @@
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.html">
    freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
+   freealg.distributions.CompoundPoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
   </a>
  </li>
 </ul>
@@ -452,12 +514,9 @@ formula.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">'complex128'</span></code>: 128-bit complex numbers, equivalent of two double
 precision floating point.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">'complex256'</span></code>: 256-bit complex numbers, equivalent of two long
-double precision floating point. This optino is only available on
+double precision floating point. This option is only available on
 Linux machines.</p></li>
 </ul>
-<p>When using series acceleration methods (such as setting
-<code class="docutils literal notranslate"><span class="pre">continuation</span></code> in <a class="reference internal" href="freealg.AlgebraicForm.fit.html#freealg.AlgebraicForm.fit" title="freealg.AlgebraicForm.fit"><code class="xref py py-func docutils literal notranslate"><span class="pre">fit()</span></code></a> function to <code class="docutils literal notranslate"><span class="pre">wynn-eps</span></code>), setting a
-higher precision floating point arithmetics might improve conference.</p>
 </dd>
 <dt><strong>**kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Parameters for the <a class="reference internal" href="freealg.supp.html#freealg.supp" title="freealg.supp"><code class="xref py py-func docutils literal notranslate"><span class="pre">supp()</span></code></a> function can also be prescribed
 here when <code class="docutils literal notranslate"><span class="pre">support=None</span></code>.</p>
@@ -466,7 +525,7 @@ here when <code class="docutils literal notranslate"><span class="pre">support=N
 </dd>
 </dl>
 <p class="rubric">Examples</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg</span><span class="w"> </span><span class="kn">import</span> <span class="n">FreeForm</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlgebraicForm</span>
 </pre></div>
 </div>
 <dl class="field-list simple">
@@ -474,7 +533,7 @@ here when <code class="docutils literal notranslate"><span class="pre">support=N
 <dd class="field-odd"><dl class="simple">
 <dt><strong>eig</strong><span class="classifier">numpy.array</span></dt><dd><p>Eigenvalues of the matrix</p>
 </dd>
-<dt><strong>support: tuple</strong></dt><dd><p>The predicted (or given) support <span class="math notranslate nohighlight">\((\lambda_{\min},
+<dt><strong>supp: tuple</strong></dt><dd><p>The predicted (or given) support <span class="math notranslate nohighlight">\((\lambda_{\min},
 \lambda_{\max})\)</span> of the eigenvalue density.</p>
 </dd>
 <dt><strong>n</strong><span class="classifier">int</span></dt><dd><p>Initial array size (assuming a square matrix when <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> is
@@ -487,19 +546,37 @@ here when <code class="docutils literal notranslate"><span class="pre">support=N
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="freealg.AlgebraicForm.fit.html#freealg.AlgebraicForm.fit" title="freealg.AlgebraicForm.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>(deg_m, deg_z[, reg, r, n_r, n_samples, ...])</p></td>
-<td><p>Fit polynomial.</p></td>
+<td><p>Fit an algebraic structure to the input data.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.density.html#freealg.AlgebraicForm.density" title="freealg.AlgebraicForm.density"><code class="xref py py-obj docutils literal notranslate"><span class="pre">density</span></code></a>([x, plot, latex, save])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.support.html#freealg.AlgebraicForm.support" title="freealg.AlgebraicForm.support"><code class="xref py py-obj docutils literal notranslate"><span class="pre">support</span></code></a>([coeffs, scan_range, n_scan])</p></td>
+<td><p>Estimate the spectral edges of the density.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.AlgebraicForm.branch_points.html#freealg.AlgebraicForm.branch_points" title="freealg.AlgebraicForm.branch_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">branch_points</span></code></a>([tol, real_tol, plot, latex, save])</p></td>
+<td><p>Compute global branch points.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.atoms.html#freealg.AlgebraicForm.atoms" title="freealg.AlgebraicForm.atoms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atoms</span></code></a>([eta, tol, real_tol, w_tol, merge_tol])</p></td>
+<td><p>Detect atom locations and weights of distribution</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.AlgebraicForm.density.html#freealg.AlgebraicForm.density" title="freealg.AlgebraicForm.density"><code class="xref py py-obj docutils literal notranslate"><span class="pre">density</span></code></a>([x, eta, ac_only, plot, latex, save])</p></td>
 <td><p>Evaluate spectral density.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="freealg.AlgebraicForm.hilbert.html#freealg.AlgebraicForm.hilbert" title="freealg.AlgebraicForm.hilbert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hilbert</span></code></a>([x, rho, plot, latex, save])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.hilbert.html#freealg.AlgebraicForm.hilbert" title="freealg.AlgebraicForm.hilbert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hilbert</span></code></a>([x, plot, latex, save])</p></td>
 <td><p>Compute Hilbert transform of the spectral density.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.stieltjes.html#freealg.AlgebraicForm.stieltjes" title="freealg.AlgebraicForm.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a>([x, y, plot, latex, save])</p></td>
-<td><p>Compute Stieltjes transform of the spectral density on a grid.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.AlgebraicForm.stieltjes.html#freealg.AlgebraicForm.stieltjes" title="freealg.AlgebraicForm.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a>([x, y, plot, latex, save])</p></td>
+<td><p>Compute Stieltjes transform of the spectral density</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="freealg.AlgebraicForm.decompress.html#freealg.AlgebraicForm.decompress" title="freealg.AlgebraicForm.decompress"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decompress</span></code></a>(size[, x, method, plot, latex, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.decompress.html#freealg.AlgebraicForm.decompress" title="freealg.AlgebraicForm.decompress"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decompress</span></code></a>(size[, x, method, min_n_times, ...])</p></td>
 <td><p>Free decompression of spectral density.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.AlgebraicForm.is_decompressible.html#freealg.AlgebraicForm.is_decompressible" title="freealg.AlgebraicForm.is_decompressible"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_decompressible</span></code></a>([ratio, n_ratios, K, L, ...])</p></td>
+<td><p>Check if the given distribution can be decompressed.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.edge.html#freealg.AlgebraicForm.edge" title="freealg.AlgebraicForm.edge"><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge</span></code></a>(t[, eta, dt_max, max_iter, tol, verbose])</p></td>
+<td><p>Evolves spectral edges.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.AlgebraicForm.cusp.html#freealg.AlgebraicForm.cusp" title="freealg.AlgebraicForm.cusp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cusp</span></code></a>(t_grid)</p></td>
+<td><p>Find cusp (merge) point of evolving spectral edges</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.eigvalsh.html#freealg.AlgebraicForm.eigvalsh" title="freealg.AlgebraicForm.eigvalsh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eigvalsh</span></code></a>([size, seed])</p></td>
 <td><p>Estimate the eigenvalues.</p></td>
@@ -515,6 +592,13 @@ here when <code class="docutils literal notranslate"><span class="pre">support=N
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="freealg.AlgebraicForm.norm.html#freealg.AlgebraicForm.norm" title="freealg.AlgebraicForm.norm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm</span></code></a>([size, order, seed])</p></td>
 <td><p>Estimate the Schatten norm.</p></td>
+</tr>
+</tbody>
+</table>
+<table class="table">
+<tbody>
+<tr class="row-odd"><td><p><strong>candidate</strong></p></td>
+<td><p>Candidate densities of free decompression from all possible roots</p></td>
 </tr>
 </tbody>
 </table>

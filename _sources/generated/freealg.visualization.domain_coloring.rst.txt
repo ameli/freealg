@@ -1,0 +1,6 @@
+﻿freealg.visualization.domain\_coloring
+======================================
+
+.. currentmodule:: freealg.visualization
+
+.. autofunction:: domain_coloring

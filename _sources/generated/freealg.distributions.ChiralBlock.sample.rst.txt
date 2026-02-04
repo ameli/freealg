@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.ChiralBlock.sample
+========================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: ChiralBlock.sample

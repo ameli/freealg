@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.AlgebraicForm.branch_points
+===================================
+
+.. currentmodule:: freealg
+
+.. automethod:: AlgebraicForm.branch_points

@@ -62,7 +62,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="freealg.AlgebraicForm.hilbert" href="freealg.AlgebraicForm.hilbert.html" />
-    <link rel="prev" title="freealg.AlgebraicForm.fit" href="freealg.AlgebraicForm.fit.html" />
+    <link rel="prev" title="freealg.AlgebraicForm.atoms" href="freealg.AlgebraicForm.atoms.html" />
 
     <!-- Robots -->
 	<meta name="robots" content="index,follow">
@@ -213,6 +213,21 @@
      freealg.AlgebraicForm.fit
     </a>
    </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.support.html">
+     freealg.AlgebraicForm.support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.branch_points.html">
+     freealg.AlgebraicForm.branch_points
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.atoms.html">
+     freealg.AlgebraicForm.atoms
+    </a>
+   </li>
    <li class="toctree-l2 current active">
     <a class="current reference internal" href="#">
      freealg.AlgebraicForm.density
@@ -231,6 +246,21 @@
    <li class="toctree-l2">
     <a class="reference internal" href="freealg.AlgebraicForm.decompress.html">
      freealg.AlgebraicForm.decompress
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.is_decompressible.html">
+     freealg.AlgebraicForm.is_decompressible
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.edge.html">
+     freealg.AlgebraicForm.edge
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.cusp.html">
+     freealg.AlgebraicForm.cusp
     </a>
    </li>
    <li class="toctree-l2">
@@ -315,6 +345,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="freealg.submatrix.html">
+   freealg.submatrix
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="freealg.kde.html">
    freealg.kde
   </a>
@@ -364,6 +399,33 @@
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.html">
    freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
+   freealg.distributions.CompoundPoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
   </a>
  </li>
 </ul>
@@ -430,13 +492,18 @@
 <h1>freealg.AlgebraicForm.density<a class="headerlink" href="#freealg-algebraicform-density" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.AlgebraicForm.density">
-<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.density" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0002</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ac_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.density" title="Permalink to this definition">#</a></dt>
 <dd><p>Evaluate spectral density.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>x</strong><span class="classifier">numpy.array, default=None</span></dt><dd><p>Positions where density to be evaluated at. If <cite>None</cite>, an interval
 slightly larger than the support interval will be used.</p>
+</dd>
+<dt><strong>eta</strong><span class="classifier">float, default=2e-4</span></dt><dd><p>A small number to be used for approximating the local behavior of
+atom with a mollifier of scale <code class="docutils literal notranslate"><span class="pre">eta</span></code>.</p>
+</dd>
+<dt><strong>ac_only</strong><span class="classifier">bool, default=True</span></dt><dd><p>If <cite>True</cite>, it returns the absolutely-continuous part of density.</p>
 </dd>
 <dt><strong>plot</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, density is plotted.</p>
 </dd>
@@ -479,11 +546,11 @@ is relevant only if <code class="docutils literal notranslate"><span class="pre"
               <footer class="bd-footer-article">
                   <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="freealg.AlgebraicForm.fit.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="freealg.AlgebraicForm.atoms.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">freealg.AlgebraicForm.fit</p>
+          <p class="prev-next-title">freealg.AlgebraicForm.atoms</p>
       </div>
   </a>
   <a class='right-next' id="next-link" href="freealg.AlgebraicForm.hilbert.html" title="next page">

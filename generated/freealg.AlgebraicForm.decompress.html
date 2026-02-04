@@ -61,7 +61,7 @@
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="freealg.AlgebraicForm.eigvalsh" href="freealg.AlgebraicForm.eigvalsh.html" />
+    <link rel="next" title="freealg.AlgebraicForm.is_decompressible" href="freealg.AlgebraicForm.is_decompressible.html" />
     <link rel="prev" title="freealg.AlgebraicForm.stieltjes" href="freealg.AlgebraicForm.stieltjes.html" />
 
     <!-- Robots -->
@@ -214,6 +214,21 @@
     </a>
    </li>
    <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.support.html">
+     freealg.AlgebraicForm.support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.branch_points.html">
+     freealg.AlgebraicForm.branch_points
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.atoms.html">
+     freealg.AlgebraicForm.atoms
+    </a>
+   </li>
+   <li class="toctree-l2">
     <a class="reference internal" href="freealg.AlgebraicForm.density.html">
      freealg.AlgebraicForm.density
     </a>
@@ -231,6 +246,21 @@
    <li class="toctree-l2 current active">
     <a class="current reference internal" href="#">
      freealg.AlgebraicForm.decompress
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.is_decompressible.html">
+     freealg.AlgebraicForm.is_decompressible
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.edge.html">
+     freealg.AlgebraicForm.edge
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.cusp.html">
+     freealg.AlgebraicForm.cusp
     </a>
    </li>
    <li class="toctree-l2">
@@ -315,6 +345,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="freealg.submatrix.html">
+   freealg.submatrix
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="freealg.kde.html">
    freealg.kde
   </a>
@@ -364,6 +399,33 @@
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.html">
    freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
+   freealg.distributions.CompoundPoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
   </a>
  </li>
 </ul>
@@ -430,8 +492,69 @@
 <h1>freealg.AlgebraicForm.decompress<a class="headerlink" href="#freealg-algebraicform-decompress" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.AlgebraicForm.decompress">
-<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">decompress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'one'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">newton_opt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'armijo':</span> <span class="pre">0.0001,</span> <span class="pre">'max_iter':</span> <span class="pre">50,</span> <span class="pre">'min_lam':</span> <span class="pre">1e-06,</span> <span class="pre">'sweep':</span> <span class="pre">True,</span> <span class="pre">'tol':</span> <span class="pre">1e-12,</span> <span class="pre">'w_min':</span> <span class="pre">1e-14}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.decompress" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">decompress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'moc'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_n_times</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">newton_opt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'armijo':</span> <span class="pre">0.0001,</span> <span class="pre">'max_iter':</span> <span class="pre">50,</span> <span class="pre">'min_lam':</span> <span class="pre">1e-06,</span> <span class="pre">'sweep':</span> <span class="pre">True,</span> <span class="pre">'tol':</span> <span class="pre">1e-12,</span> <span class="pre">'w_min':</span> <span class="pre">1e-14}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.decompress" title="Permalink to this definition">#</a></dt>
 <dd><p>Free decompression of spectral density.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>size</strong><span class="classifier">int or array_like</span></dt><dd><p>Size(s) of the decompressed matrix. This can be a scalar or an
+array of sizes. For each matrix size in <code class="docutils literal notranslate"><span class="pre">size</span></code> array, a density
+is produced.</p>
+</dd>
+<dt><strong>x</strong><span class="classifier">numpy.array, default=None</span></dt><dd><p>Positions where density to be evaluated at. If <cite>None</cite>, an interval
+slightly larger than the support interval will be used.</p>
+</dd>
+<dt><strong>method</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'moc'</span></code>, <code class="docutils literal notranslate"><span class="pre">'coeffs'`},</span> <span class="pre">default=</span></code>’moc’``</span></dt><dd><p>Method of decompression:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'moc'</span></code>: Method of characteristics with Newton iterations.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'coeffs'</span></code>: Evolving polynomial coefficients directly.</p></li>
+</ul>
+</dd>
+<dt><strong>min_n_times</strong><span class="classifier">int, default=10</span></dt><dd><p>Minimum number of inner sizes to evolve.</p>
+</dd>
+<dt><strong>newton_opt</strong><span class="classifier">dict</span></dt><dd><p>A dictionary of settings to pass to Newton iteration solver.</p>
+</dd>
+<dt><strong>plot</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, density is plotted.</p>
+</dd>
+<dt><strong>latex</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, the plot is rendered using LaTeX. This option is
+relevant only if <code class="docutils literal notranslate"><span class="pre">plot=True</span></code>.</p>
+</dd>
+<dt><strong>save</strong><span class="classifier">bool, default=False</span></dt><dd><p>If not <cite>False</cite>, the plot is saved. If a string is given, it is
+assumed to the save filename (with the file extension). This option
+is relevant only if <code class="docutils literal notranslate"><span class="pre">plot=True</span></code>.</p>
+</dd>
+<dt><strong>verbose</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, it prints verbose be bugging information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>rho</strong><span class="classifier">numpy.array or numpy.ndarray</span></dt><dd><p>Estimated spectral density at locations x. <code class="docutils literal notranslate"><span class="pre">rho</span></code> can be a 1D or
+2D array output:</p>
+<ul class="simple">
+<li><p>If <code class="docutils literal notranslate"><span class="pre">size</span></code> is a scalar, <code class="docutils literal notranslate"><span class="pre">rho</span></code> is a 1D array of the same size
+as <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">size</span></code> is an array of size <cite>n</cite>, <code class="docutils literal notranslate"><span class="pre">rho</span></code> is a 2D array with
+<cite>n</cite> rows, where each row corresponds to decompression to a size.
+Number of columns of <code class="docutils literal notranslate"><span class="pre">rho</span></code> is the same as the size of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></li>
+</ul>
+</dd>
+<dt><strong>x</strong><span class="classifier">numpy.array</span></dt><dd><p>Locations where the spectral density is estimated</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="freealg.AlgebraicForm.density.html#freealg.AlgebraicForm.density" title="freealg.AlgebraicForm.density"><code class="xref py py-obj docutils literal notranslate"><span class="pre">density</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.AlgebraicForm.stieltjes.html#freealg.AlgebraicForm.stieltjes" title="freealg.AlgebraicForm.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a></dt><dd></dd>
+</dl>
+</div>
+<p class="rubric">Examples</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlgebraicForm</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </section>
@@ -451,10 +574,10 @@
           <p class="prev-next-title">freealg.AlgebraicForm.stieltjes</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="freealg.AlgebraicForm.eigvalsh.html" title="next page">
+  <a class='right-next' id="next-link" href="freealg.AlgebraicForm.is_decompressible.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">freealg.AlgebraicForm.eigvalsh</p>
+      <p class="prev-next-title">freealg.AlgebraicForm.is_decompressible</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>

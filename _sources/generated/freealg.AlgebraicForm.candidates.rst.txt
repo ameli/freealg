@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.AlgebraicForm.candidates
+================================
+
+.. currentmodule:: freealg
+
+.. automethod:: AlgebraicForm.candidates

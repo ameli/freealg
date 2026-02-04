@@ -61,8 +61,8 @@
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="freealg.distributions.DeformedMarchenkoPastur" href="freealg.distributions.DeformedMarchenkoPastur.html" />
-    <link rel="prev" title="freealg.distributions.ChiralBlock" href="freealg.distributions.ChiralBlock.html" />
+    <link rel="next" title="freealg.distributions.DeformedWigner.density" href="freealg.distributions.DeformedWigner.density.html" />
+    <link rel="prev" title="freealg.distributions.ChiralBlock.matrix" href="freealg.distributions.ChiralBlock.matrix.html" />
 
     <!-- Robots -->
 	<meta name="robots" content="index,follow">
@@ -258,6 +258,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="freealg.submatrix.html">
+   freealg.submatrix
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="freealg.kde.html">
    freealg.kde
   </a>
@@ -299,14 +304,78 @@
    freealg.distributions.ChiralBlock
   </a>
  </li>
- <li class="toctree-l1 current active">
+ <li class="toctree-l1 current active has-children">
   <a class="current reference internal" href="#">
    freealg.distributions.DeformedWigner
   </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedWigner.density.html">
+     freealg.distributions.DeformedWigner.density
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedWigner.roots.html">
+     freealg.distributions.DeformedWigner.roots
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedWigner.support.html">
+     freealg.distributions.DeformedWigner.support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedWigner.sample.html">
+     freealg.distributions.DeformedWigner.sample
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedWigner.matrix.html">
+     freealg.distributions.DeformedWigner.matrix
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.DeformedWigner.poly.html">
+     freealg.distributions.DeformedWigner.poly
+    </a>
+   </li>
+  </ul>
  </li>
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.html">
    freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
+   freealg.distributions.CompoundPoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
   </a>
  </li>
 </ul>
@@ -374,7 +443,37 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="freealg.distributions.DeformedWigner">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.distributions.</span></span><span class="sig-name descname"><span class="pre">DeformedWigner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.DeformedWigner" title="Permalink to this definition">#</a></dt>
-<dd><p>Deformed Wiger</p>
+<dd><p>Deformed Wiger distribution</p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.DeformedWigner.density.html#freealg.distributions.DeformedWigner.density" title="freealg.distributions.DeformedWigner.density"><code class="xref py py-obj docutils literal notranslate"><span class="pre">density</span></code></a>([x, eta, plot, latex, save, eig])</p></td>
+<td><p>Density of distribution.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.DeformedWigner.roots.html#freealg.distributions.DeformedWigner.roots" title="freealg.distributions.DeformedWigner.roots"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roots</span></code></a>(z)</p></td>
+<td><p>Roots of polynomial implicitly representing Stieltjes transform</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.DeformedWigner.support.html#freealg.distributions.DeformedWigner.support" title="freealg.distributions.DeformedWigner.support"><code class="xref py py-obj docutils literal notranslate"><span class="pre">support</span></code></a>([y_probe])</p></td>
+<td><p>Support intervals of distribution</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.DeformedWigner.sample.html#freealg.distributions.DeformedWigner.sample" title="freealg.distributions.DeformedWigner.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(size[, x_min, x_max, method, seed, ...])</p></td>
+<td><p>Sample from distribution.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.DeformedWigner.matrix.html#freealg.distributions.DeformedWigner.matrix" title="freealg.distributions.DeformedWigner.matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix</span></code></a>(size[, seed])</p></td>
+<td><p>Generate matrix with the spectral density of the distribution.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.DeformedWigner.poly.html#freealg.distributions.DeformedWigner.poly" title="freealg.distributions.DeformedWigner.poly"><code class="xref py py-obj docutils literal notranslate"><span class="pre">poly</span></code></a>()</p></td>
+<td><p>Polynomial coefficients implicitly representing the Stieltjes</p></td>
+</tr>
+</tbody>
+</table>
+<table class="table">
+<tbody>
+<tr class="row-odd"><td><p><strong>stieltjes</strong></p></td>
+<td><p>Stieltjes transform</p></td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </section>
@@ -387,17 +486,17 @@
               <footer class="bd-footer-article">
                   <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="freealg.distributions.ChiralBlock.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="freealg.distributions.ChiralBlock.matrix.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">freealg.distributions.ChiralBlock</p>
+          <p class="prev-next-title">freealg.distributions.ChiralBlock.matrix</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="freealg.distributions.DeformedMarchenkoPastur.html" title="next page">
+  <a class='right-next' id="next-link" href="freealg.distributions.DeformedWigner.density.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">freealg.distributions.DeformedMarchenkoPastur</p>
+      <p class="prev-next-title">freealg.distributions.DeformedWigner.density</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>

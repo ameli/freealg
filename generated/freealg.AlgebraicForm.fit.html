@@ -63,7 +63,7 @@
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="freealg.AlgebraicForm.density" href="freealg.AlgebraicForm.density.html" />
+    <link rel="next" title="freealg.AlgebraicForm.support" href="freealg.AlgebraicForm.support.html" />
     <link rel="prev" title="freealg.AlgebraicForm" href="freealg.AlgebraicForm.html" />
 
     <!-- Robots -->
@@ -216,6 +216,21 @@
     </a>
    </li>
    <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.support.html">
+     freealg.AlgebraicForm.support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.branch_points.html">
+     freealg.AlgebraicForm.branch_points
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.atoms.html">
+     freealg.AlgebraicForm.atoms
+    </a>
+   </li>
+   <li class="toctree-l2">
     <a class="reference internal" href="freealg.AlgebraicForm.density.html">
      freealg.AlgebraicForm.density
     </a>
@@ -233,6 +248,21 @@
    <li class="toctree-l2">
     <a class="reference internal" href="freealg.AlgebraicForm.decompress.html">
      freealg.AlgebraicForm.decompress
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.is_decompressible.html">
+     freealg.AlgebraicForm.is_decompressible
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.edge.html">
+     freealg.AlgebraicForm.edge
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.AlgebraicForm.cusp.html">
+     freealg.AlgebraicForm.cusp
     </a>
    </li>
    <li class="toctree-l2">
@@ -317,6 +347,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="freealg.submatrix.html">
+   freealg.submatrix
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="freealg.kde.html">
    freealg.kde
   </a>
@@ -366,6 +401,33 @@
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.html">
    freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
+   freealg.distributions.CompoundPoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
   </a>
  </li>
 </ul>
@@ -432,18 +494,26 @@
 <h1>freealg.AlgebraicForm.fit<a class="headerlink" href="#freealg-algebraicform-fit" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.AlgebraicForm.fit">
-<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deg_m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1.25,</span> <span class="pre">6.0,</span> <span class="pre">20.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[3,</span> <span class="pre">2,</span> <span class="pre">1]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_pad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangular</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_reg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.fit" title="Permalink to this definition">#</a></dt>
-<dd><p>Fit polynomial.</p>
-<dl class="field-list simple">
+<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deg_m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1.25,</span> <span class="pre">6.0,</span> <span class="pre">20.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[3,</span> <span class="pre">2,</span> <span class="pre">1]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_pad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangular</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_reg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.fit" title="Permalink to this definition">#</a></dt>
+<dd><p>Fit an algebraic structure to the input data.</p>
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>deg_m</strong><span class="classifier">int</span></dt><dd><p>Degree <span class="math notranslate nohighlight">\(\deg_m(P)\)</span></p>
+<dd class="field-odd"><dl>
+<dt><strong>deg_m</strong><span class="classifier">int</span></dt><dd><p>Degree <span class="math notranslate nohighlight">\(\mathrm{deg}_m(P)\)</span></p>
 </dd>
-<dt><strong>deg_z</strong><span class="classifier">int</span></dt><dd><p>Degree <span class="math notranslate nohighlight">\(\deg_z(P)\)</span></p>
+<dt><strong>deg_z</strong><span class="classifier">int</span></dt><dd><p>Degree <span class="math notranslate nohighlight">\(\mathrm{deg}_z(P)\)</span></p>
 </dd>
-<dt><strong>mu</strong><span class="classifier">array_like, default=None</span></dt><dd><p>If an array <span class="math notranslate nohighlight">\([\mu_0, \mu_\)</span>, dots, mu_r]` is given,
-it enforces the first <span class="math notranslate nohighlight">\(r+1\)</span> moments. Note that <span class="math notranslate nohighlight">\(\mu_0\)</span>
-should be <span class="math notranslate nohighlight">\(1\)</span> to ensure unit mass. See also <a href="#id1"><span class="problematic" id="id2">``</span></a>mu_reg`.</p>
+<dt><strong>mu</strong><span class="classifier">array_like, default=``’auto’``</span></dt><dd><p>Constraint to fit polynomial coefficients based on moments:</p>
+<ul class="simple">
+<li><p>If an array <span class="math notranslate nohighlight">\([\mu_0, \mu_1\)</span>, dots, mu_r]` is given,
+it enforces the first <span class="math notranslate nohighlight">\(r+1\)</span> moments. Note that
+<span class="math notranslate nohighlight">\(\mu_0`should be :math:`1\)</span> to ensure unit mass.</p></li>
+<li><p>If instead this option is set to <code class="docutils literal notranslate"><span class="pre">'auto'</span></code>, and the input <code class="docutils literal notranslate"><span class="pre">A</span></code>
+is a matrix, it automatically uses the first two moments of the
+eigenvalues of the input matrix as moment constraints.</p></li>
+<li><p>If <cite>None</cite>, no constraint is used.</p></li>
+</ul>
+<p>See also <code class="docutils literal notranslate"><span class="pre">mu_reg</span></code>.</p>
 </dd>
 <dt><strong>mu_reg: float, default=None</strong></dt><dd><p>If <cite>None</cite>, the constraints <code class="docutils literal notranslate"><span class="pre">mu</span></code> are applied as hard constraint.
 If a positive number, the constraints are applied as a soft
@@ -475,10 +545,10 @@ fit.</p>
           <p class="prev-next-title">freealg.AlgebraicForm</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="freealg.AlgebraicForm.density.html" title="next page">
+  <a class='right-next' id="next-link" href="freealg.AlgebraicForm.support.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">freealg.AlgebraicForm.density</p>
+      <p class="prev-next-title">freealg.AlgebraicForm.support</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>

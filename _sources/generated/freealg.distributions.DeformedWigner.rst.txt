@@ -15,7 +15,9 @@
       
          DeformedWigner.density
          DeformedWigner.matrix
+         DeformedWigner.poly
          DeformedWigner.roots
+         DeformedWigner.sample
          DeformedWigner.stieltjes
          DeformedWigner.support
       

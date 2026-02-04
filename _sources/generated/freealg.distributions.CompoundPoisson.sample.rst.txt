@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.CompoundPoisson.sample
+============================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: CompoundPoisson.sample

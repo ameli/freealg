@@ -15,7 +15,9 @@
       
          DeformedMarchenkoPastur.density
          DeformedMarchenkoPastur.matrix
+         DeformedMarchenkoPastur.poly
          DeformedMarchenkoPastur.roots
+         DeformedMarchenkoPastur.sample
          DeformedMarchenkoPastur.stieltjes
          DeformedMarchenkoPastur.support
       

@@ -56,12 +56,14 @@
     <script src="../_static/js/custom-pydata.js"></script>
     <script src="../_static/design-tabs.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex2jax": {"inlineMath": [["\\(", "\\)"]], "displayMath": [["\\[", "\\]"]]}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/custom-pydata.css"></script>
     <link rel="canonical" href="https://ameli.github.io/freealg/generated/freealg.distributions.ChiralBlock.html" />
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="freealg.distributions.DeformedWigner" href="freealg.distributions.DeformedWigner.html" />
+    <link rel="next" title="freealg.distributions.ChiralBlock.density" href="freealg.distributions.ChiralBlock.density.html" />
     <link rel="prev" title="freealg.distributions.Meixner.matrix" href="freealg.distributions.Meixner.matrix.html" />
 
     <!-- Robots -->
@@ -258,6 +260,11 @@
   </a>
  </li>
  <li class="toctree-l1">
+  <a class="reference internal" href="freealg.submatrix.html">
+   freealg.submatrix
+  </a>
+ </li>
+ <li class="toctree-l1">
   <a class="reference internal" href="freealg.kde.html">
    freealg.kde
   </a>
@@ -294,10 +301,42 @@
    freealg.distributions.Meixner
   </a>
  </li>
- <li class="toctree-l1 current active">
+ <li class="toctree-l1 current active has-children">
   <a class="current reference internal" href="#">
    freealg.distributions.ChiralBlock
   </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.ChiralBlock.density.html">
+     freealg.distributions.ChiralBlock.density
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.ChiralBlock.stieltjes.html">
+     freealg.distributions.ChiralBlock.stieltjes
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.ChiralBlock.support.html">
+     freealg.distributions.ChiralBlock.support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.ChiralBlock.sample.html">
+     freealg.distributions.ChiralBlock.sample
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="freealg.distributions.ChiralBlock.matrix.html">
+     freealg.distributions.ChiralBlock.matrix
+    </a>
+   </li>
+  </ul>
  </li>
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.distributions.DeformedWigner.html">
@@ -307,6 +346,33 @@
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.html">
    freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
+   freealg.distributions.CompoundPoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
   </a>
  </li>
 </ul>
@@ -378,11 +444,55 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>alpha</strong><span class="classifier">float</span></dt><dd></dd>
-<dt><strong>beta</strong><span class="classifier">float</span></dt><dd></dd>
+<dt><strong>alpha</strong><span class="classifier">float</span></dt><dd><p>The parameter <span class="math notranslate nohighlight">\(\alpha\)</span>. See notes below.</p>
+</dd>
+<dt><strong>beta</strong><span class="classifier">float</span></dt><dd><p>The parameter <span class="math notranslate nohighlight">\(\beta\)</span>. See notes below.</p>
+</dd>
+<dt><strong>c</strong><span class="classifier">float</span></dt><dd><p>Ratio parameter <span class="math notranslate nohighlight">\(c = p / n\)</span>. See notes below. It must be &gt; 0.</p>
+</dd>
 </dl>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>The chiral block model corresponds to the bipartite biregular graph with
+the matrix</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}\begin{split}\mathbf{A} =
+\begin{bmatrix}
+    \alpha \mathbf{I} &amp; \mathbf{X} \\
+    \mathbf{A}^{\intercal} &amp; \beta \mathbf{I}\end{split}\\\end{bmatrix},\end{aligned}\end{align} \]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{X} \in \mathbb{R}^{p \times n}\)</span>, and
+<span class="math notranslate nohighlight">\(c = p / n \in (0, \infty)\)</span>.</p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.ChiralBlock.density.html#freealg.distributions.ChiralBlock.density" title="freealg.distributions.ChiralBlock.density"><code class="xref py py-obj docutils literal notranslate"><span class="pre">density</span></code></a>([x, eta, ac_only, plot, latex, ...])</p></td>
+<td><p>Density of distribution.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.ChiralBlock.stieltjes.html#freealg.distributions.ChiralBlock.stieltjes" title="freealg.distributions.ChiralBlock.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a>(z[, alt_branch])</p></td>
+<td><p>Stieltjes transform</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.ChiralBlock.support.html#freealg.distributions.ChiralBlock.support" title="freealg.distributions.ChiralBlock.support"><code class="xref py py-obj docutils literal notranslate"><span class="pre">support</span></code></a>()</p></td>
+<td><p>Support</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="freealg.distributions.ChiralBlock.sample.html#freealg.distributions.ChiralBlock.sample" title="freealg.distributions.ChiralBlock.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(size[, x_min, x_max, method, seed, ...])</p></td>
+<td><p>Sample from distribution.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="freealg.distributions.ChiralBlock.matrix.html#freealg.distributions.ChiralBlock.matrix" title="freealg.distributions.ChiralBlock.matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix</span></code></a>(size[, seed])</p></td>
+<td><p>Generate matrix with the spectral density of the distribution.</p></td>
+</tr>
+</tbody>
+</table>
+<table class="table">
+<tbody>
+<tr class="row-odd"><td><p><strong>roots</strong></p></td>
+<td><p>Roots of polynomial implicitly representing Stieltjes transform</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>poly</strong></p></td>
+<td><p>Polynomial coefficients implicitly representing the Stieltjes</p></td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </section>
@@ -402,10 +512,10 @@
           <p class="prev-next-title">freealg.distributions.Meixner.matrix</p>
       </div>
   </a>
-  <a class='right-next' id="next-link" href="freealg.distributions.DeformedWigner.html" title="next page">
+  <a class='right-next' id="next-link" href="freealg.distributions.ChiralBlock.density.html" title="next page">
   <div class="prev-next-info">
       <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">freealg.distributions.DeformedWigner</p>
+      <p class="prev-next-title">freealg.distributions.ChiralBlock.density</p>
   </div>
   <i class="fas fa-angle-right"></i>
   </a>
