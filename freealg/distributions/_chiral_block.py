@@ -7,14 +7,16 @@
 # directory of this source tree.
 
 
-# ======
-# Import
-# ======
+# =======
+# Imports
+# =======
 
 import numpy
 import collections
+from ..visualization._plot_util import plot_density
 from .._geometric_form._elliptic_functions import ellipj
 from .._geometric_form._continuation_genus1 import mobius_z
+from ._base_distribution import BaseDistribution
 
 __all__ = ['ChiralBlock']
 
@@ -23,7 +25,7 @@ __all__ = ['ChiralBlock']
 # Chiral Block
 # ============
 
-class ChiralBlock(object):
+class ChiralBlock(BaseDistribution):
     """
     Twisted chiral block model.
 
@@ -31,7 +33,55 @@ class ChiralBlock(object):
     ----------
 
     alpha : float
+        The parameter :math:`\\alpha`. See notes below.
+
     beta : float
+        The parameter :math:`\\beta`. See notes below.
+
+    c : float
+        Ratio parameter :math:`c = p / n`. See notes below. It must be > 0.
+
+    Methods
+    -------
+
+    density
+        Spectral density of distribution.
+
+    roots
+        Roots of polynomial implicitly representing Stieltjes transform
+
+    stieltjes
+        Stieltjes transform
+
+    support
+        Support intervals of distribution
+
+    sample
+        Sample from distribution.
+
+    matrix
+        Generate matrix with its empirical spectral density of distribution
+
+    poly
+        Polynomial coefficients implicitly representing the Stieltjes
+
+    Notes
+    -----
+
+    The chiral block model corresponds to the bipartite biregular graph with
+    the matrix
+
+    .. math::
+
+        \\mathbf{A} =
+        \\begin{bmatrix}
+            \\alpha \\mathbf{I} & \\mathbf{X} \\\\
+            \\mathbf{A}^{\\intercal} & \\beta \\mathbf{I}
+
+        \\end{bmatrix},
+
+    where :math:`\\mathbf{X} \\in \\mathbb{R}^{p \\times n}`, and
+    :math:`c = p / n \\in (0, \\infty)`.
     """
 
     # ====
@@ -47,14 +97,73 @@ class ChiralBlock(object):
         self.beta = beta
         self.c = c
 
+        # Bounds for smallest and largest eigenvalues
+        center = 0.5 * (alpha + beta)
+        dim = 0.5 * numpy.abs(beta - alpha)
+        skew = 1.0 + numpy.sqrt(c)
+
+        self.lam_lb = center - numpy.sqrt(dim**2 + skew**2)
+        self.lam_ub = center + numpy.sqrt(dim**2 + skew**2)
+
     # =======
     # density
     # =======
 
-    def density(self, x):
+    def density(self, x=None, eta=1e-3, ac_only=True, plot=False, latex=False,
+                save=False, eig=None):
         """
-        Absolutely continous density, and the atom.
+        Density of distribution.
+
+        Parameters
+        ----------
+
+        x : numpy.array, default=None
+            The locations where density is evaluated at. If `None`, an interval
+            slightly larger than the supp interval of the spectral density
+            is used.
+
+        rho : numpy.array, default=None
+            Density. If `None`, it will be computed.
+
+        eta : float, default=1e-3
+            The offset :math:`\\eta` to remove atom.
+
+        ac_only : bool, default=True
+            If `True`, it returns the absolutely-continuous part of density.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        eig : numpy.array, default=None
+            A collection of eigenvalues to compare to via histogram. This
+            option is relevant only if ``plot=True``.
+
+        Returns
+        -------
+
+        rho : numpy.array
+            Density.
         """
+
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (self.lam_ub - self.lam_lb)
+            center = 0.5 * (self.lam_ub + self.lam_lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 500)
+        else:
+            x = numpy.asarray(x, dtype=numpy.float64)
 
         # Parameters
         alpha = self.alpha
@@ -86,18 +195,35 @@ class ChiralBlock(object):
         rho = numpy.where(numpy.isfinite(rho), rho, 0.0)
         rho = numpy.maximum(rho, 0.0)
 
-        # Atom location and weight
+        # Atoms
+        atoms = None
         if numpy.abs(c - 1.0) < 1e-4:
-            atom_loc = None
-            atom_w = None
+            atoms = None
         elif c > 1.0:
             atom_loc = alpha
             atom_w = (c - 1.0) / (c + 1.0)
+            atoms = [(atom_loc, atom_w)]
         elif c < 1.0:
             atom_loc = beta
             atom_w = (1.0 - c) / (c + 1.0)
+            atoms = [(atom_loc, atom_w)]
 
-        return rho, atom_loc, atom_w
+        # Optional: remove the atom at zero (only for visualization of AC part)
+        if (atoms is not None) and (ac_only is True):
+            atom = atom_w * (float(eta) / numpy.pi) / \
+                (x * x + float(eta) * float(eta))
+            rho = rho - atom
+            rho = numpy.maximum(rho, 0.0)
+
+        if plot:
+            if eig is not None:
+                label = 'Theoretical'
+            else:
+                label = ''
+            plot_density(x, rho, atoms=atoms, label=label, latex=latex,
+                         save=save, eig=eig)
+
+        return rho, atoms
 
     # ===========
     # sqrt like t
@@ -118,7 +244,7 @@ class ChiralBlock(object):
 
     def stieltjes(self, z, alt_branch=False):
         """
-        Physical Stieltjes transform
+        Stieltjes transform
         """
 
         # Parameters

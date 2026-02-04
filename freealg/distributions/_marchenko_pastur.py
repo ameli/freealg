@@ -12,16 +12,10 @@
 # =======
 
 import numpy
-from scipy.interpolate import interp1d
-from .._free_form._plot_util import plot_density, plot_hilbert, \
-    plot_stieltjes, plot_stieltjes_on_disk, plot_samples
+from ..visualization._plot_util import plot_density, plot_hilbert, \
+    plot_stieltjes, plot_stieltjes_on_disk
 from ..visualization import glue_branches
-
-try:
-    from scipy.integrate import cumtrapz
-except ImportError:
-    from scipy.integrate import cumulative_trapezoid as cumtrapz
-from scipy.stats import qmc
+from ._base_distribution import BaseDistribution
 
 __all__ = ['MarchenkoPastur']
 
@@ -30,7 +24,7 @@ __all__ = ['MarchenkoPastur']
 # Marchenko Pastur
 # ================
 
-class MarchenkoPastur(object):
+class MarchenkoPastur(BaseDistribution):
     """
     Marchenko-Pastur distribution.
 
@@ -103,8 +97,6 @@ class MarchenkoPastur(object):
         self.lam = lam
         self.sigma = sigma
 
-        # self.lam_p = (1 + numpy.sqrt(self.lam))**2
-        # self.lam_m = (1 - numpy.sqrt(self.lam))**2
         self.lam_p = sigma**2 * (1.0 + numpy.sqrt(lam))**2
         self.lam_m = sigma**2 * (1.0 - numpy.sqrt(lam))**2
 
@@ -123,7 +115,7 @@ class MarchenkoPastur(object):
 
         x : numpy.array, default=None
             The locations where density is evaluated at. If `None`, an interval
-            slightly larger than the supp interval of the spectral density
+            slightly larger than the support interval of the spectral density
             is used.
 
         rho : numpy.array, default=None
@@ -138,7 +130,7 @@ class MarchenkoPastur(object):
 
         save : bool, default=False
             If not `False`, the plot is saved. If a string is given, it is
-        assumed to the save filename (with the file extension). This option
+            assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
 
         eig : numpy.array, default=None
@@ -223,7 +215,7 @@ class MarchenkoPastur(object):
 
         x : numpy.array, default=None
             The locations where Hilbert transform is evaluated at. If `None`,
-            an interval slightly larger than the supp interval of the
+            an interval slightly larger than the support interval of the
             spectral density is used.
 
         plot : bool, default=False
@@ -288,46 +280,6 @@ class MarchenkoPastur(object):
 
         return hilb
 
-    # =======================
-    # m mp numeric vectorized
-    # =======================
-
-    # def _m_mp_numeric_vectorized(self, z, alt_branch=False, tol=1e-8):
-    #     """
-    #     Stieltjes transform (principal or secondary branch)
-    #     for Marchenko-Pastur distribution on upper half-plane.
-    #     """
-    #
-    #     sigma = 1.0
-    #     m = numpy.empty_like(z, dtype=complex)
-    #
-    #     # When z is too small, do not use quadratic form.
-    #     mask = numpy.abs(z) < tol
-    #     m[mask] = 1 / (sigma**2 * (1 - self.lam))
-    #
-    #     # Use quadratic form
-    #     not_mask = ~mask
-    #     if numpy.any(not_mask):
-    #
-    #         sign = -1 if alt_branch else 1
-    #         A = self.lam * sigma**2 * z[not_mask]
-    #         B = z[not_mask] - sigma**2 * (1 - self.lam)
-    #         D = B**2 - 4 * A
-    #         sqrtD = numpy.sqrt(D)
-    #         m1 = (-B + sqrtD) / (2 * A)
-    #         m2 = (-B - sqrtD) / (2 * A)
-    #
-    #         # pick correct branch only for non-masked entries
-    #         upper = z[not_mask].imag >= 0
-    #         branch = numpy.empty_like(m1)
-    #         branch[upper] = numpy.where(sign*m1[upper].imag > 0, m1[upper],
-    #                                     m2[upper])
-    #         branch[~upper] = numpy.where(sign*m1[~upper].imag < 0,
-    #                                      m1[~upper], m2[~upper])
-    #         m[not_mask] = branch
-    #
-    #     return m
-
     # =============
     # sqrt pos imag
     # =============
@@ -341,26 +293,6 @@ class MarchenkoPastur(object):
         sq = numpy.where(sq.imag < 0, -sq, sq)
 
         return sq
-
-    # ============
-    # m mp reflect
-    # ============
-
-    # def _m_mp_reflect(self, z, alt_branch=False):
-    #     """
-    #     Analytic continuation using Schwarz reflection.
-    #     """
-    #
-    #     mask_p = z.imag >= 0.0
-    #     mask_n = z.imag < 0.0
-    #
-    #     m = numpy.zeros_like(z)
-    #
-    #     f = self._m_mp_numeric_vectorized
-    #     m[mask_p] = f(z[mask_p], alt_branch=False)
-    #     m[mask_n] = f(z[mask_n], alt_branch=alt_branch)
-    #
-    #     return m
 
     # ================
     # stieltjes branch
@@ -429,7 +361,7 @@ class MarchenkoPastur(object):
 
         x : numpy.array, default=None
             The x axis of the grid where the Stieltjes transform is evaluated.
-            If `None`, an interval slightly larger than the supp interval of
+            If `None`, an interval slightly larger than the support interval of
             the spectral density is used.
 
         y : numpy.array, default=None
@@ -556,126 +488,6 @@ class MarchenkoPastur(object):
             return m2
         else:
             return m1
-
-    # ======
-    # sample
-    # ======
-
-    def sample(self, size, x_min=None, x_max=None, method='qmc', seed=None,
-               plot=False, latex=False, save=False):
-        """
-        Sample from distribution.
-
-        Parameters
-        ----------
-
-        size : int
-            Size of sample.
-
-        x_min : float, default=None
-            Minimum of sample values. If `None`, the left edge of the supp
-            is used.
-
-        x_max : float, default=None
-            Maximum of sample values. If `None`, the right edge of the supp
-            is used.
-
-        method : {``'mc'``, ``'qmc'``}, default= ``'qmc'``
-            Method of drawing samples from uniform distribution:
-
-            * ``'mc'``: Monte Carlo
-            * ``'qmc'``: Quasi Monte Carlo
-
-        seed : int, default=None,
-            Seed for random number generator.
-
-        plot : bool, default=False
-            If `True`, samples histogram is plotted.
-
-        latex : bool, default=False
-            If `True`, the plot is rendered using LaTeX. This option is
-            relevant only if ``plot=True``.
-
-        save : bool, default=False
-            If not `False`, the plot is saved. If a string is given, it is
-            assumed to the save filename (with the file extension). This option
-            is relevant only if ``plot=True``.
-
-        Returns
-        -------
-
-        s : numpy.ndarray
-            Samples.
-
-        Notes
-        -----
-
-        This method uses inverse transform sampling.
-
-        Examples
-        --------
-
-        .. code-block::python
-
-            >>> from freealg.distributions import MarchenkoPastur
-            >>> mp = MarchenkoPastur(1/50)
-            >>> s = mp.sample(2000)
-
-        .. image:: ../_static/images/plots/mp_samples.png
-            :align: center
-            :class: custom-dark
-        """
-
-        if x_min is None:
-            x_min = self.lam_m
-
-        if x_max is None:
-            x_max = self.lam_p
-
-        # Grid and PDF
-        xs = numpy.linspace(x_min, x_max, size)
-        pdf = self.density(xs)
-
-        # CDF (using cumulative trapezoidal rule)
-        cdf = cumtrapz(pdf, xs, initial=0)
-        cdf /= cdf[-1]  # normalize CDF to 1
-
-        # Inverse CDF interpolator
-        inv_cdf = interp1d(cdf, xs, bounds_error=False,
-                           fill_value=(x_min, x_max))
-
-        # Random generator
-        rng = numpy.random.default_rng(seed)
-
-        # Draw from uniform distribution
-        if method == 'mc':
-            u = rng.random(size)
-
-        elif method == 'qmc':
-            try:
-                engine = qmc.Halton(d=1, scramble=True, rng=rng)
-            except TypeError:
-                # Older scipy versions
-                engine = qmc.Halton(d=1, scramble=True, seed=rng)
-            u = engine.random(size).ravel()
-
-        else:
-            raise NotImplementedError('"method" is invalid.')
-
-        # Draw from distribution by mapping from inverse CDF
-        samples = inv_cdf(u).ravel()
-
-        if plot:
-            radius = 0.5 * (self.lam_p - self.lam_m)
-            center = 0.5 * (self.lam_p + self.lam_m)
-            scale = 1.25
-            x_min = numpy.floor(center - radius * scale)
-            x_max = numpy.ceil(center + radius * scale)
-            x = numpy.linspace(x_min, x_max, 500)
-            rho = self.density(x)
-            plot_samples(x, rho, x_min, x_max, samples, latex=latex, save=save)
-
-        return samples
 
     # ======
     # matrix

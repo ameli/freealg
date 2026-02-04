@@ -12,7 +12,9 @@
 # =======
 
 import numpy
+from ..visualization._plot_util import plot_density
 from .._algebraic_form._sheets_util import _pick_physical_root_scalar
+from ._base_distribution import BaseDistribution
 
 __all__ = ['CompoundPoisson']
 
@@ -21,9 +23,45 @@ __all__ = ['CompoundPoisson']
 # Compound Poisson
 # ================
 
-class CompoundPoisson(object):
+class CompoundPoisson(BaseDistribution):
     """
-    Two-atom free compound Poisson model (MP-like, FD-closed).
+    Compound free Poisson distribution
+
+    Parameters
+    ----------
+
+    t1, t2 : float
+        Jump sizes (must be > 0). For PSD-like support, keep them > 0.
+
+    w1 : float
+        Mixture weight in (0, 1) for ``t1``. Second weight is ``1-w1``.
+
+    lam : float
+        Total rate (intensity), must be > 0.
+
+    Methods
+    -------
+
+    density
+        Spectral density of distribution.
+
+    roots
+        Roots of polynomial implicitly representing Stieltjes transform
+
+    stieltjes
+        Stieltjes transform
+
+    support
+        Support intervals of distribution
+
+    sample
+        Sample from distribution.
+
+    matrix
+        Generate matrix with its empirical spectral density of distribution
+
+    poly
+        Polynomial coefficients implicitly representing the Stieltjes
 
     Notes
     -----
@@ -68,16 +106,7 @@ class CompoundPoisson(object):
 
     def __init__(self, t1, t2, w1, lam):
         """
-        Parameters
-        ----------
-        t1, t2 : float
-            Jump sizes (must be > 0). For PSD-like support, keep them > 0.
-
-        w1 : float
-            Mixture weight in (0, 1) for t1. Second weight is 1-w1.
-
-        lam : float
-            Total rate (intensity), must be > 0.
+        Initialization.
         """
 
         t1 = float(t1)
@@ -98,6 +127,14 @@ class CompoundPoisson(object):
         self.t2 = t2
         self.w1 = w1
         self.lam = lam
+
+        # Bounds for smallest and largest eigenvalues
+        if lam < 1.0:
+            # In this case, there is an atom at the origin
+            self.lam_lb = 0.0
+        else:
+            self.lam_lb = numpy.min([t1, t2]) * (1 - numpy.sqrt(lam))**2
+        self.lam_ub = numpy.max([t1, t2]) * (1 + numpy.sqrt(lam))**2
 
     # ====================
     # roots cubic m scalar
@@ -183,6 +220,8 @@ class CompoundPoisson(object):
 
     def stieltjes(self, z, max_iter=100, tol=1e-12):
         """
+        Stieltjes transform
+
         Physical/Herglotz branch of m(z) for the two-atom compound Poisson law.
         Fast masked Newton in m, keeping z's original shape.
         """
@@ -258,31 +297,99 @@ class CompoundPoisson(object):
     # density
     # =======
 
-    def density(self, x, eta=2e-4, max_iter=100, tol=1e-12, ac_only=True):
+    def density(self, x=None, eta=2e-4, max_iter=100, tol=1e-12, ac_only=True,
+                plot=False, latex=False, save=False, eig=None):
         """
-        Density rho(x) from Im m(x + i eta) / pi.
+        Density of distribution.
 
-        ac_only: bool, default=True
-            If `True`, computes the absolutely-continuous (AC) part. This
-            matters when for :math:`\\lambda < 1`, the distribution has an
-            atom at zero of mass :math:`1 - \\lambda`, and for plotting, this
-            often shows as a spike. Setting this option to true prevents this
-            issue in plotting. Also, to compute support, this option allows
-            proper detection of the support intervals.
+        Parameters
+        ----------
+
+        x : numpy.array, default=None
+            The locations where density is evaluated at. If `None`, an interval
+            slightly larger than the supp interval of the spectral density
+            is used.
+
+        rho : numpy.array, default=None
+            Density. If `None`, it will be computed.
+
+        eta : float, default=2e-4
+            The offset :math:`\\eta` from the real axis where the density
+            is evaluated using Plemelj formula at :math:`z = x + i \\eta`.
+
+        max_iter : int, default=100
+            Maximum number of Newton iterations to solve for the Stieltjes
+            root.
+
+        tol : float, default=1e-12
+            Tolerance for Newton iterations to solve for the Stieltjes root.
+
+        ac_only : bool, default=True
+            If `True`, it returns the absolutely-continuous part of density.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        eig : numpy.array, default=None
+            A collection of eigenvalues to compare to via histogram. This
+            option is relevant only if ``plot=True``.
+
+        Returns
+        -------
+
+        rho : numpy.array
+            Density.
+
         """
+
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (self.lam_ub - self.lam_lb)
+            center = 0.5 * (self.lam_ub + self.lam_lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 500)
+        else:
+            x = numpy.asarray(x, dtype=numpy.float64)
+
+        z = x + 1j * float(eta)
+        m = self.stieltjes(z)
 
         z = numpy.asarray(x, dtype=numpy.float64) + 1j * float(eta)
         m = self.stieltjes(z, max_iter=max_iter, tol=tol)
         rho = numpy.imag(m) / numpy.pi
 
-        # If it has an atom, subtract from density to get the absolutely
-        # continuous part before processing the support
-        if (ac_only is True) and (self.lam < 1.0):
+        # Atoms
+        atoms = None
+        if self.lam < 1.0:
+            atom_loc = 0.0
+            atom_w = 1.0 - self.lam
+            atoms = [(atom_loc, atom_w)]
+
+        # Optional: remove the atom at zero (only for visualization of AC part)
+        if (atoms is not None) and (ac_only is True):
             zr = z.real
-            atom = (1.0 - self.lam) * \
-                (float(eta) / (numpy.pi * (zr*zr + float(eta)**2)))
+            atom = atom_w * (float(eta) / (numpy.pi * (zr*zr + float(eta)**2)))
             rho = rho - atom
             rho = numpy.maximum(rho, 0.0)
+
+        if plot:
+            if eig is not None:
+                label = 'Theoretical'
+            else:
+                label = ''
+            plot_density(x, rho, atoms=atoms, label=label, latex=latex,
+                         save=save, eig=eig)
 
         return rho
 
@@ -292,7 +399,7 @@ class CompoundPoisson(object):
 
     def roots(self, z):
         """
-        Return all algebraic branches (roots of the cubic) at scalar z.
+        Roots of polynomial implicitly representing Stieltjes transform
         """
 
         z = numpy.asarray(z, dtype=numpy.complex128)
@@ -307,10 +414,11 @@ class CompoundPoisson(object):
     def support(self, eta=2e-4, n_probe=4000, thr=5e-4, x_max=None,
                 x_pad=0.05, method='probe'):
         """
-        Estimate support intervals by probing rho(x) on a grid.
+        Support intervals of distribution
 
         Parameters
         ----------
+
         method : {'probe'}
             Only probing is implemented here.
         """
@@ -350,27 +458,13 @@ class CompoundPoisson(object):
 
         return intervals
 
-    # ==========
-    # rho scalar
-    # ==========
-
-    def rho_scalar(self, x, eta=2e-4, max_iter=100, tol=1e-12):
-        """
-        Scalar density helper (returns float).
-        """
-
-        x = float(x)
-        z = x + 1j * float(eta)
-        m = self.stieltjes(z, max_iter=max_iter, tol=tol)
-        return float(numpy.imag(m) / numpy.pi)
-
     # ======
     # matrix
     # ======
 
     def matrix(self, size, seed=None):
         """
-        Generate a symmetric random matrix whose ESD approximates this law.
+        Generate matrix with the spectral density of the distribution.
 
         Parameters
         ----------
@@ -417,6 +511,7 @@ class CompoundPoisson(object):
         if n <= 0:
             raise ValueError("size must be a positive integer.")
 
+        # Unpack parameters
         t1 = float(self.t1)
         t2 = float(self.t2)
         w1 = float(self.w1)
@@ -452,10 +547,9 @@ class CompoundPoisson(object):
 
     def poly(self):
         """
-        Return a_coeffs for the exact cubic P(z,m)=0 of the two-atom free
-        compound Poisson model.
+        Polynomial coefficients implicitly representing the Stieltjes
 
-        a_coeffs[i, j] is the coefficient of z^i m^j.
+        coeffs[i, j] is the coefficient of z^i m^j.
         Shape is (2, 4) since deg_z=1 and deg_m=3.
 
         Coefficients match _roots_cubic_m_scalar.

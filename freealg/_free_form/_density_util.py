@@ -18,7 +18,7 @@ from scipy.stats import beta
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import texplot
-from ._plot_util import _auto_bins
+from ..visualization._plot_util import _auto_bins
 
 # Fallback to previous API
 if not hasattr(numpy, 'trapezoid'):

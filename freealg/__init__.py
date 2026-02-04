@@ -13,9 +13,10 @@ from . import visualization
 from . import distributions
 from ._sample import sample
 from ._support import supp
+from ._util import submatrix
 
 __all__ = ['FreeForm', 'AlgebraicForm', 'GeometricForm', 'distributions',
            'visualization', 'eigvalsh', 'cond', 'norm', 'trace', 'slogdet',
-           'supp', 'sample', 'kde']
+           'supp', 'sample', 'submatrix', 'kde']
 
 from .__version__ import __version__                          # noqa: F401 E402

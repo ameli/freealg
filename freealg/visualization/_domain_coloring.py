@@ -22,7 +22,7 @@ __all__ = ['domain_coloring']
 # ===============
 
 def domain_coloring(c, shift=0.0, thresh=numpy.inf, n_mod=12.0, n_ph=12.0,
-                    vmin=0.35, vmax=1.0, tile_gamma=1.0, tile_mix=1.0):
+                    vmin=0.35, vmax=1.0, tile_gamma=1.0, tile_mix=0.0):
     """
     Convert complex field c to RGB via HSV domain coloring.
 
@@ -32,38 +32,38 @@ def domain_coloring(c, shift=0.0, thresh=numpy.inf, n_mod=12.0, n_ph=12.0,
     c : array_like of complex
         Complex field.
 
-    shift : float, default 0.0
+    shift : float, default=0.0
         Phase offset in turns (1.0 = full :math:`2 \\pi` rotation). Applied to
         hue.
 
-    thresh : float, default numpy.inf
+    thresh : float, default=numpy.inf
         Optional cap on :math:`\\vert c \\vert` used for magnitude-related
         terms. Use to prevent very large magnitudes from dominating the
         encoding.
 
-    n_mod : float, default 12.0
+    n_mod : float, default=12.0
         Number of modulus steps per :math:`2 \\pi` in
         :math:`\\log(\\vert c \\vert`). Higher means more concentric rings. Set
         to 0.0 to disable modulus stepping.
 
-    n_ph : float, default 12.0
+    n_ph : float, default=12.0
         Number of phase steps per :math:`2 \\pi` in :math:`\\mathrm{arg}(c)`.
         Higher means more angular sectors. Set to 0.0 to disable phase
         stepping.
 
-    vmin : float, default 0.35
+    vmin : float, default=0.35
         Minimum brightness for the tiling shading (darkest parts of tiles).
 
-    vmax : float, default 1.0
+    vmax : float, default=1.0
         Maximum brightness for the tiling shading (brightest parts of tiles).
         Lowering vmax (e.g. 0.8-0.9) can reduce the "neon" look.
 
-    tile_gamma : float, default 1.0
+    tile_gamma : float, default=1.0
         Shapes the within-tile ramp. 1.0 = linear sawtooth. Larger than 1.0
         makes tiles stay darker longer and brighten sharply near boundaries.
         Smaller than  1.0 brightens earlier.
 
-    tile_mix : float in [0, 1], default 1.0
+    tile_mix : float in [0, 1], default=0.0
         Mix between original magnitude brightness and tiling shading:
 
         * 0.0:  value is :math:`1 - \\exp(- \\vert c \\vert)` (original

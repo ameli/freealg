@@ -12,7 +12,9 @@
 # =======
 
 import numpy
+from ..visualization._plot_util import plot_density
 from .._algebraic_form._sheets_util import _pick_physical_root_scalar
+from ._base_distribution import BaseDistribution
 
 __all__ = ['DeformedMarchenkoPastur']
 
@@ -21,9 +23,45 @@ __all__ = ['DeformedMarchenkoPastur']
 # Deformed Marchenko Pastur
 # =========================
 
-class DeformedMarchenkoPastur(object):
+class DeformedMarchenkoPastur(BaseDistribution):
     """
-    Deformed Marchenko-Pastur model.
+    Deformed Marchenko-Pastur distribution
+
+    Parameters
+    ----------
+
+    t1, t2 : float
+        Jump sizes (must be > 0). For PSD-like support, keep them > 0.
+
+    w1 : float
+        Mixture weight in (0, 1) for ``t1``. Second weight is ``1-w1``.
+
+    c : float
+        Ratio parameter of Marchenko-Pastur distribution, must be > 0.
+
+    Methods
+    -------
+
+    density
+        Spectral density of distribution.
+
+    roots
+        Roots of polynomial implicitly representing Stieltjes transform
+
+    stieltjes
+        Stieltjes transform
+
+    support
+        Support intervals of distribution
+
+    sample
+        Sample from distribution.
+
+    matrix
+        Generate matrix with its empirical spectral density of distribution
+
+    poly
+        Polynomial coefficients implicitly representing the Stieltjes
 
     Notes
     -----
@@ -84,6 +122,14 @@ class DeformedMarchenkoPastur(object):
         self.w1 = w1
         self.c = c
 
+        # Bounds for smallest and largest eigenvalues
+        if c > 1.0:
+            # In this case, there is an atom at the origin
+            self.lam_lb = 0.0
+        else:
+            self.lam_lb = numpy.min([t1, t2]) * (1 - numpy.sqrt(c))**2
+        self.lam_ub = numpy.max([t1, t2]) * (1 + numpy.sqrt(c))**2
+
     # ====================
     # roots cubic u scalar
     # ====================
@@ -105,8 +151,6 @@ class DeformedMarchenkoPastur(object):
         mu1 = w1 * t1 + w2 * t2
 
         # Cubic coefficients for u:
-        # (z t1 t2) u^3 + ( z(t1+t2) + t1 t2(1-c) ) u^2
-        # + ( z + (t1+t2) - c*mu1 ) u + 1 = 0
         c3 = z * (t1 * t2)
         c2 = z * (t1 + t2) + (t1 * t2) * (1.0 - c)
         c1 = z + (t1 + t2) - c * mu1
@@ -138,10 +182,7 @@ class DeformedMarchenkoPastur(object):
             d1 = 1.0 + t1 * u
             d2 = 1.0 + t2 * u
 
-            # f(u) = -1/u + c*(w1*t1/d1 + w2*t2/d2) - z
             f = (-1.0 / u) + c * (w1 * t1 / d1 + w2 * t2 / d2) - z
-
-            # f'(u) = 1/u^2 - c*(w1*t1^2/d1^2 + w2*t2^2/d2^2)
             fp = (1.0 / (u * u)) - c * (w1 * (t1 * t1) / (d1 * d1) +
                                         w2 * (t2 * t2) / (d2 * d2))
 
@@ -159,6 +200,8 @@ class DeformedMarchenkoPastur(object):
 
     def stieltjes(self, z, max_iter=100, tol=1e-12):
         """
+        Stieltjes transform
+
         Physical/Herglotz branch of m(z) for \\mu = H \\boxtimes MP_c with
         H = w_1 \\delta_{t_1} + (1-w_1) \\delta_{t_2}.
         Fast masked Newton in u (companion Stieltjes), keeping z's original
@@ -246,9 +289,50 @@ class DeformedMarchenkoPastur(object):
     # density
     # =======
 
-    def density(self, x, eta=1e-3, ac_only=True):
+    def density(self, x=None, eta=1e-3, ac_only=True, plot=False, latex=False,
+                save=False, eig=None):
         """
-        Density via Stieltjes inversion with robust x-continuation.
+        Density of distribution.
+
+        Parameters
+        ----------
+
+        x : numpy.array, default=None
+            The locations where density is evaluated at. If `None`, an interval
+            slightly larger than the supp interval of the spectral density
+            is used.
+
+        rho : numpy.array, default=None
+            Density. If `None`, it will be computed.
+
+        eta : float, default=1e-3
+            The offset :math:`\\eta` from the real axis where the density
+            is evaluated using Plemelj formula at :math:`z = x + i \\eta`.
+
+        ac_only : bool, default=True
+            If `True`, it returns the absolutely-continuous part of density.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        eig : numpy.array, default=None
+            A collection of eigenvalues to compare to via histogram. This
+            option is relevant only if ``plot=True``.
+
+        Returns
+        -------
+
+        rho : numpy.array
+            Density.
 
         Notes
         -----
@@ -262,19 +346,44 @@ class DeformedMarchenkoPastur(object):
         (1-c) for visualization.
         """
 
-        x = numpy.asarray(x, dtype=numpy.float64)
-        z = x + 1j * float(eta)
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (self.lam_ub - self.lam_lb)
+            center = 0.5 * (self.lam_ub + self.lam_lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 500)
+        else:
+            x = numpy.asarray(x, dtype=numpy.float64)
 
+        z = x + 1j * float(eta)
         m = self.stieltjes(z)
         rho = numpy.imag(m) / numpy.pi
 
-        # Optional: remove the atom at zero (only for visualization of AC part)
-        if ac_only and (self.c > 1.0):
-            w0 = 1.0 - 1.0 / self.c
-            rho = rho - w0 * (float(eta) / numpy.pi) / \
-                (x * x + float(eta) * float(eta))
+        # Atoms
+        atoms = None
+        if self.c > 1.0:
+            atom_loc = 0.0
+            atom_w = 1.0 - 1.0 / self.c
+            atoms = [(atom_loc, atom_w)]
 
-        return numpy.maximum(rho, 0.0)
+        # Optional: remove the atom at zero (only for visualization of AC part)
+        if (atoms is not None) and (ac_only is True):
+            atom = atom_w * (float(eta) / numpy.pi) / \
+                (x * x + float(eta) * float(eta))
+            rho = rho - atom
+            rho = numpy.maximum(rho, 0.0)
+
+        if plot:
+            if eig is not None:
+                label = 'Theoretical'
+            else:
+                label = ''
+            plot_density(x, rho, atoms=atoms, label=label, latex=latex,
+                         save=save, eig=eig)
+
+        return rho
 
     # =====
     # roots
@@ -282,8 +391,7 @@ class DeformedMarchenkoPastur(object):
 
     def roots(self, z):
         """
-        Return all 3 algebraic roots of m(z) (via roots for u then mapping to
-        m).
+        Roots of polynomial implicitly representing Stieltjes transform
         """
 
         # Unpack parameters
@@ -327,6 +435,8 @@ class DeformedMarchenkoPastur(object):
     def support(self, eta=2e-4, n_probe=4000, thr=5e-4, x_max=None, x_pad=0.05,
                 method='quartic'):
         """
+        Support intervals of distribution
+
         Estimate support intervals of μ = H \\boxtimes MP_c where H = w1
         \\delta_{t1} + (1-w1) \\delta_{t2}.
 
@@ -459,8 +569,7 @@ class DeformedMarchenkoPastur(object):
                     return cuts
                 method = 'probe'
 
-        # --- legacy probing (kept as fallback / comparison) ---
-        # Heuristic x-range
+        # Legacy probing (kept as fallback / comparison). Heuristic x-range
         tmax = float(max(abs(t1), abs(t2), 1e-12))
         if x_max is None:
             s = (1.0 + numpy.sqrt(max(c, 0.0))) ** 2
@@ -623,11 +732,10 @@ class DeformedMarchenkoPastur(object):
 
     def poly(self):
         """
-        Return a_coeffs for the exact cubic P(z,m)=0 of the two-atom deformed
-        MP model.
+        Polynomial coefficients implicitly representing the Stieltjes
 
         This is the eliminated polynomial in m (not underline{m}).
-        a_coeffs[i, j] is the coefficient of z^i m^j.
+        coeffs[i, j] is the coefficient of z^i m^j.
         Shape is (3, 4).
         """
 
@@ -644,24 +752,21 @@ class DeformedMarchenkoPastur(object):
         # NOTE: This polynomial is defined up to a global nonzero factor.
         # The scaling below is chosen so that the m^3 term is (-c^3 t1 t2) z^2.
 
-        # ---- m^3:  (-c^3 t1 t2) z^2
+        # Coefficients of  m^3:
         a[2, 3] = -(c**3) * t1 * t2
 
-        # ---- m^2:  -( 2 c^3 t1 t2 z - 2 c^2 t1 t2 z + c^2 (t1+t2) z^2 )
+        # Coefficients of  m^2:
         a[0, 2] = 0.0
         a[1, 2] = -(2.0 * (c**3) * t1 * t2 - 2.0 * (c**2) * t1 * t2)
         a[2, 2] = -(c**2) * (t1 + t2)
 
-        # ---- m^1:
-        #   -c * [ c^2 t1 t2 - 2 c t1 t2 + t1 t2
-        #          + z^2
-        #          + z*( -c*w1*t1 + 2c*t1 + c*w1*t2 + c*t2 - t1 - t2 ) ]
+        # Coefficients of m^1:
         a[0, 1] = -c * ((c**2) * t1 * t2 - 2.0 * c * t1 * t2 + t1 * t2)
         a[1, 1] = -c * ((-c * w1 * t1) + (2.0 * c * t1) + (c * w1 * t2) +
                         (c * t2) - t1 - t2)
         a[2, 1] = -c * (1.0)
 
-        # ---- m^0:  -c z + c(1-c) (w2 t1 + w1 t2)
+        # Coefficients of m^0
         a[0, 0] = c * (1.0 - c) * (w2 * t1 + w1 * t2)
         a[1, 0] = -c
         a[2, 0] = 0.0

@@ -12,7 +12,9 @@
 # =======
 
 import numpy
+from ..visualization._plot_util import plot_density
 from .._algebraic_form._sheets_util import _pick_physical_root_scalar
+from ._base_distribution import BaseDistribution
 
 __all__ = ['DeformedWigner']
 
@@ -21,9 +23,33 @@ __all__ = ['DeformedWigner']
 # Deformed Wigner
 # ===============
 
-class DeformedWigner(object):
+class DeformedWigner(BaseDistribution):
     """
-    Deformed Wiger
+    Deformed Wiger distribution
+
+    Methods
+    -------
+
+    density
+        Spectral density of distribution.
+
+    roots
+        Roots of polynomial implicitly representing Stieltjes transform
+
+    stieltjes
+        Stieltjes transform
+
+    support
+        Support intervals of distribution
+
+    sample
+        Sample from distribution.
+
+    matrix
+        Generate matrix with its empirical spectral density of distribution
+
+    poly
+        Polynomial coefficients implicitly representing the Stieltjes
     """
 
     # ====
@@ -42,6 +68,10 @@ class DeformedWigner(object):
         self.t2 = t2
         self.w1 = w1
         self.sigma = sigma
+
+        # Bounds for smallest and largest eigenvalues
+        self.lam_lb = numpy.min([t1, t2]) - 2.0 * self.sigma
+        self.lam_ub = numpy.max([t1, t2]) + 2.0 * self.sigma
 
     # ==================
     # roots cubic scalar
@@ -135,17 +165,75 @@ class DeformedWigner(object):
     # density
     # =======
 
-    def density(self, x, eta=1e-3):
+    def density(self, x=None, eta=1e-3, plot=False, latex=False, save=False,
+                eig=None):
         """
+        Density of distribution.
+
+        Parameters
+        ----------
+
+        x : numpy.array, default=None
+            The locations where density is evaluated at. If `None`, an interval
+            slightly larger than the supp interval of the spectral density
+            is used.
+
+        rho : numpy.array, default=None
+            Density. If `None`, it will be computed.
+
+        eta : float, default=1e-3
+            The offset :math:`\\eta` from the real axis where the density
+            is evaluated using Plemelj formula at :math:`z = x + i \\eta`.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        eig : numpy.array, default=None
+            A collection of eigenvalues to compare to via histogram. This
+            option is relevant only if ``plot=True``.
+
+        Returns
+        -------
+
+        rho : numpy.array
+            Density.
         """
 
-        x = numpy.asarray(x, dtype=numpy.float64)
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (self.lam_ub - self.lam_lb)
+            center = 0.5 * (self.lam_ub + self.lam_lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 500)
+        else:
+            x = numpy.asarray(x, dtype=numpy.float64)
+
         z = x + 1j * float(eta)
-
         m = self.stieltjes(z)
         rho = numpy.imag(m) / numpy.pi
 
-        return numpy.maximum(rho, 0.0)
+        rho = numpy.maximum(rho, 0.0)
+
+        if plot:
+            if eig is not None:
+                label = 'Theoretical'
+            else:
+                label = ''
+            plot_density(x, rho, atoms=None, label=label, latex=latex,
+                         save=save, eig=eig)
+
+        return rho
 
     # =====
     # roots
@@ -153,6 +241,7 @@ class DeformedWigner(object):
 
     def roots(self, z):
         """
+        Roots of polynomial implicitly representing Stieltjes transform
         """
 
         z = numpy.asarray(z, dtype=numpy.complex128)
@@ -176,6 +265,7 @@ class DeformedWigner(object):
 
     def support(self, y_probe=1e-6):
         """
+        Support intervals of distribution
         """
 
         # Unpack parameters
@@ -310,10 +400,9 @@ class DeformedWigner(object):
 
     def poly(self):
         """
-        Return a_coeffs for the exact cubic P(z,m)=0 of the two-atom deformed
-        Wigner model.
+        Polynomial coefficients implicitly representing the Stieltjes
 
-        a_coeffs[i, j] is the coefficient of z^i m^j.
+        coeffs[i, j] is the coefficient of z^i m^j.
         Shape is (deg_z+1, deg_m+1) = (3, 4).
         """
 

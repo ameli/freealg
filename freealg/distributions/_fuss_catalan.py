@@ -246,11 +246,11 @@ class FussCatalan(object):
 
     def poly(self):
         """
-        Return a_coeffs for the exact polynomial P(z,m)=0.
+        Return coeffs for the exact polynomial P(z,m)=0.
 
         P(z,m) = (-1)^p z^p m^{p+1} - z m - 1.
 
-        a_coeffs[i, j] is the coefficient of z^i m^j.
+        coeffs[i, j] is the coefficient of z^i m^j.
         Shape is (deg_z+1, deg_m+1) = (p+1, p+2).
         """
 

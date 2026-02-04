@@ -19,7 +19,7 @@ from ._continuation_algebraic import sample_z_joukowski, \
         sanity_check_stieltjes_branch, eval_P
 from ._edge import evolve_edges, merge_edges
 from ._cusp_wrap import cusp_wrap
-from ._admissible import precheck_laurent
+from ._decompressible import precheck_laurent
 
 # Decompress with Newton
 # from ._decompress import build_time_grid, decompress_newton
@@ -49,7 +49,8 @@ from ._branch_points import estimate_branch_points
 from ._support import estimate_support
 from .._support import supp as estimate_broad_supp
 from ._moments import Moments, AlgebraicStieltjesMoments
-from .._free_form._plot_util import plot_density, plot_hilbert, plot_stieltjes
+from ..visualization._plot_util import plot_density, plot_hilbert, \
+    plot_stieltjes
 from .._base_form import BaseForm
 
 # Fallback to previous numpy API
@@ -118,13 +119,13 @@ class AlgebraicForm(BaseForm):
     -------
 
     fit
-        Fit an algenraic structure to the input data
+        Fit an algebraic structure to the input data
 
     support
         Estimate the spectral edges of the density
 
     branch_points
-        Compute global branch points and zeros of leading coefficinet
+        Compute global branch points and zeros of leading coefficient
 
     density
         Evaluate spectral density
@@ -138,17 +139,17 @@ class AlgebraicForm(BaseForm):
     decompress
         Free decompression of spectral density
 
-    candicates
-        Candicate densities of free decompression from all possible roots
+    candidate
+        Candidate densities of free decompression from all possible roots
 
-    admissible
-        Check if the free decompression admits a valid Stieltjes root
+    is_decompressible
+        Check if the underlying distribution can be decompressed
 
     edge
         Evolves spectral edges
 
     cusp
-        Find cusp (merge) point of evolcing spectral edges
+        Find cusp (merge) point of evolving spectral edges
 
     eigvalsh
         Estimate the eigenvalues
@@ -188,7 +189,7 @@ class AlgebraicForm(BaseForm):
         self._stieltjes = None
         self._moments = None
         self.supp = support
-        self.est_supp = None  # Estimated from polynmial after fitting
+        self.est_supp = None  # Estimated from polynomial after fitting
 
         if hasattr(A, 'stieltjes') and callable(getattr(A, 'stieltjes', None)):
             # This is one of the distribution objects, like MarchenkoPastur
@@ -254,7 +255,7 @@ class AlgebraicForm(BaseForm):
             normalize=False,
             verbose=False):
         """
-        Fit an algenraic structure to the input data.
+        Fit an algebraic structure to the input data.
 
         Parameters
         ----------
@@ -290,7 +291,7 @@ class AlgebraicForm(BaseForm):
         z_fits = []
 
         # Sampling around support, or broad_support. This is only needed to
-        # ensure sampled points are not hiting the support itself is not used
+        # ensure sampled points are not hitting the support itself is not used
         # in any computation. If support is not known, use broad support.
         if self.supp is not None:
             possible_supp = self.supp
@@ -397,7 +398,7 @@ class AlgebraicForm(BaseForm):
         if inflate < 0:
             raise ValueError('"inflate" should be non-negative.')
 
-        min_supp, max_supp = self.broad_support
+        min_supp, max_supp = self.broad_supp
 
         c_supp = 0.5 * (max_supp + min_supp)
         r_supp = 0.5 * (max_supp - min_supp)
@@ -439,7 +440,7 @@ class AlgebraicForm(BaseForm):
 
     def branch_points(self, tol=1e-15, real_tol=None):
         """
-        Compute global branch points and zeros of leading coefficinet.
+        Compute global branch points and zeros of leading coefficient.
         """
 
         if self.coeffs is None:
@@ -774,7 +775,7 @@ class AlgebraicForm(BaseForm):
 
     def candidates(self, size, x=None, verbose=False):
         """
-        Candicate densities of free decompression from all possible roots
+        Candidate densities of free decompression from all possible roots
         """
 
         # Check size argument
@@ -814,21 +815,27 @@ class AlgebraicForm(BaseForm):
             plot_candidates(coeffs_i, x, size=int(alpha[i]*self.n),
                             verbose=verbose)
 
-    # ==========
-    # admissible
-    # ==========
+    # =================
+    # is decompressible
+    # =================
 
-    def admissible(self, t=(1.0005, 1.001, 1.01, 1.1), K=(6, 8, 10), L=3,
-                   tol=1e-8, verbose=False):
+    def is_decompressible(self, ratio=2, n_ratios=5, K=(6, 8, 10), L=3,
+                          tol=1e-8, verbose=False):
         """
-        Check if the free decompression admits a valid Stieltjes root.
+        Check if the given distribution can be decompressed.
+
+        To this end, this function checks if the evolved polynomial under the
+        free decompression admits a valid Stieltjes root.
 
         Parameters
         ----------
 
-        t : sequence of float, default=(0, 1e-4, 1e-3, 1e-2, 1e-1, 1)
-            Time ``t`` to test. Values should satisfy ``t >= 0``. The case
-            ``t = 0`` corresponds to the base polynomial.
+        ratio : float, default=2
+            The maximum ratio of decompressed matrix size to the original size.
+
+        n_ratios : int, default=5
+            Number of ratios to test from 1 (no decompression) to the given
+            maximum ``ratio``.
 
         K : sequence of int, default=(6, 8, 10)
             Truncation orders ``K`` used to build the Laurent cancellation
@@ -851,21 +858,14 @@ class AlgebraicForm(BaseForm):
 
         status : array
             Boolean array of `True` or `False for each time in ``t``.
-            `True` means admissible, and `False` means inadmissible.
+            `True` means decompressible, and `False` means not decompressible.
 
-        out : dict
-            Dictionary keyed by each entry in ``t``. Each value is a dict with:
+        info : dict
+            Dictionary with the following keys
 
-            * ``best`` : dict
-                Diagnostics for the best ``K`` (smallest residual). Keys:
-                ``K``, ``alpha``, ``max_abs``, ``worst_p``, ``ok_solve``.
-            * ``perK`` : list of tuples
-                Per-``K`` results as
-                ``(K, alpha, max_abs, worst_p, ok_solve)``.
-            * ``alpha_std`` : float
-                Standard deviation of ``alpha`` across ``K`` list.
-            * ``alpha_span`` : float
-                Span (max-min) of ``alpha`` across ``K`` list.
+            * ``'ratios'``: List of decompression ratios that is checked.
+            * ``'ok'``: status of the decompressiblity at the tested ratio.
+            * ``'res'``: details of test for each ratio.
 
         Raises
         ------
@@ -932,37 +932,47 @@ class AlgebraicForm(BaseForm):
         --------
 
         .. code-block:: python
+            :emphasize-lines: 9,10
 
             >>> import freealg AlgebraicForm
             >>> from freealg.distributions import CompoundPoisson
 
-            >>> # Create compounbd free Poisson law
+            >>> # Create compound free Poisson law
             >>> cp = CompoundPoisson(t1=2.0, t2=5.5, w1=0.75, c=0.1)
             >>> af = AlgebraicForm(cp)
 
-            >>> # Check adminibility of compound free Poisson
-            >>> status, info = af.adminisble(
-            ...     t=(0, 1e-4, 1e-3, 1e-2, 1e-1, 1), K=(6, 8, 10),
-            ...     L=3, tol=1e-10, verbose=True)
+            >>> # Check the decompressibility of compound free Poisson
+            >>> status, info = af.is_decompressible(ratio=2, n_ratios=5,
+            ...                                     verbose=True)
 
-            >>> out[1.001]["ok"]
+            >>> status
             True
         """
 
         if self.coeffs is None:
             raise RuntimeError('"fit" model first.')
 
-        status = []
-        info = {}
-        for t_i in t:
-            ok, info_ = precheck_laurent(self.coeffs, t_i, K=K, L=L, tol=tol,
-                                         verbose=verbose)
+        if ratio < 1:
+            raise ValueError('"ratio" cannot be smaller than 1.')
 
-            status.append(ok)
-            info[t_i] = info_
+        tau = numpy.linspace(0.0, ratio, n_ratios)
+        ok = numpy.zeros_like(tau, dtype=bool)
+        res = [] * tau.size
+
+        for i in range(tau.size):
+            ok[i], res[i] = precheck_laurent(self.coeffs, tau[i], K=K, L=L,
+                                             tol=tol, verbose=verbose)
 
             if verbose:
                 print("")
+
+        status = numpy.any(numpy.logical_not(ok))
+
+        info = {
+            'ratios': tau,
+            'ok': ok,
+            'res': res,
+        }
 
         return status, info
 
@@ -1028,7 +1038,7 @@ class AlgebraicForm(BaseForm):
 
     def cusp(self, t_grid):
         """
-        Find cusp (merge) point of evolcing spectral edges
+        Find cusp (merge) point of evolving spectral edges
         """
 
         return cusp_wrap(self, t_grid, edge_kwargs=None, max_iter=50,

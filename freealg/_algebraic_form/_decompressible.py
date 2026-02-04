@@ -282,11 +282,11 @@ def precheck_laurent(a, tau, K_list=(6, 8, 10), L=3, tol=1e-8, verbose=True):
             print(f"  K={K:2d} max_abs={max_abs:.3e} worst_p={worst_p:2d} "
                   f"alpha={alpha:.12g} solve_ok={ok_solve}")
 
-    info = {
+    res = {
         "best": best,
         "perK": perK,
         "alpha_std": alpha_std,
         "alpha_span": alpha_span
     }
 
-    return ok, info
+    return ok, res

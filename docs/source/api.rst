@@ -48,6 +48,7 @@ The following functions are utilities for distributions.
 
     freealg.supp
     freealg.sample
+    freealg.submatrix
     freealg.kde
 
 Classical Distributions
@@ -69,7 +70,6 @@ The following classes define classical random ensembles.
     freealg.distributions.ChiralBlock
     freealg.distributions.DeformedWigner
     freealg.distributions.DeformedMarchenkoPastur
-    freealg.distributions.DeformedJacobi
     freealg.distributions.CompoundPoisson
     freealg.distributions.FussCatalan
 

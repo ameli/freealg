@@ -14,7 +14,7 @@
 import numpy
 import scipy
 
-__all__ = ['resolve_complex_dtype', 'compute_eig', 'subsample_matrix']
+__all__ = ['resolve_complex_dtype', 'compute_eig', 'submatrix']
 
 
 # =====================
@@ -72,24 +72,72 @@ def compute_eig(A, lower=False):
     return eig
 
 
-# ================
-# subsample matrix
-# ================
+# =========
+# submatrix
+# =========
 
-def subsample_matrix(matrix, submatrix_size, seed=None):
+def submatrix(matrix, size, paired=True, seed=None):
     """
-    Generate a random subsample of a larger matrix
+    Randomly sample a submatrix from a larger matrix.
+
+    Parameters
+    ----------
+
+    matrix : numpy.ndarray
+        A 2D square array
+
+    size : int
+        Number of rows and columns of the submatrix
+
+    paired : bool, default=True
+        If `True`, the rows and columns are sampled with the same random
+        indices. If `False`, separate random indices are used for selecting
+        rows and columns.
+
+    seed : int, default=None
+        Seed for random number generation. If `None`, results will not be
+        reproducible.
+
+    Returns
+    -------
+
+    sub : numpy.ndarray
+        A 2D array with the number of rows/columns specified by ``size``.
+
+    See Also
+    --------
+
+    freealg.sample
+
+    Examples
+    --------
+
+    .. code-block:: python
+        :emphasize-lines: 5
+
+        >>> import numpy
+        >>> from freealg import submatrix
+
+        >>> A = numpy.random.randn(1000, 1000)
+        >>> B = submatrix(A, size=500, paired=True, seed=0)
     """
 
     if matrix.shape[0] != matrix.shape[1]:
         raise ValueError("Matrix must be square")
 
     n = matrix.shape[0]
-    if submatrix_size > n:
-        raise ValueError("Submatrix size cannot exceed matrix size")
+    if size > n:
+        raise ValueError("Submatrix size cannot exceed matrix size.")
 
     rng = numpy.random.default_rng(seed)
-    idx = rng.choice(n, size=submatrix_size, replace=False)
-    idx = numpy.sort(idx)  # optional, preserves original ordering
 
-    return matrix[numpy.ix_(idx, idx)]
+    idx_row = rng.choice(n, size=size, replace=False)
+    idx_row = numpy.sort(idx_row)  # optional, preserves original ordering
+
+    if paired:
+        idx_col = idx_row
+    else:
+        idx_col = rng.choice(n, size=size, replace=False)
+        idx_col = numpy.sort(idx_col)  # optional, preserves original ordering
+
+    return matrix[numpy.ix_(idx_row, idx_col)]

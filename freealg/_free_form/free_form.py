@@ -21,7 +21,9 @@ from ._chebyshev import chebyshev_sample_proj, chebyshev_kernel_proj, \
     chebyshev_density, chebyshev_stieltjes
 from ._damp import jackson_damping, lanczos_damping, fejer_damping, \
     exponential_damping, parzen_damping
-from ._plot_util import plot_fit, plot_density, plot_hilbert, plot_stieltjes
+from ._plot_util import plot_fit
+from ..visualization._plot_util import plot_density, plot_hilbert, \
+    plot_stieltjes
 from ._pade import fit_pade, eval_pade
 from ._decompress import decompress
 from .._support import supp
