@@ -17,6 +17,8 @@ import texplot
 import matplotlib
 import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
+from matplotlib.lines import Line2D
+from matplotlib.legend_handler import HandlerLine2D
 from ..visualization import domain_coloring
 
 __all__ = ['plot_density', 'plot_hilbert', 'plot_stieltjes',
@@ -76,6 +78,38 @@ def _auto_bins(array, method='scott', factor=5):
     return num_bins * factor
 
 
+# =====================
+# Handler Line 2D Arrow
+# =====================
+
+class HandlerLine2DArrow(HandlerLine2D):
+    """
+    Used for arrow-style object in legend.
+    """
+
+    # =============
+    # create artist
+    # =============
+
+    def create_artists(self, legend, orig_handle, xdescent, ydescent,
+                       width, height, fontsize, trans):
+        # draw a horizontal line
+        line = Line2D([xdescent, xdescent + width],
+                      [ydescent + height/2, ydescent + height/2],
+                      lw=orig_handle.get_linewidth(),
+                      color=orig_handle.get_color())
+        line.set_transform(trans)
+
+        # draw arrowhead at the right end
+        head = Line2D([xdescent + width], [ydescent + height/2],
+                      marker=orig_handle.get_marker(),
+                      markersize=orig_handle.get_markersize(),
+                      color=orig_handle.get_color(),
+                      linestyle='None')
+        head.set_transform(trans)
+        return [line, head]
+
+
 # ============
 # plot density
 # ============
@@ -95,7 +129,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
     with texplot.theme(use_latex=latex):
 
-        fig, ax = plt.subplots(figsize=(6, 2.6))
+        fig, ax = plt.subplots(figsize=(6, 2.5))
 
         ax.plot(x, rho, color='black', label=label, zorder=3)
 
@@ -110,7 +144,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
         if eig is not None:
             if support is not None:
                 lam_m, lam_p = support
-            else:
+
                 lam_m, lam_p = min(eig), max(eig)
             bins = numpy.linspace(lam_m, lam_p, _auto_bins(eig))
             _ = ax.hist(eig, bins, density=True, color='silver',
@@ -118,7 +152,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
         else:
             plt.fill_between(x, y1=rho, y2=0, color='silver', zorder=-1)
 
-        if atoms is not None:
+        if (atoms is not None) and (len(atoms) > 0):
             ax2 = ax.twinx()
             ax2.set_ylim([0, 1])
             ax2.set_ylabel(r'Atom weight $w$')
@@ -134,12 +168,31 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
                                 'shrinkB': 0.0,
                                 'mutation_scale': 9})
 
+                arrow_handle = Line2D([0, 1], [0, 0], color='black', lw=1.4,
+                                      # linestyle='None',
+                                      marker='>',
+                                      markevery=[1],
+                                      markersize=4)
+
+                arrow_handle = Line2D([], [], color='black', lw=1.4,
+                                      marker='>', markersize=4)
+
         ax.set_xlabel(r'$\lambda$')
         ax.set_ylabel(r'$\rho(\lambda)$''')
         ax.set_title(title)
 
         if label != '':
-            ax.legend(fontsize='small')
+            h, ell = ax.get_legend_handles_labels()
+
+            if (atoms is not None) and (len(atoms) > 0):
+                insert_at = 1 if len(h) >= 1 else 0
+                h = h[:insert_at] + [arrow_handle] + h[insert_at:]
+                ell = ell[:insert_at] + ['Atom weight'] + ell[insert_at:]
+
+                ax.legend(h, ell, loc='best', fontsize='small',
+                          handler_map={arrow_handle: HandlerLine2DArrow()})
+            else:
+                ax.legend(h, ell, loc='best', fontsize='small')
 
         # Save
         if save is False:

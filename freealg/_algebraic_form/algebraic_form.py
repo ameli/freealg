@@ -13,30 +13,27 @@
 
 import numpy
 from .._util import compute_eig
-# from .._util import compute_eig
 from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, \
         sanity_check_stieltjes_branch, eval_P
 from ._edge import evolve_edges, merge_edges
 from ._cusp_wrap import cusp_wrap
 from ._decompressible import precheck_laurent
+from ._decompress_util import build_time_grid
+from ._decompress_coeffs import decompress_coeffs, plot_candidates
 
 # Decompress with Newton
-# from ._decompress import build_time_grid, decompress_newton
-from ._decompress_util import build_time_grid
+# from ._decompress import decompress_newton
 # from ._decompress4 import decompress_newton # WORKS (mass issue)
-# from ._decompress5 import build_time_grid, decompress_newton
-# from ._decompress6 import build_time_grid, decompress_newton
-# from ._decompress4_2 import build_time_grid, decompress_newton
-# from ._decompress_new_2 import build_time_grid, decompress_newton
-# from ._decompress_new import build_time_grid, decompress_newton
+# from ._decompress5 import decompress_newton
+# from ._decompress6 import decompress_newton
+# from ._decompress4_2 import decompress_newton
+# from ._decompress_new_2 import decompress_newton
+# from ._decompress_new import decompress_newton
 # from ._decompress6 import decompress_newton
 # from ._decompress7 import decompress_newton
 # from ._decompress8 import decompress_newton
 from ._decompress9 import decompress_newton  # With Predictor/Corrector
-
-# Decompress with coefficients
-from ._decompress2 import decompress_coeffs, plot_candidates
 
 # Homotopy
 # from ._homotopy import StieltjesPoly
@@ -45,7 +42,8 @@ from ._decompress2 import decompress_coeffs, plot_candidates
 # from ._homotopy4 import StieltjesPoly
 from ._homotopy5 import StieltjesPoly
 
-from ._branch_points import estimate_branch_points
+from ._branch_points import estimate_branch_points, plot_branch_points
+from ._atoms import detect_atoms
 from ._support import estimate_support
 from .._support import supp as estimate_broad_supp
 from ._moments import Moments, AlgebraicStieltjesMoments
@@ -93,10 +91,6 @@ class AlgebraicForm(BaseForm):
           double precision floating point. This option is only available on
           Linux machines.
 
-        When using series acceleration methods (such as setting
-        ``continuation`` in :func:`fit` function to ``wynn-eps``), setting a
-        higher precision floating point arithmetics might improve conference.
-
     **kwargs : dict, optional
         Parameters for the :func:`supp` function can also be prescribed
         here when ``support=None``.
@@ -126,6 +120,9 @@ class AlgebraicForm(BaseForm):
 
     branch_points
         Compute global branch points and zeros of leading coefficient
+
+    atoms
+        Detect atom locations and weights of distribution
 
     density
         Evaluate spectral density
@@ -243,17 +240,9 @@ class AlgebraicForm(BaseForm):
     # fit
     # ===
 
-    def fit(self, deg_m, deg_z, reg=0.0,
-            r=[1.25, 6.0, 20.0],
-            n_r=[3, 2, 1],
-            n_samples=4096,
-            y_eps=2e-2,
-            x_pad=0.0,
-            triangular=None,
-            mu=None,
-            mu_reg=None,
-            normalize=False,
-            verbose=False):
+    def fit(self, deg_m, deg_z, reg=0.0, r=[1.25, 6.0, 20.0], n_r=[3, 2, 1],
+            n_samples=4096, y_eps=2e-2, x_pad=0.0, triangular='auto', mu=None,
+            mu_reg=None, normalize=True, verbose=False):
         """
         Fit an algebraic structure to the input data.
 
@@ -266,10 +255,18 @@ class AlgebraicForm(BaseForm):
         deg_z : int
             Degree :math:`\\mathrm{deg}_z(P)`
 
-        mu : array_like, default=None
-            If an array :math:`[\\mu_0, \\mu_1`, \\dots, \\mu_r]` is given,
-            it enforces the first :math:`r+1` moments. Note that :math:`\\mu_0`
-            should be :math:`1` to ensure unit mass. See also ``mu_reg``.
+        mu : array_like, default=``'auto'``
+            Constraint to fit polynomial coefficients based on moments:
+
+            * If an array :math:`[\\mu_0, \\mu_1`, \\dots, \\mu_r]` is given,
+              it enforces the first :math:`r+1` moments. Note that
+              :math:`\\mu_0`should be :math:`1` to ensure unit mass.
+            * If instead this option is set to ``'auto'``, and the input ``A``
+              is a matrix, it automatically uses the first two moments of the
+              eigenvalues of the input matrix as moment constraints.
+            * If `None`, no constraint is used.
+
+            See also ``mu_reg``.
 
         mu_reg: float, default=None
             If `None`, the constraints ``mu`` are applied as hard constraint.
@@ -284,12 +281,6 @@ class AlgebraicForm(BaseForm):
         fit.
         """
 
-        # Very important: reset cache whenever this function is called. This
-        # also empties all references holding a cache copy.
-        # self.cache.clear()
-
-        z_fits = []
-
         # Sampling around support, or broad_support. This is only needed to
         # ensure sampled points are not hitting the support itself is not used
         # in any computation. If support is not known, use broad support.
@@ -298,6 +289,8 @@ class AlgebraicForm(BaseForm):
         else:
             possible_supp = [self.broad_supp]
 
+        # Sampling points for fitting
+        z_fits = []
         for sup in possible_supp:
             a, b = sup
 
@@ -310,6 +303,16 @@ class AlgebraicForm(BaseForm):
         # Remove points too close to any cut
         z_fit = filter_z_away_from_cuts(z_fit, possible_supp, y_eps=y_eps,
                                         x_pad=x_pad)
+
+        # Automatically add mu constraints from eigenvalues
+        if mu == 'auto':
+            if self.eig is not None:
+                mu_0 = 1.0
+                mu_1 = numpy.mean(self.eig)
+                mu_2 = numpy.var(self.eig)
+                mu = [mu_0, mu_1, mu_2]
+            else:
+                mu = None
 
         # Fitting (w_inf = None means adaptive weight selection)
         m1_fit = self._stieltjes(z_fit)
@@ -438,24 +441,114 @@ class AlgebraicForm(BaseForm):
     # branch points
     # =============
 
-    def branch_points(self, tol=1e-15, real_tol=None):
+    def branch_points(self, tol=1e-15, real_tol=None, plot=False, latex=False,
+                      save=False):
         """
-        Compute global branch points and zeros of leading coefficient.
+        Compute global branch points.
+
+        Parameters
+        ----------
+
+        plot : bool, default=False
+            If `True`, the branch points together with spectral edges and atoms
+            will be plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        See Also
+        --------
+
+        atoms
         """
 
         if self.coeffs is None:
             raise RuntimeError('Call "fit" first.')
 
-        bp, leading_zeros, info = estimate_branch_points(
+        bp, info = estimate_branch_points(
             self.coeffs, tol=tol, real_tol=real_tol)
 
-        return bp, leading_zeros, info
+        if plot:
+            atoms_list = self.atoms()
+            est_supp, _ = self.support()
+            plot_branch_points(bp, atoms_list, est_supp, latex=latex,
+                               save=save)
+
+        return bp, info
+
+    # =====
+    # atoms
+    # =====
+
+    def atoms(self, eta=1e-6, tol=1e-12, real_tol=None, w_tol=1e-10,
+              merge_tol=1e-8):
+        """
+        Detect atom locations and weights of distribution
+
+        This routine uses the necessary condition for a finite pole: a_s(z0)=0,
+        where a_s(z) is the leading coefficient of P in powers of m. Candidate
+        atom locations are the (nearly) real roots of a_s(z). The atom weight
+        is estimated numerically from the Stieltjes transform as
+
+            w ~= eta * Im(m(z0 + i*eta)),
+
+        which follows from m(z) ~ -w/(z - z0) near an atom at z0.
+
+        Parameters
+        ----------
+
+        eta : float, default=1e-6
+            Small imaginary part used to probe the pole strength.
+
+        tol : float, default=1e-12
+            Tolerance for trimming polynomial coefficients.
+
+        real_tol : float or None, default=None
+            Tolerance for treating a complex root as real. If None, uses
+            ``1e3*tol``.
+
+        w_tol : float, default=1e-10
+            Minimum atom weight to report.
+
+        merge_tol : float, default=1e-8
+            Merge roots whose real parts differ by at most this tolerance.
+
+        Returns
+        -------
+        atoms : list of (float, float)
+            List of ``(atom_loc, atom_w)``. Locations are real numbers and
+            weights are nonnegative.
+
+        See Also
+        --------
+
+        branch_points
+
+        Notes
+        -----
+        """
+
+        if self.coeffs is None:
+            raise RuntimeError('Call "fit" first.')
+
+        atoms_list = detect_atoms(self.coeffs, self._stieltjes, eta=eta,
+                                  tol=tol, real_tol=real_tol, w_tol=w_tol,
+                                  merge_tol=merge_tol)
+
+        return atoms_list
 
     # =======
     # density
     # =======
 
-    def density(self, x=None, plot=False, latex=False, save=False):
+    def density(self, x=None, eta=2e-4, ac_only=False, plot=False, latex=False,
+                save=False):
         """
         Evaluate spectral density.
 
@@ -465,6 +558,13 @@ class AlgebraicForm(BaseForm):
         x : numpy.array, default=None
             Positions where density to be evaluated at. If `None`, an interval
             slightly larger than the support interval will be used.
+
+        eta : float, default=2e-4
+            A small number to be used for approximating the local behavior of
+            atom with a mollifier of scale ``eta``.
+
+        ac_only : bool, default=True
+            If `True`, it returns the absolutely-continuous part of density.
 
         plot : bool, default=False
             If `True`, density is plotted.
@@ -509,9 +609,24 @@ class AlgebraicForm(BaseForm):
         z = x.astype(complex) + 1j * self.delta
         rho = self._stieltjes(z).imag / numpy.pi
 
+        rho_ac = rho
+        atoms_list = self.atoms()
+        if len(atoms_list) > 0:
+            for atom_loc, atom_w in atoms_list:
+
+                # Mollifier to approximate atom function
+                atom_func = (atom_w * eta / (numpy.pi)) / \
+                    ((x - atom_loc)**2 + eta**2)
+                rho_ac = rho_ac - atom_func
+            rho_ac = numpy.maximum(rho_ac, 0.0)
+
+            if (ac_only is True):
+                rho = rho_ac
+
         if plot:
-            plot_density(x, rho, eig=self.eig, support=self.broad_supp,
-                         label='Estimate', latex=latex, save=save)
+            plot_density(x, rho_ac, eig=self.eig, atoms=atoms_list,
+                         support=self.broad_supp, label='Estimate',
+                         latex=latex, save=save)
 
         return rho
 
@@ -667,14 +782,87 @@ class AlgebraicForm(BaseForm):
     # decompress
     # ==========
 
-    def decompress(self, size, x=None, method='one', plot=False, latex=False,
-                   save=False, verbose=False, min_n_times=10,
+    def decompress(self, size, x=None, method='moc', min_n_times=10,
                    newton_opt={'max_iter': 50, 'tol': 1e-12, 'armijo': 1e-4,
                                'min_lam': 1e-6, 'w_min': 1e-14,
-                               'sweep': True}):
+                               'sweep': True},
+                   plot=False, latex=False, save=False, verbose=False):
         """
         Free decompression of spectral density.
+
+        Parameters
+        ----------
+
+        size : int or array_like
+            Size(s) of the decompressed matrix. This can be a scalar or an
+            array of sizes. For each matrix size in ``size`` array, a density
+            is produced.
+
+        x : numpy.array, default=None
+            Positions where density to be evaluated at. If `None`, an interval
+            slightly larger than the support interval will be used.
+
+        method : {``'moc'``, ``'coeffs'`}, default=``'moc'``
+            Method of decompression:
+
+            * ``'moc'``: Method of characteristics with Newton iterations.
+            * ``'coeffs'``: Evolving polynomial coefficients directly.
+
+        min_n_times : int, default=10
+            Minimum number of inner sizes to evolve.
+
+        newton_opt : dict
+            A dictionary of settings to pass to Newton iteration solver.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        verbose : bool, default=False
+            If `True`, it prints verbose be bugging information.
+
+        Returns
+        -------
+
+        rho : numpy.array or numpy.ndarray
+            Estimated spectral density at locations x. ``rho`` can be a 1D or
+            2D array output:
+
+            * If ``size`` is a scalar, ``rho`` is a 1D array of the same size
+              as ``x``.
+            * If ``size`` is an array of size `n`, ``rho`` is a 2D array with
+              `n` rows, where each row corresponds to decompression to a size.
+              Number of columns of ``rho`` is the same as the size of ``x``.
+
+        x : numpy.array
+            Locations where the spectral density is estimated
+
+        See Also
+        --------
+
+        density
+        stieltjes
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> from freealg import AlgebraicForm
+
         """
+
+        # Create x if not given
+        if x is None:
+            x = self._generate_grid(1.25)
 
         # Check size argument
         if numpy.isscalar(size):
@@ -707,7 +895,7 @@ class AlgebraicForm(BaseForm):
         else:
             x = numpy.asarray(x)
 
-        if method == 'one':
+        if method == 'moc':
 
             # Query grid on the real axis + a small imaginary buffer
             z_query = x + 1j * self.delta
@@ -733,7 +921,7 @@ class AlgebraicForm(BaseForm):
             if verbose:
                 print("success rate per t:", ok.mean(axis=1))
 
-        elif method == 'two':
+        elif method == 'coeffs':
 
             # Preallocate density to zero
             rho = numpy.zeros((alpha.size, x.size), dtype=float)
@@ -955,18 +1143,18 @@ class AlgebraicForm(BaseForm):
         if ratio < 1:
             raise ValueError('"ratio" cannot be smaller than 1.')
 
-        tau = numpy.linspace(0.0, ratio, n_ratios)
+        tau = numpy.linspace(1.0, ratio, n_ratios)
         ok = numpy.zeros_like(tau, dtype=bool)
-        res = [] * tau.size
+        res = [None] * tau.size
 
         for i in range(tau.size):
-            ok[i], res[i] = precheck_laurent(self.coeffs, tau[i], K=K, L=L,
-                                             tol=tol, verbose=verbose)
+            ok[i], res[i] = precheck_laurent(self.coeffs, tau[i], K_list=K,
+                                             L=L, tol=tol, verbose=verbose)
 
             if verbose:
                 print("")
 
-        status = numpy.any(numpy.logical_not(ok))
+        status = bool(numpy.all(ok))
 
         info = {
             'ratios': tau,

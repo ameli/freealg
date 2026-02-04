@@ -12,7 +12,9 @@
 # =======
 
 import numpy
+from ..visualization._plot_util import plot_density
 from .._algebraic_form._sheets_util import _pick_physical_root_scalar
+from ._base_distribution import BaseDistribution
 
 __all__ = ['FussCatalan']
 
@@ -21,7 +23,7 @@ __all__ = ['FussCatalan']
 # Fuss-Catalan
 # ============
 
-class FussCatalan(object):
+class FussCatalan(BaseDistribution):
     """
     Fuss-Catalan (a.k.a. free Bessel / Raney) distribution.
 
@@ -35,6 +37,30 @@ class FussCatalan(object):
     p : int, default=2
         Order of the Fuss-Catalan distribution. :math:`p = 1` is MP
         (:math:`c=1`).
+
+    Methods
+    -------
+
+    density
+        Spectral density of distribution.
+
+    roots
+        Roots of polynomial implicitly representing Stieltjes transform
+
+    stieltjes
+        Stieltjes transform
+
+    support
+        Support intervals of distribution
+
+    sample
+        Sample from distribution.
+
+    matrix
+        Generate matrix with its empirical spectral density of distribution
+
+    poly
+        Polynomial coefficients implicitly representing the Stieltjes
 
     Notes
     -----
@@ -65,7 +91,7 @@ class FussCatalan(object):
 
     **Application:**
 
-    This law might be applicable to the Jacobian of neural netowkrs.
+    This law might be applicable to the Jacobian of neural networks.
     """
 
     # ====
@@ -83,6 +109,9 @@ class FussCatalan(object):
             raise ValueError("p must be an integer >= 1.")
 
         self.p = p
+
+        self.lam_lb = 0.0
+        self.lam_up = float(((p + 1.0)**(p + 1.0)) / (p**p))
 
     # ============
     # roots scalar
@@ -111,6 +140,8 @@ class FussCatalan(object):
 
     def stieltjes(self, z, max_iter=100, tol=1e-12):
         """
+        Stieltjes transform
+
         Compute the physical Stieltjes transform m(z) by Newton, with robust
         fallback to algebraic roots + physical picking.
         """
@@ -168,16 +199,74 @@ class FussCatalan(object):
     # density
     # =======
 
-    def density(self, x, eta=2e-4):
+    def density(self, x=None, eta=2e-4, plot=False, latex=False, save=False,
+                eig=None):
         """
-        Density rho(x) from Im m(x + i eta) / pi.
+        Density of distribution.
+
+        Parameters
+        ----------
+
+        x : numpy.array, default=None
+            The locations where density is evaluated at. If `None`, an interval
+            slightly larger than the supp interval of the spectral density
+            is used.
+
+        rho : numpy.array, default=None
+            Density. If `None`, it will be computed.
+
+        eta : float, default=2e-4
+            The offset :math:`\\eta` from the real axis where the density
+            is evaluated using Plemelj formula at :math:`z = x + i \\eta`.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        eig : numpy.array, default=None
+            A collection of eigenvalues to compare to via histogram. This
+            option is relevant only if ``plot=True``.
+
+        Returns
+        -------
+
+        rho : numpy.array
+            Density.
         """
 
-        x = numpy.asarray(x, dtype=numpy.float64)
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (self.lam_ub - self.lam_lb)
+            center = 0.5 * (self.lam_ub + self.lam_lb)
+            scale = 1.25
+            x_min = numpy.floor(center - radius * scale)
+            x_max = numpy.ceil(center + radius * scale)
+            x = numpy.linspace(x_min, x_max, 500)
+        else:
+            x = numpy.asarray(x, dtype=numpy.float64)
+
         z = x + 1j * float(eta)
         m = self.stieltjes(z)
         rho = numpy.imag(m) / numpy.pi
-        return numpy.maximum(rho, 0.0)
+        rho = numpy.maximum(rho, 0.0)
+
+        if plot:
+            if eig is not None:
+                label = 'Theoretical'
+            else:
+                label = ''
+            plot_density(x, rho, atoms=None, label=label, latex=latex,
+                         save=save, eig=eig)
+
+        return rho
 
     # =====
     # roots
@@ -203,8 +292,8 @@ class FussCatalan(object):
         """
 
         p = float(self.p)
-        x_max = ((p + 1.0)**(p + 1.0)) / (p**p)
-        return [(0.0, float(x_max))]
+        x_max = float(((p + 1.0)**(p + 1.0)) / (p**p))
+        return [(0.0, x_max)]
 
     # ======
     # matrix

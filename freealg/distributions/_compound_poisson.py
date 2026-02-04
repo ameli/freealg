@@ -384,10 +384,7 @@ class CompoundPoisson(BaseDistribution):
             rho = numpy.maximum(rho, 0.0)
 
         if plot:
-            if eig is not None:
-                label = 'Theoretical'
-            else:
-                label = ''
+            label = 'Absolutely-Continuous'
             plot_density(x, rho, atoms=atoms, label=label, latex=latex,
                          save=save, eig=eig)
 

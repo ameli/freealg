@@ -139,13 +139,15 @@ def _newton_corrector(z_fixed, tau, coeffs, zeta0, y0,
             zeta_try = zeta + lam * dzeta
             y_try = y + lam * dy
 
-            P_try, _, _ = _eval_P_dP(numpy.array([zeta_try]), numpy.array([y_try]), coeffs)
+            P_try, _, _ = _eval_P_dP(numpy.array([zeta_try]),
+                                     numpy.array([y_try]), coeffs)
             F1_try = P_try[0]
             F2_try = zeta_try - (tau - 1.0) / (y_try + eps_y) - z_fixed
             norm_try = max(abs(F1_try), abs(F2_try))
 
             # Armijo-like sufficient decrease
-            if norm_try <= (1.0 - float(armijo) * lam) * norm0 or norm_try < norm0:
+            if norm_try <= (1.0 - float(armijo) * lam) * \
+                    norm0 or norm_try < norm0:
                 zeta = zeta_try
                 y = y_try
                 break
@@ -202,13 +204,9 @@ def _predictor_step(z_fixed, tau0, tau1, coeffs, zeta0, y0):
 # decompress newton
 # =================
 
-def decompress_newton(z_query, t, coeffs, w0_list=None,
-                     max_iter=50, tol=1e-12,
-                     armijo=1e-4, min_lam=1e-6,
-                     w_min=1e-14,
-                     sweep=True,
-                     max_substeps=8,
-                     **kwargs):
+def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50, tol=1e-12,
+                      armijo=1e-4, min_lam=1e-6, w_min=1e-14, sweep=True,
+                      max_substeps=8, **kwargs):
     """
     Free decompression via characteristic continuation on the algebraic curve
     P(z,m)=0 using predictor-corrector in tau = exp(t).
@@ -240,6 +238,7 @@ def decompress_newton(z_query, t, coeffs, w0_list=None,
     ok : ndarray (n_t, n_z), bool
         Per-point success flag.
     """
+
     z_query = numpy.asarray(z_query, dtype=complex).ravel()
     t = numpy.asarray(t, dtype=float).ravel()
 
@@ -326,7 +325,8 @@ def decompress_newton(z_query, t, coeffs, w0_list=None,
                     max_iter=max_iter, tol=tol, armijo=armijo, min_lam=min_lam
                 )
 
-                if ok1 and numpy.isfinite(zeta_corr) and numpy.isfinite(y_corr):
+                if ok1 and numpy.isfinite(zeta_corr) and \
+                        numpy.isfinite(y_corr):
                     # Accept this segment; if it ends at tau_next, done
                     if b_tau == tau_next:
                         success = True
@@ -335,7 +335,8 @@ def decompress_newton(z_query, t, coeffs, w0_list=None,
                         break
                     else:
                         # Continue from this intermediate point to tau_next
-                        intervals.append((b_tau, tau_next, zeta_corr, y_corr, depth))
+                        intervals.append(
+                            (b_tau, tau_next, zeta_corr, y_corr, depth))
                         continue
 
                 # If failed and we can subdivide further, split interval

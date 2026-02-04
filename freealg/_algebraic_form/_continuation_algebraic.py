@@ -35,7 +35,7 @@ def _normalize_coefficients(arr):
     if a.size == 0:
         return a
 
-    # --- Trim zero rows (top and bottom) ---
+    # Trim zero rows (top and bottom)
     non_zero_rows = numpy.any(a != 0, axis=1)
     if not numpy.any(non_zero_rows):
         return a[:0, :0]
@@ -44,7 +44,7 @@ def _normalize_coefficients(arr):
     last_row = len(non_zero_rows) - numpy.argmax(non_zero_rows[::-1])
     a = a[first_row:last_row, :]
 
-    # --- Trim zero columns (left and right) ---
+    # Trim zero columns (left and right)
     non_zero_cols = numpy.any(a != 0, axis=0)
     if not numpy.any(non_zero_cols):
         return a[:, :0]
@@ -53,8 +53,8 @@ def _normalize_coefficients(arr):
     last_col = len(non_zero_cols) - numpy.argmax(non_zero_cols[::-1])
     a = a[:, first_col:last_col]
 
-    # --- Normalize so first column sums to 1 ---
-    col_sum = numpy.sum(numpy.abs(a[:, 0]))
+    # Normalize so first column sums to 1
+    col_sum = numpy.sum(numpy.abs(a[:, 0])) * float(numpy.sign(a[0, 0]))
     if col_sum != 0:
         a = a / col_sum
 

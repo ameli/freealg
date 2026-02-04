@@ -8,7 +8,7 @@ from scipy.special import comb
 import texplot
 from ._continuation_algebraic import _normalize_coefficients
 
-__all__ = ['decompress_coeffs']
+__all__ = ['decompress_coeffs', 'plot_candidates']
 
 
 # =================
@@ -90,6 +90,10 @@ def decompress_coeffs(a, t, normalize=True):
     return a_out
 
 
+# ===============
+# plot candidates
+# ===============
+
 def plot_candidates(a, x, delta=1e-4, size=None, latex=False, verbose=False):
     """
     Visualize candidate densities implied by an algebraic Stieltjes-transform
@@ -134,7 +138,7 @@ def plot_candidates(a, x, delta=1e-4, size=None, latex=False, verbose=False):
 
     a = numpy.asarray(a)
     if a.ndim != 2:
-        raise ValueError("a must be a 2D NumPy array with a[i, j] coefficients.")
+        raise ValueError("a must be a 2D NumPy array with a[i, j] coeffs.")
     if not numpy.issubdtype(a.dtype, numpy.number):
         raise ValueError("a must be numeric.")
 
@@ -191,14 +195,15 @@ def plot_candidates(a, x, delta=1e-4, size=None, latex=False, verbose=False):
 
     with texplot.theme(use_latex=latex):
         fig, ax = plt.subplots(figsize=(6, 2.7))
-        ax.scatter(xs, ys, s=8, alpha=1, linewidths=0, c='k')
+        ax.scatter(xs, ys, s=3, alpha=1, linewidths=0, c='k')
 
+        ax.set_xlim([x[0], x[-1]])
+        ax.set_ylim([0, 1.1 * numpy.quantile(ys, 0.99)])
         ax.set_xlabel(r'$\lambda$')
         ax.set_ylabel(r'$\rho(\lambda)$''')
         ax.set_title("Candidate Density Cloud")
         if size is not None:
             ax.set_title("Candidate Density Cloud (size = {})".format(size))
-        ax.grid(True, alpha=1)
         save_status = False
         save_filename = ''
         texplot.show_or_save_plot(plt, default_filename=save_filename,

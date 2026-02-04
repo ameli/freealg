@@ -271,7 +271,8 @@ def precheck_laurent(a, tau, K_list=(6, 8, 10), L=3, tol=1e-8, verbose=True):
     ok = ok and (alpha_std < 1e-3)   # or use alpha_span < 3e-3
 
     if verbose:
-        print(f"--- tau={tau} --- ok={ok} bestK={best['K']} "
+        print(f"tau={tau}: ok={ok} "
+              f"bestK={best['K']} "
               f"max_abs={best['max_abs']:.3e} "
               f"alpha={best['alpha']:.12g} worst_p={best['worst_p']}")
 

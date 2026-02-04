@@ -12,22 +12,11 @@
 # =======
 
 import numpy
+from ._poly_util import poly_trim
+import matplotlib.pyplot as plt
+import texplot
 
-__all__ = ['estimate_branch_points']
-
-
-# =========
-# poly trim
-# =========
-
-def _poly_trim(p, tol):
-    p = numpy.asarray(p, dtype=float)
-    if p.size == 0:
-        return p
-    k = p.size - 1
-    while k > 0 and abs(p[k]) <= tol:
-        k -= 1
-    return p[: k + 1]
+__all__ = ['estimate_branch_points', 'plot_branch_points']
 
 
 # ========
@@ -41,7 +30,7 @@ def _poly_add(a, b, tol):
     out[: len(a)] += a
     out[: len(b)] += b
 
-    return _poly_trim(out, tol)
+    return poly_trim(out, tol)
 
 
 # ========
@@ -55,7 +44,7 @@ def _poly_sub(a, b, tol):
     out[: len(a)] += a
     out[: len(b)] -= b
 
-    return _poly_trim(out, tol)
+    return poly_trim(out, tol)
 
 
 # ========
@@ -64,12 +53,12 @@ def _poly_sub(a, b, tol):
 
 def _poly_mul(a, b, tol):
 
-    a = _poly_trim(a, tol)
-    b = _poly_trim(b, tol)
+    a = poly_trim(a, tol)
+    b = poly_trim(b, tol)
     if a.size == 0 or b.size == 0:
         return numpy.zeros(1, dtype=float)
     out = numpy.convolve(a, b)
-    return _poly_trim(out, tol)
+    return poly_trim(out, tol)
 
 
 # ===============
@@ -83,8 +72,8 @@ def _poly_div_approx(a, b, tol):
     small-ish.
     """
 
-    a = _poly_trim(a, tol)
-    b = _poly_trim(b, tol)
+    a = poly_trim(a, tol)
+    b = poly_trim(b, tol)
     if b.size == 0 or (b.size == 1 and abs(b[0]) <= tol):
         raise RuntimeError(
             "division by (near) zero polynomial in branch point resultant")
@@ -96,9 +85,9 @@ def _poly_div_approx(a, b, tol):
     # If not small, we still proceed with the quotient (robustness over
     # exactness).
     scale = max(1.0, numpy.linalg.norm(a))
-    if numpy.linalg.norm(_poly_trim(r, tol)) > 1e6 * tol * scale:
+    if numpy.linalg.norm(poly_trim(r, tol)) > 1e6 * tol * scale:
         pass
-    return _poly_trim(q, tol)
+    return poly_trim(q, tol)
 
 
 # =================
@@ -113,7 +102,7 @@ def _det_bareiss_poly(M, tol):
     """
 
     n = len(M)
-    A = [[_poly_trim(M[i][j], tol) for j in range(n)] for i in range(n)]
+    A = [[poly_trim(M[i][j], tol) for j in range(n)] for i in range(n)]
     denom = numpy.array([1.0], dtype=float)
 
     for k in range(n - 1):
@@ -139,7 +128,7 @@ def _det_bareiss_poly(M, tol):
                 if k > 0:
                     A[i][j] = _poly_div_approx(num, denom, tol)
                 else:
-                    A[i][j] = _poly_trim(num, tol)
+                    A[i][j] = poly_trim(num, tol)
 
         denom = pivot
 
@@ -147,7 +136,7 @@ def _det_bareiss_poly(M, tol):
             A[i][k] = numpy.array([0.0], dtype=float)
             A[k][i] = numpy.array([0.0], dtype=float)
 
-    return _poly_trim(A[n - 1][n - 1], tol)
+    return poly_trim(A[n - 1][n - 1], tol)
 
 
 # ======================
@@ -223,7 +212,7 @@ def _resultant_discriminant(coeffs, tol):
     c, _, _, _ = numpy.linalg.lstsq(V, d_samp, rcond=None)
 
     # Trim tiny coefficients
-    c = _poly_trim(c, tol)
+    c = poly_trim(c, tol)
     if c.size == 0:
         c = numpy.zeros(1, dtype=numpy.complex128)
 
@@ -248,7 +237,6 @@ def estimate_branch_points(coeffs, tol=1e-12, real_tol=None):
     Returns
     -------
     z_bp : complex ndarray
-    a_s_zero : complex ndarray
     info : dict
     """
 
@@ -269,10 +257,6 @@ def estimate_branch_points(coeffs, tol=1e-12, real_tol=None):
     if real_tol is None:
         real_tol = 1e3 * tol
 
-    a_s = _poly_trim(coeffs[:, s], tol)
-    a_s_zero = numpy.roots(a_s[::-1]) if a_s.size > 1 else \
-        numpy.array([], dtype=complex)
-
     disc = _resultant_discriminant(coeffs, tol)
     if disc.size <= 1:
         z_bp = numpy.array([], dtype=complex)
@@ -285,4 +269,61 @@ def estimate_branch_points(coeffs, tol=1e-12, real_tol=None):
         "real_tol": float(real_tol),
     }
 
-    return z_bp, a_s_zero, info
+    return z_bp, info
+
+
+# ==================
+# plot branch points
+# ==================
+
+def plot_branch_points(bp, atoms, support, latex=False, save=False):
+    """
+    Plots branch points, atom locations, and spectral edges.
+    """
+
+    # Branch points
+    bp = numpy.array(bp, dtype=numpy.complex128)
+
+    # Atom locations
+    atoms_loc = [loc for loc, weight in atoms]
+    atoms_loc = numpy.array(atoms_loc, dtype=numpy.complex128)
+
+    # Spectral edges
+    sp_edges = [v for ab in support for v in ab]
+    sp_edges = numpy.array(sp_edges, dtype=numpy.complex128)
+
+    with texplot.theme(use_latex=latex):
+
+        fig, ax = plt.subplots(figsize=(5.5, 3.3))
+
+        ax.plot(bp.real, bp.imag, 'o', color='black', markersize=6,
+                markeredgewidth=1, markerfacecolor='none',
+                label='Branch points')
+
+        ax.plot(sp_edges.real, sp_edges.imag, 'o', color='black', markersize=6,
+                label='Spectral Edges')
+
+        ax.plot(atoms_loc.real, atoms_loc.imag, 'x', color='black',
+                markersize=6, label='Atoms')
+
+        ax.axhline(0, color='gray', linewidth=0.5)
+
+        ax.set_xlabel(r'$\mathrm{Re}(z)$')
+        ax.set_ylabel(r'$\mathrm{Im}(z)$')
+        ax.set_title('Spectral Curve Features')
+        ax.legend(fontsize='small')
+
+    # Save
+    if save is False:
+        save_status = False
+        save_filename = ''
+    else:
+        save_status = True
+        if isinstance(save, str):
+            save_filename = save
+        else:
+            save_filename = 'branch_points.pdf'
+
+    texplot.show_or_save_plot(plt, default_filename=save_filename,
+                              transparent_background=True, dpi=400,
+                              show_and_save=save_status, verbose=True)
