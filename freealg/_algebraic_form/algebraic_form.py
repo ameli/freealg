@@ -255,12 +255,12 @@ class AlgebraicForm(BaseForm):
         deg_z : int
             Degree :math:`\\mathrm{deg}_z(P)`
 
-        mu : array_like, default=``'auto'``
+        mu : array_like, default= ``'auto'``
             Constraint to fit polynomial coefficients based on moments:
 
             * If an array :math:`[\\mu_0, \\mu_1`, \\dots, \\mu_r]` is given,
               it enforces the first :math:`r+1` moments. Note that
-              :math:`\\mu_0`should be :math:`1` to ensure unit mass.
+              :math:`\\mu_0 = 1` to ensure unit mass.
             * If instead this option is set to ``'auto'``, and the input ``A``
               is a matrix, it automatically uses the first two moments of the
               eigenvalues of the input matrix as moment constraints.
@@ -802,7 +802,7 @@ class AlgebraicForm(BaseForm):
             Positions where density to be evaluated at. If `None`, an interval
             slightly larger than the support interval will be used.
 
-        method : {``'moc'``, ``'coeffs'`}, default=``'moc'``
+        method : {``'moc'``, ``'coeffs'`}, default= ``'moc'``
             Method of decompression:
 
             * ``'moc'``: Method of characteristics with Newton iterations.

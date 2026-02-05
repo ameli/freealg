@@ -4,6 +4,8 @@
 
 import numpy
 
+__all__ ['Moments']
+
 
 # =======
 # Moments

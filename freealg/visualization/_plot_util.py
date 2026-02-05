@@ -78,6 +78,87 @@ def _auto_bins(array, method='scott', factor=5):
     return num_bins * factor
 
 
+# ========
+# hist ash
+# ========
+
+def hist_ash(eig, bins, m=8, hist_range=None, density=True):
+    """
+    Averaged shifted histogram (ASH) from raw samples.
+
+    Parameters
+    ----------
+
+    eig : array_like
+        1D samples (e.g. eigenvalues).
+
+    bins : int or array_like
+        Base histogram bins. If int, uses numpy.histogram_bin_edges(eig, bins,
+        range=hist_range). If array_like, treated as base bin edges (uniform).
+
+    m : int, default=8
+        Number of shifts (smoothing strength). Typical: 8, 16.
+
+    hist_range : tuple(float, float) or None
+        Range used only when bins is int.
+
+    density : bool, default=True
+        If True, returns density. If False, returns counts.
+
+    Returns
+    -------
+
+    edges : numpy.ndarray
+        Base bin edges, length K+1.
+
+    values : numpy.ndarray
+        ASH density (or counts) per base bin, length K.
+    """
+
+    x = numpy.asarray(eig, dtype=float).ravel()
+    x = x[numpy.isfinite(x)]
+    if x.size == 0:
+        raise ValueError("hist_ash: empty or non-finite input.")
+
+    if isinstance(bins, (int, numpy.integer)):
+        edges = numpy.histogram_bin_edges(x, bins=int(bins), range=hist_range)
+    else:
+        edges = numpy.asarray(bins, dtype=float).ravel()
+        if edges.ndim != 1 or edges.size < 2:
+            raise ValueError("hist_ash: bins must be int or 1D edges array.")
+
+    if m < 1:
+        raise ValueError("hist_ash: m must be >= 1.")
+
+    d = numpy.diff(edges)
+    h = float(d[0])
+    if not numpy.allclose(d, h, rtol=0.0, atol=1.0e-12 * max(1.0, abs(h))):
+        raise ValueError("hist_ash: base bin edges must be uniformly spaced.")
+
+    k = edges.size - 1
+    a = float(edges[0])
+    b = float(edges[-1])
+
+    fine_edges = numpy.linspace(a, b, k * m + 1)
+    fine_counts, _ = numpy.histogram(x, bins=fine_edges)
+
+    w = numpy.concatenate(
+        (numpy.arange(1, m + 1), numpy.arange(m - 1, 0, -1))).astype(float)
+    fine_pad = numpy.pad(fine_counts, (0, 2 * m - 2), mode="constant")
+
+    ash_counts = numpy.empty(k, dtype=float)
+    for i in range(k):
+        seg = fine_pad[i*m:i*m+(2*m-1)]
+        ash_counts[i] = (seg @ w) / float(m)
+
+    if density:
+        values = ash_counts / (x.size * h)
+    else:
+        values = ash_counts
+
+    return edges, values
+
+
 # =====================
 # Handler Line 2D Arrow
 # =====================
@@ -144,38 +225,45 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
         if eig is not None:
             if support is not None:
                 lam_m, lam_p = support
-
+            else:
                 lam_m, lam_p = min(eig), max(eig)
-            bins = numpy.linspace(lam_m, lam_p, _auto_bins(eig))
-            _ = ax.hist(eig, bins, density=True, color='silver',
-                        edgecolor='none', label='Histogram')
+
+            # bins = numpy.linspace(lam_m, lam_p, _auto_bins(eig))
+            # _ = ax.hist(eig, bins, density=True, color='silver',
+            #             edgecolor='none', label='Empirical Histogram')
+
+            nbins = _auto_bins(eig)
+            edges, vals = hist_ash(eig, bins=nbins, m=4,
+                                   hist_range=(lam_m, lam_p), density=True)
+            ax.stairs(vals, edges, fill=True, color='silver', alpha=1.0,
+                      label='Empirical Histogram')
         else:
             plt.fill_between(x, y1=rho, y2=0, color='silver', zorder=-1)
 
+        arrow_handle = None
         if (atoms is not None) and (len(atoms) > 0):
             ax2 = ax.twinx()
             ax2.set_ylim([0, 1])
             ax2.set_ylabel(r'Atom weight $w$')
 
             for atom_loc, atom_w in atoms:
-                ax2.annotate('', xy=(atom_loc, atom_w), xytext=(atom_loc, 0.0),
-                             zorder=10, annotation_clip=False,
-                             arrowprops={
-                                'arrowstyle': '-|>',
-                                'linewidth': 1.4,
-                                'color': 'black',
-                                'shrinkA': 0.0,
-                                'shrinkB': 0.0,
-                                'mutation_scale': 9})
 
-                arrow_handle = Line2D([0, 1], [0, 0], color='black', lw=1.4,
-                                      # linestyle='None',
-                                      marker='>',
-                                      markevery=[1],
-                                      markersize=4)
+                # Plot atom only if within x range (xlim)
+                if (atom_loc >= x[0]) and (atom_loc <= x[-1]):
+                    ax2.annotate('', xy=(atom_loc, atom_w),
+                                 xytext=(atom_loc, 0.0), zorder=10,
+                                 annotation_clip=False,
+                                 arrowprops={
+                                    'arrowstyle': '-|>',
+                                    'linewidth': 1.4,
+                                    'color': 'black',
+                                    'shrinkA': 0.0,
+                                    'shrinkB': 0.0,
+                                    'mutation_scale': 9})
 
-                arrow_handle = Line2D([], [], color='black', lw=1.4,
-                                      marker='>', markersize=4)
+                    arrow_handle = Line2D([0, 0.96], [0, 0], color='black',
+                                          lw=1.4, marker='>', markevery=[1],
+                                          markersize=4)
 
         ax.set_xlabel(r'$\lambda$')
         ax.set_ylabel(r'$\rho(\lambda)$''')
@@ -184,7 +272,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
         if label != '':
             h, ell = ax.get_legend_handles_labels()
 
-            if (atoms is not None) and (len(atoms) > 0):
+            if arrow_handle is not None:
                 insert_at = 1 if len(h) >= 1 else 0
                 h = h[:insert_at] + [arrow_handle] + h[insert_at:]
                 ell = ell[:insert_at] + ['Atom weight'] + ell[insert_at:]
@@ -192,7 +280,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
                 ax.legend(h, ell, loc='best', fontsize='small',
                           handler_map={arrow_handle: HandlerLine2DArrow()})
             else:
-                ax.legend(h, ell, loc='best', fontsize='small')
+                ax.legend(h, ell, loc='best', fontsize='x-small')
 
         # Save
         if save is False:

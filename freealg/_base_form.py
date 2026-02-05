@@ -25,7 +25,7 @@ __all__ = ['BaseForm']
 class BaseForm(object):
     """
     Base for other "Form" classes. This class itself not a part of API, but the
-    inheritted member methods are exposed to the API.
+    inherited member methods are exposed to the API.
     """
 
     # ====
