@@ -1,0 +1,6 @@
+﻿freealg.visualization.auto\_bins
+================================
+
+.. currentmodule:: freealg.visualization
+
+.. autofunction:: auto_bins

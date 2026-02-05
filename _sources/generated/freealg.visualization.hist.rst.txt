@@ -1,0 +1,6 @@
+﻿freealg.visualization.hist
+==========================
+
+.. currentmodule:: freealg.visualization
+
+.. autofunction:: hist

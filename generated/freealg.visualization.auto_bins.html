@@ -7,16 +7,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<meta property="og:title" content="freealg.kde" />
+<meta property="og:title" content="freealg.visualization.auto_bins" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://ameli.github.io/generated/freealg.kde.html" />
+<meta property="og:url" content="https://ameli.github.io/generated/freealg.visualization.auto_bins.html" />
 <meta property="og:site_name" content="FreeAlg" />
 <meta property="og:image" content="https://raw.githubusercontent.com/ameli/freealg/main/docs/source/_static/images/icons/logo-freealg-light.svg" />
 <meta property="og:image:alt" content="FreeAlg" />
 <meta property="og:title" content="freealg">
 <meta property="og:description" content="FreeAlg is a python package for applying free probability on large matrices.">
 
-    <title>freealg.kde &#8212; freealg Manual</title>
+    <title>freealg.visualization.auto_bins &#8212; freealg Manual</title>
 <script>
   document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
   document.documentElement.dataset.theme = localStorage.getItem("theme") || "light"
@@ -56,15 +56,12 @@
     <script src="../_static/js/custom-pydata.js"></script>
     <script src="../_static/design-tabs.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>window.MathJax = {"tex2jax": {"inlineMath": [["\\(", "\\)"]], "displayMath": [["\\[", "\\]"]]}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/custom-pydata.css"></script>
-    <link rel="canonical" href="https://ameli.github.io/freealg/generated/freealg.kde.html" />
+    <link rel="canonical" href="https://ameli.github.io/freealg/generated/freealg.visualization.auto_bins.html" />
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="freealg.distributions.MarchenkoPastur" href="freealg.distributions.MarchenkoPastur.html" />
-    <link rel="prev" title="freealg.submatrix" href="freealg.submatrix.html" />
+    <link rel="prev" title="freealg.visualization.hist" href="freealg.visualization.hist.html" />
 
     <!-- Robots -->
 	<meta name="robots" content="index,follow">
@@ -248,7 +245,7 @@
   Distribution Tools
  </span>
 </p>
-<ul class="current nav bd-sidenav">
+<ul class="nav bd-sidenav">
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.supp.html">
    freealg.supp
@@ -264,8 +261,8 @@
    freealg.submatrix
   </a>
  </li>
- <li class="toctree-l1 current active">
-  <a class="current reference internal" href="#">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.kde.html">
    freealg.kde
   </a>
  </li>
@@ -332,7 +329,7 @@
   Visualization
  </span>
 </p>
-<ul class="nav bd-sidenav">
+<ul class="current nav bd-sidenav">
  <li class="toctree-l1">
   <a class="reference internal" href="freealg.visualization.domain_coloring.html">
    freealg.visualization.domain_coloring
@@ -348,8 +345,8 @@
    freealg.visualization.hist
   </a>
  </li>
- <li class="toctree-l1">
-  <a class="reference internal" href="freealg.visualization.auto_bins.html">
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
    freealg.visualization.auto_bins
   </a>
  </li>
@@ -379,10 +376,10 @@
 <nav id="bd-toc-nav">
     <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#freealg.kde">
+  <a class="reference internal nav-link" href="#freealg.visualization.auto_bins">
    <code class="docutils literal notranslate">
     <span class="pre">
-     kde()
+     auto_bins()
     </span>
    </code>
   </a>
@@ -396,7 +393,7 @@
       
 
 <div class="tocsection editthispage">
-    <a href="https://github.com/ameli/freealg/edit/main/docs/source/generated/freealg.kde.rst">
+    <a href="https://github.com/ameli/freealg/edit/main/docs/source/generated/freealg.visualization.auto_bins.rst">
         <i class="fas fa-pencil-alt"></i> Edit this page
     </a>
 </div>
@@ -413,34 +410,26 @@
               
               <article class="bd-article" role="main">
                 
-  <section id="freealg-kde">
-<h1>freealg.kde<a class="headerlink" href="#freealg-kde" title="Permalink to this heading">#</a></h1>
+  <section id="freealg-visualization-auto-bins">
+<h1>freealg.visualization.auto_bins<a class="headerlink" href="#freealg-visualization-auto-bins" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="freealg.kde">
-<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">kde</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lam_m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lam_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'beta'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.kde" title="Permalink to this definition">#</a></dt>
-<dd><p>Kernel density estimation of eigenvalues.</p>
+<dt class="sig sig-object py" id="freealg.visualization.auto_bins">
+<span class="sig-prename descclassname"><span class="pre">freealg.visualization.</span></span><span class="sig-name descname"><span class="pre">auto_bins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'scott'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.visualization.auto_bins" title="Permalink to this definition">#</a></dt>
+<dd><p>Automatic choice for the number of bins for the histogram of an array.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl>
-<dt><strong>eig</strong><span class="classifier">numpy.array</span></dt><dd><p>1D array of samples of size <cite>n</cite>.</p>
+<dt><strong>array</strong><span class="classifier">numpy.array</span></dt><dd><p>An array for histogram.</p>
 </dd>
-<dt><strong>xs</strong><span class="classifier">numpy.array</span></dt><dd><p>1D array of evaluation grid (must lie within <code class="docutils literal notranslate"><span class="pre">[lam_m,</span> <span class="pre">lam_p]</span></code>)</p>
+<dt><strong>method</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'freedman'</span></code>, <code class="docutils literal notranslate"><span class="pre">'scott'</span></code>, <code class="docutils literal notranslate"><span class="pre">'sturges'</span></code>}, default= <code class="docutils literal notranslate"><span class="pre">'scott'</span></code></span></dt><dd><p>Method of choosing number of bins.</p>
 </dd>
-<dt><strong>lam_m</strong><span class="classifier">float</span></dt><dd><p>Lower end of the support endpoints  with <code class="docutils literal notranslate"><span class="pre">lam_m</span> <span class="pre">&lt;</span> <span class="pre">lam_p</span></code>.</p>
-</dd>
-<dt><strong>lam_p</strong><span class="classifier">float</span></dt><dd><p>Upper end of the support endpoints  with <code class="docutils literal notranslate"><span class="pre">lam_m</span> <span class="pre">&lt;</span> <span class="pre">lam_p</span></code>.</p>
-</dd>
-<dt><strong>h</strong><span class="classifier">float</span></dt><dd><p>Kernel bandwidth in rescaled units where <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;</span> <span class="pre">h</span> <span class="pre">&lt;</span> <span class="pre">1</span></code>.</p>
-</dd>
-<dt><strong>kernel</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'gaussian'</span></code>, <code class="docutils literal notranslate"><span class="pre">'beta'</span></code>}, default= <code class="docutils literal notranslate"><span class="pre">'beta'</span></code></span></dt><dd><p>Kernel function using either Gaussian or Beta distribution.</p>
-</dd>
-<dt><strong>plot</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, the KDE is plotted.</p>
+<dt><strong>factor</strong><span class="classifier">int, default=3</span></dt><dd><p>Multiply the number of bins buy a factor</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>pdf</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>Probability distribution function with the same length as <code class="docutils literal notranslate"><span class="pre">xs</span></code>.</p>
+<dt><strong>num_bins</strong><span class="classifier">int</span></dt><dd><p>Number of bins for histogram.</p>
 </dd>
 </dl>
 </dd>
@@ -448,35 +437,8 @@
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <dl class="simple">
-<dt><a class="reference internal" href="freealg.supp.html#freealg.supp" title="freealg.supp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.supp</span></code></a></dt><dd></dd>
-<dt><a class="reference internal" href="freealg.sample.html#freealg.sample" title="freealg.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.sample</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.visualization.hist.html#freealg.visualization.hist" title="freealg.visualization.hist"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.visualization.hist</span></code></a></dt><dd></dd>
 </dl>
-</div>
-<p class="rubric">Notes</p>
-<p>In Beta kernel density estimation, the shape parameters <span class="math notranslate nohighlight">\(a\)</span> and
-<span class="math notranslate nohighlight">\(b\)</span> of the <span class="math notranslate nohighlight">\(\mathrm{Beta}(a, b)\)</span> distribution are computed
-for each data point <span class="math notranslate nohighlight">\(u\)</span> as:</p>
-<div class="math notranslate nohighlight">
-\[a = (u / h) + 1.0
-b = ((1.0 - u) / h) + 1.0\]</div>
-<p>This is a standard way of using Beta kernel (see R-package documentation
-<a class="reference internal" href="#r45caa3963032-1" id="id1">[1]</a>). These equations are derived from <em>moment matching</em> method, where</p>
-<div class="math notranslate nohighlight">
-\[\mathrm{Mean}(\mathrm{Beta}(a,b)) = u
-\mathrm{Var}(\mathrm{Beta}(a,b)) = (1-u) u h\]</div>
-<p>Solving these two equations for <span class="math notranslate nohighlight">\(a\)</span> and <span class="math notranslate nohighlight">\(b\)</span> yields the
-relations above. See <a class="reference internal" href="#r45caa3963032-2" id="id2">[2]</a> (page 134).</p>
-<p class="rubric">References</p>
-<div role="list" class="citation-list">
-<div class="citation" id="r45caa3963032-1" role="doc-biblioentry">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
-<p><a class="reference external" href="https://search.r-project.org/CRAN/refmans/DELTD/html/Beta.html">R-package documentation for Beta kernel</a></p>
-</div>
-<div class="citation" id="r45caa3963032-2" role="doc-biblioentry">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
-<p>Chen, S. X. (1999). Beta Kernel estimators for density functions.
-<em>Computational Statistics and Data Analysis</em> 31 p. 131–145.</p>
-</div>
 </div>
 </dd></dl>
 
@@ -490,19 +452,12 @@ relations above. See <a class="reference internal" href="#r45caa3963032-2" id="i
               <footer class="bd-footer-article">
                   <!-- Previous / next buttons -->
 <div class='prev-next-area'>
-  <a class='left-prev' id="prev-link" href="freealg.submatrix.html" title="previous page">
+  <a class='left-prev' id="prev-link" href="freealg.visualization.hist.html" title="previous page">
       <i class="fas fa-angle-left"></i>
       <div class="prev-next-info">
           <p class="prev-next-subtitle">previous</p>
-          <p class="prev-next-title">freealg.submatrix</p>
+          <p class="prev-next-title">freealg.visualization.hist</p>
       </div>
-  </a>
-  <a class='right-next' id="next-link" href="freealg.distributions.MarchenkoPastur.html" title="next page">
-  <div class="prev-next-info">
-      <p class="prev-next-subtitle">next</p>
-      <p class="prev-next-title">freealg.distributions.MarchenkoPastur</p>
-  </div>
-  <i class="fas fa-angle-right"></i>
   </a>
 </div>
               </footer>
