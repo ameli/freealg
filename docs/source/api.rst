@@ -76,7 +76,7 @@ The following classes define classical random ensembles.
 Visualization
 -------------
 
-Function utilities for visualizing complex functions.
+Function utilities for visualizing of real and complex functions.
 
 .. autosummary::
     :toctree: generated
@@ -86,3 +86,5 @@ Function utilities for visualizing complex functions.
 
     freealg.visualization.domain_coloring
     freealg.visualization.glue_branches
+    freealg.visualization.hist
+    freealg.visualization.auto_bins

@@ -18,7 +18,7 @@ from scipy.stats import beta
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import texplot
-from ..visualization._plot_util import _auto_bins
+from ..visualization._hist_util import auto_bins
 
 # Fallback to previous API
 if not hasattr(numpy, 'trapezoid'):
@@ -160,7 +160,7 @@ def kde(eig, xs, lam_m, lam_p, h, kernel='beta', plot=False):
 
             x_min = numpy.min(xs)
             x_max = numpy.max(xs)
-            bins = numpy.linspace(x_min, x_max, _auto_bins(eig))
+            bins = numpy.linspace(x_min, x_max, auto_bins(eig))
             _ = ax.hist(eig, bins, density=True, color='silver',
                         edgecolor='none', label='Samples histogram')
             ax.plot(xs, pdf, color='black', label='KDE')

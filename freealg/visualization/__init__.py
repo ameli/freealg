@@ -8,5 +8,6 @@
 
 from ._domain_coloring import domain_coloring
 from ._glue_util import glue_branches
+from ._hist_util import auto_bins, hist
 
-__all__ = ['domain_coloring', 'glue_branches']
+__all__ = ['domain_coloring', 'glue_branches', 'auto_bins', 'hist']

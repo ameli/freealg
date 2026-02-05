@@ -19,144 +19,11 @@ import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.legend_handler import HandlerLine2D
-from ..visualization import domain_coloring
+from ._domain_coloring import domain_coloring
+from ._hist_util import auto_bins, hist
 
 __all__ = ['plot_density', 'plot_hilbert', 'plot_stieltjes',
            'plot_stieltjes_on_disk', 'plot_samples']
-
-
-# =========
-# auto bins
-# =========
-
-def _auto_bins(array, method='scott', factor=5):
-    """
-    Automatic choice for the number of bins for the histogram of an array.
-
-    Parameters
-    ----------
-
-    array : numpy.array
-        An array for histogram.
-
-    method : {``'freedman'``, ``'scott'``, ``'sturges'``}, default= ``'scott'``
-        Method of choosing number of bins.
-
-    Returns
-    -------
-
-    num_bins : int
-        Number of bins for histogram.
-    """
-
-    if method == 'freedman':
-
-        q75, q25 = numpy.percentile(array, [75, 25])
-        iqr = q75 - q25
-        bin_width = 2 * iqr / (len(array) ** (1/3))
-
-        if bin_width == 0:
-            # Fallback default
-            return
-            num_bins = 100
-        else:
-            num_bins = int(numpy.ceil((array.max() - array.min()) / bin_width))
-
-    elif method == 'scott':
-
-        std = numpy.std(array)
-        bin_width = 3.5 * std / (len(array) ** (1/3))
-        num_bins = int(numpy.ceil((array.max() - array.min()) / bin_width))
-
-    elif method == 'sturges':
-
-        num_bins = int(numpy.ceil(numpy.log2(len(array)) + 1))
-
-    else:
-        raise NotImplementedError('"method" is invalid.')
-
-    return num_bins * factor
-
-
-# ========
-# hist ash
-# ========
-
-def hist_ash(eig, bins, m=8, hist_range=None, density=True):
-    """
-    Averaged shifted histogram (ASH) from raw samples.
-
-    Parameters
-    ----------
-
-    eig : array_like
-        1D samples (e.g. eigenvalues).
-
-    bins : int or array_like
-        Base histogram bins. If int, uses numpy.histogram_bin_edges(eig, bins,
-        range=hist_range). If array_like, treated as base bin edges (uniform).
-
-    m : int, default=8
-        Number of shifts (smoothing strength). Typical: 8, 16.
-
-    hist_range : tuple(float, float) or None
-        Range used only when bins is int.
-
-    density : bool, default=True
-        If True, returns density. If False, returns counts.
-
-    Returns
-    -------
-
-    edges : numpy.ndarray
-        Base bin edges, length K+1.
-
-    values : numpy.ndarray
-        ASH density (or counts) per base bin, length K.
-    """
-
-    x = numpy.asarray(eig, dtype=float).ravel()
-    x = x[numpy.isfinite(x)]
-    if x.size == 0:
-        raise ValueError("hist_ash: empty or non-finite input.")
-
-    if isinstance(bins, (int, numpy.integer)):
-        edges = numpy.histogram_bin_edges(x, bins=int(bins), range=hist_range)
-    else:
-        edges = numpy.asarray(bins, dtype=float).ravel()
-        if edges.ndim != 1 or edges.size < 2:
-            raise ValueError("hist_ash: bins must be int or 1D edges array.")
-
-    if m < 1:
-        raise ValueError("hist_ash: m must be >= 1.")
-
-    d = numpy.diff(edges)
-    h = float(d[0])
-    if not numpy.allclose(d, h, rtol=0.0, atol=1.0e-12 * max(1.0, abs(h))):
-        raise ValueError("hist_ash: base bin edges must be uniformly spaced.")
-
-    k = edges.size - 1
-    a = float(edges[0])
-    b = float(edges[-1])
-
-    fine_edges = numpy.linspace(a, b, k * m + 1)
-    fine_counts, _ = numpy.histogram(x, bins=fine_edges)
-
-    w = numpy.concatenate(
-        (numpy.arange(1, m + 1), numpy.arange(m - 1, 0, -1))).astype(float)
-    fine_pad = numpy.pad(fine_counts, (0, 2 * m - 2), mode="constant")
-
-    ash_counts = numpy.empty(k, dtype=float)
-    for i in range(k):
-        seg = fine_pad[i*m:i*m+(2*m-1)]
-        ash_counts[i] = (seg @ w) / float(m)
-
-    if density:
-        values = ash_counts / (x.size * h)
-    else:
-        values = ash_counts
-
-    return edges, values
 
 
 # =====================
@@ -224,17 +91,28 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
         if eig is not None:
             if support is not None:
-                lam_m, lam_p = support
-            else:
-                lam_m, lam_p = min(eig), max(eig)
+                if len(support) == 2 and \
+                        not isinstance(support[0], (list, tuple)):
+                    support = [(float(support[0]), float(support[1]))]
+                else:
+                    support = [(float(a), float(b)) for a, b in support]
 
-            # bins = numpy.linspace(lam_m, lam_p, _auto_bins(eig))
+            #     lam_m, lam_p = support
+            # else:
+            #     lam_m, lam_p = min(eig), max(eig)
+
+            # bins = numpy.linspace(lam_m, lam_p, auto_bins(eig))
             # _ = ax.hist(eig, bins, density=True, color='silver',
             #             edgecolor='none', label='Empirical Histogram')
 
-            nbins = _auto_bins(eig)
-            edges, vals = hist_ash(eig, bins=nbins, m=4,
-                                   hist_range=(lam_m, lam_p), density=True)
+            nbins = auto_bins(eig, factor=2)
+            atom_locs = [loc for loc, _ in atoms]
+            edges, vals = hist(eig, nbins, m=8, density=True, support=support,
+                               atoms=atom_locs, edge_tol=1.0e-3,
+                               detect_bins=512, trim_q=0.01, smooth_w=7,
+                               merge_gap_bins=2, min_interval_bins=3,
+                               atom_exclude_sigma=3.0)
+
             ax.stairs(vals, edges, fill=True, color='silver', alpha=1.0,
                       label='Empirical Histogram')
         else:
@@ -627,7 +505,7 @@ def plot_samples(x, rho, x_min, x_max, samples, latex=False, save=False):
 
         fig, ax = plt.subplots(figsize=(6, 3))
 
-        bins = numpy.linspace(x_min, x_max, _auto_bins(samples))
+        bins = numpy.linspace(x_min, x_max, auto_bins(samples))
         _ = ax.hist(samples, bins, density=True, color='silver',
                     edgecolor='none', label='Samples histogram')
         ax.plot(x, rho, color='black', label='Exact density')

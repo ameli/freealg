@@ -1192,8 +1192,7 @@ class AlgebraicForm(BaseForm):
                 t_grid = numpy.array([0.0], dtype=float)
                 complex_edges, ok_edges = evolve_edges(
                     t_grid, self.coeffs, support=known_supp, eta=eta,
-                    dt_max=dt_max, max_iter=max_iter, tol=tol
-                )
+                    dt_max=dt_max, max_iter=max_iter, tol=tol)
             else:
                 # prepend 0 and drop it after evolution
                 t_grid = numpy.array([0.0, t1], dtype=float)
