@@ -503,11 +503,11 @@
 </dd>
 <dt><strong>deg_z</strong><span class="classifier">int</span></dt><dd><p>Degree <span class="math notranslate nohighlight">\(\mathrm{deg}_z(P)\)</span></p>
 </dd>
-<dt><strong>mu</strong><span class="classifier">array_like, default=``’auto’``</span></dt><dd><p>Constraint to fit polynomial coefficients based on moments:</p>
+<dt><strong>mu</strong><span class="classifier">array_like, default= <code class="docutils literal notranslate"><span class="pre">'auto'</span></code></span></dt><dd><p>Constraint to fit polynomial coefficients based on moments:</p>
 <ul class="simple">
 <li><p>If an array <span class="math notranslate nohighlight">\([\mu_0, \mu_1\)</span>, dots, mu_r]` is given,
 it enforces the first <span class="math notranslate nohighlight">\(r+1\)</span> moments. Note that
-<span class="math notranslate nohighlight">\(\mu_0`should be :math:`1\)</span> to ensure unit mass.</p></li>
+<span class="math notranslate nohighlight">\(\mu_0 = 1\)</span> to ensure unit mass.</p></li>
 <li><p>If instead this option is set to <code class="docutils literal notranslate"><span class="pre">'auto'</span></code>, and the input <code class="docutils literal notranslate"><span class="pre">A</span></code>
 is a matrix, it automatically uses the first two moments of the
 eigenvalues of the input matrix as moment constraints.</p></li>
