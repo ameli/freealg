@@ -4,7 +4,7 @@
 
 import numpy
 
-__all__ ['Moments']
+__all__ = ['Moments']
 
 
 # =======
