@@ -81,22 +81,36 @@ def auto_bins(array, method='scott', factor=4):
 # hist
 # ====
 
-def hist(eig, bins, m=8, density=True, support=None, atoms=None,
+def hist(array, bins=None, m=8, density=True, support=None, atoms=None,
          edge_tol=1.0e-3, detect_bins=512, trim_q=0.01, smooth_w=7,
-         merge_gap_bins=2, min_interval_bins=3, atom_exclude_sigma=3.0):
+         merge_gap_bins=2, min_interval_bins=3, atom_exclude_sigma=3.0,
+         return_support=False):
     """
     Histogram (optionally ASH-smoothed) with detected multi-interval support
-    and optiatom-centered bins.
+    and atom-centered bins.
+
+    This function produces histogram for empirical data with three features:
+
+    * It can perform averaged shift histogram (ASH) to reduce the sensitivity
+      of histogram values to bin selection.
+
+    * It can detect multi-interval densities (separate bulks) and snap the bin
+      edges to the edges of the density bulks for crisper histograms on the
+      edges and reduce the smoothing artifact at sharp edges.
+
+    * It ensures the bins on the atoms are centered so the spikes are shown
+      right at the atom location.
 
     Parameters
     ----------
 
-    eig : array_like
+    array : array_like
         One-dimensional samples.
 
-    bins : int
+    bins : int, default=None
         Number of bins used for the absolutely-continuous (AC) part. Atom bins
-        (if any) are added in addition to these bins.
+        (if any) are added in addition to these bins. If `None`, number of bins
+        are automatically detected using :func:`auto_bins`.
 
     m : int, default=8
         ASH smoothing parameter. Use m=1 for a plain histogram.
@@ -109,9 +123,9 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
         is detected from the samples using edge_tol and related parameters.
 
     atoms : list of float or None, default=None
-        Atom locations only (no weights). A centered bin is created at each
-        atom location (and atoms strictly inside AC intervals may also be
-        carved into the AC binning).
+        Atom locations only. A centered bin is created at each atom location
+        (and atoms strictly inside AC intervals may also be carved into the AC
+        binning).
 
     edge_tol : float, default=1e-3
         Relative threshold for AC support detection, as a fraction of the
@@ -138,6 +152,9 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
         When detecting AC support, exclude a neighborhood around each atom
         location with radius atom_exclude_sigma * (coarse_bin_width).
 
+    return_support : bool, default=False
+        If `True`, the detected support is also returned.
+
     Returns
     -------
 
@@ -149,18 +166,26 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
         empirical mass within the plotted bins (up to smoothing/
         discretization).
 
+    support : numpy.array
+        If ``return_support=True``, this array is also returned.
+
     See Also
     --------
 
     freealg.visualization.auto_bins
     """
 
-    x = numpy.asarray(eig, dtype=float).ravel()
+    x = numpy.asarray(array, dtype=float).ravel()
     if x.size == 0:
-        raise ValueError("eig is empty.")
-    bins = int(bins)
+        raise ValueError("array is empty.")
+
+    if bins is None:
+        bins = auto_bins(array, factor=2)
+    else:
+        bins = int(bins)
     if bins < 1:
         raise ValueError("bins must be >= 1.")
+
     m = int(m)
     if m < 1:
         m = 1
@@ -168,13 +193,30 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
     # -------------------------
     # atoms: unique float locs
     # -------------------------
+
+    # atoms can be either:
+    #   - list/array of locations: [t1, t2, ...]
+    #   - list/array of (location, weight): [(t1, w1), ...]
+    if atoms is not None:
+        if isinstance(atoms, tuple) and len(atoms) == 2:
+            # Treat as a single (location, weight) atom.
+            atoms = [atoms]
+        elif isinstance(atoms, numpy.ndarray) and atoms.ndim == 1 and \
+                atoms.size == 2:
+            atoms = [tuple(atoms.tolist())]
+
     atom_locs = []
     if atoms is not None and len(atoms) > 0:
-        atom_locs = sorted({float(t) for t in atoms})
+        a0 = atoms[0]
+        if isinstance(a0, (list, tuple)) and len(a0) >= 1:
+            atom_locs = sorted({float(loc) for loc, *_ in atoms})
+        else:
+            atom_locs = sorted({float(t) for t in atoms})
 
-    # -------------------------
+    # ------------------------
     # normalize support format
-    # -------------------------
+    # ------------------------
+
     if support is not None:
         if len(support) == 2 and not isinstance(support[0], (list, tuple)):
             support = [(float(support[0]), float(support[1]))]
@@ -182,6 +224,7 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
             support = [(float(a), float(b)) for a, b in support]
 
     def _ash_uniform_segment(x_all, edges):
+
         edges = numpy.asarray(edges, dtype=float)
         if edges.size < 2:
             raise ValueError("segment edges too short.")
@@ -204,8 +247,7 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
         fine_counts, _ = numpy.histogram(x_all, bins=fine_edges)
 
         w = numpy.concatenate(
-            (numpy.arange(1, m + 1), numpy.arange(m - 1, 0, -1))
-        ).astype(float)
+            (numpy.arange(1, m + 1), numpy.arange(m - 1, 0, -1))).astype(float)
         fine_pad = numpy.pad(fine_counts, (0, 2 * m - 2), mode="constant")
 
         ash_counts = numpy.empty(k, dtype=float)
@@ -224,6 +266,7 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
     # -------------------------------------
 
     def _detect_support(x_in):
+
         # robust range
         q = float(trim_q)
         q = max(0.0, min(0.25, q))
@@ -289,8 +332,28 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
         # refine edges using actual samples within coarse window
         out = []
         for i, j in merged:
-            a0 = edges0[i]
-            b0 = edges0[j]
+            peak = float(numpy.max(d1[i:j])) if j > i else 0.0
+            thr_loc = float(edge_tol) * peak
+
+            # use a looser threshold for edge expansion
+            thr_expand = 0.25 * thr_loc   # try 0.1 if still too strict
+
+            ii = i
+            while ii > 0 and d1[ii - 1] > thr_expand:
+                ii -= 1
+
+            jj = j
+            n = d1.size
+            while jj < n and d1[jj] > thr_expand:
+                jj += 1
+
+            if peak <= 0.0:
+                ii, jj = i, j
+            jj = min(jj, d1.size)
+
+            a0 = edges0[ii]
+            b0 = edges0[jj]
+
             xx = x_in[(x_in >= a0) & (x_in <= b0)]
             if xx.size == 0:
                 out.append((float(a0), float(b0)))
@@ -298,9 +361,10 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
                 out.append((float(xx.min()), float(xx.max())))
         return out
 
-    # -------------------------
+    # --------------------------
     # build AC support intervals
-    # -------------------------
+    # --------------------------
+
     if support is None:
         x_detect = x
 
@@ -367,6 +431,21 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
     # bins apply to AC only
     h_ac = total_len / float(bins)
 
+    # or 3*h_ac; key idea: merge gaps smaller than a few final bin widths
+    h_merge = 2.0 * h_ac
+
+    # IMPORTANT: only merge close bulks if support was *detected*.
+    # If user provided support, trust it and do NOT merge.
+    if support is None:
+        supp_merged = [supp[0]]
+        for a, b in supp[1:]:
+            pa, pb = supp_merged[-1]
+            if a - pb <= h_merge:
+                supp_merged[-1] = (pa, max(pb, b))
+            else:
+                supp_merged.append((a, b))
+        supp = supp_merged
+
     # ------------------------------
     # prepare atom bins (standalone)
     # ------------------------------
@@ -397,6 +476,7 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
     # -------------
     # build AC bins
     # -------------
+
     # optionally carve atom bins strictly inside interval. We carve only if
     # atom is well inside (a+0.5w, b-0.5w) and the carved bin doesn't overlap
     # another carved bin.
@@ -565,16 +645,157 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
                 # both AC: merge by extending right
                 resolved[-1][1] = max(pr, right)
 
-    # insert gap bins with zero density so stairs doesn't draw across gaps
+    # Ensure full data range is covered (never truncate histogram)
+    x_min = float(numpy.min(x))
+    x_max = float(numpy.max(x))
+
+    # Base width: use h_ac if available; otherwise fallback to global width
+    try:
+        h_fill = float(h_ac)
+    except NameError:
+        h_fill = (x_max - x_min) / float(max(1, bins))
+
+    # Build anchors: min/max, support edges, and atom-bin boundaries
+    anchors = [float(x_min), float(x_max)]
+
+    # support edges: use supp intervals (already normalized earlier)
+    for a, b in supp:
+        anchors.append(float(a))
+        anchors.append(float(b))
+
+    # atom-bin boundaries: include both standalone atom bins and carved atom
+    # bins (atom bins are those with kind starting with "atom" in resolved/
+    # all_bins paths) We already have atom_bins (standalone) and also "atom"/
+    # "atom_in_ac" pieces merged into resolved. Use resolved if available; else
+    # fallback to atom_bins.
+    try:
+        _bins_for_atoms = resolved
+    except NameError:
+        _bins_for_atoms = []
+
+    for left, right, kind in _bins_for_atoms:
+        if str(kind).startswith("atom"):
+            anchors.append(float(left))
+            anchors.append(float(right))
+    for left, right in atom_bins:
+        anchors.append(float(left))
+        anchors.append(float(right))
+
+    # uniquify/sort anchors and drop near-duplicates
+    anchors = sorted(set(anchors))
+    eps = 1e-12 * max(1.0, abs(x_max - x_min), abs(x_min), abs(x_max))
+    anchors2 = [anchors[0]]
+    for a in anchors[1:]:
+        if a > anchors2[-1] + eps:
+            anchors2.append(a)
+    anchors = anchors2
+
+    # Force atom-centered bins: add [t-h/2, t+h/2] explicitly and
+    # prevent any anchor from splitting inside these atom bins.
+    atom_intervals = []
+    for t in atom_locs:
+        ell = float(t) - 0.5 * float(h_fill)
+        r = float(t) + 0.5 * float(h_fill)
+        atom_intervals.append((ell, r))
+
+    # add atom boundaries as anchors
+    for ell, r in atom_intervals:
+        anchors.append(ell)
+        anchors.append(r)
+
+    anchors = sorted(set(anchors))
+
+    # remove anchors strictly inside any atom interval (so atom bin won't be
+    # split)
+    anchors2 = []
+    for a in anchors:
+        inside = False
+        for ell, r in atom_intervals:
+            if (a > ell + eps) and (a < r - eps):
+                inside = True
+                break
+        if not inside:
+            anchors2.append(a)
+    anchors = anchors2
+
+    # If an atom-centered bin extends beyond the AC range endpoint(s), do not
+    # keep the AC endpoint anchor there; otherwise we create a tiny "sliver"
+    # bin between the endpoint and the atom-bin boundary.
+    if atom_intervals:
+        for ell, r in atom_intervals:
+            # atom bin starts to the right of x_max (AC max)
+            if (ell > x_max + eps) and ((ell - x_max) < 0.8 * h_fill):
+                anchors = [aa for aa in anchors
+                           if not numpy.isclose(aa, x_max, atol=eps, rtol=0.0)]
+            # atom bin ends to the left of x_min (AC min)
+            if (r < x_min - eps) and ((x_min - r) < 0.8 * h_fill):
+                anchors = [aa for aa in anchors
+                           if not numpy.isclose(aa, x_min, atol=eps, rtol=0.0)]
+        anchors = sorted(set(anchors))
+
+    # Helper: check if [a,b] is an atom bin we must keep as-is
+    _atom_set = set()
+    for left, right in atom_bins:
+        _atom_set.add((float(left), float(right)))
+    for left, right, kind in _bins_for_atoms:
+        if str(kind).startswith("atom"):
+            _atom_set.add((float(left), float(right)))
+
+    # also force the atom-centered intervals [t-h_fill/2, t+h_fill/2]
+    for left, right in atom_intervals:
+        _atom_set.add((float(left), float(right)))
+
+    # Rebuild bins piecewise-uniform between anchors
     bins_with_gaps = []
-    for i, (left, right, kind) in enumerate(resolved):
-        if i == 0:
-            bins_with_gaps.append((left, right, kind))
-        else:
-            prev_left, prev_right, prev_kind = bins_with_gaps[-1]
-            if left > prev_right + 1e-15:
-                bins_with_gaps.append((prev_right, left, "gap"))
-            bins_with_gaps.append((left, right, kind))
+    for a, b in zip(anchors[:-1], anchors[1:]):
+        if b <= a + eps:
+            continue
+
+        if (a, b) in _atom_set:
+            bins_with_gaps.append((float(a), float(b), "atom"))
+            continue
+
+        nseg = max(1, int(numpy.round((b - a) / h_fill)))
+        e = numpy.linspace(a, b, nseg + 1, dtype=float)
+        for j in range(e.size - 1):
+            bins_with_gaps.append((float(e[j]), float(e[j + 1]), "ac"))
+
+    # ---------------------------------------------------------
+    # Remove tiny "sliver" AC bins (can happen near data extrema)
+    # ---------------------------------------------------------
+    # Typical AC bin width
+    _ac_widths = [float(r - l) for (l, r, k) in bins_with_gaps
+                  if str(k).startswith("ac") and (r - l) > 0.0]
+    if len(_ac_widths) > 0:
+        _h_typ = float(numpy.median(_ac_widths))
+        # Anything below this is considered a sliver
+        _h_min = 0.50 * _h_typ
+
+        _i = 0
+        while _i < len(bins_with_gaps):
+            l, r, k = bins_with_gaps[_i]
+            w = float(r - l)
+
+            if (str(k).startswith("ac")) and (w > 0.0) and (w < _h_min):
+                # Prefer merging with left neighbor if it is also AC
+                if _i > 0 and str(bins_with_gaps[_i - 1][2]).startswith("ac"):
+                    pl, pr, pk = bins_with_gaps[_i - 1]
+                    bins_with_gaps[_i - 1] = (float(pl), float(r), "ac")
+                    del bins_with_gaps[_i]
+                    # step back one to allow cascading merges
+                    _i = max(_i - 1, 0)
+                    continue
+
+                # Otherwise merge into right neighbor if it is AC
+                if _i + 1 < len(bins_with_gaps) and \
+                        str(bins_with_gaps[_i + 1][2]).startswith("ac"):
+                    nl, nr, nk = bins_with_gaps[_i + 1]
+                    bins_with_gaps[_i + 1] = (float(l), float(nr), "ac")
+                    del bins_with_gaps[_i]
+                    _i = max(_i - 1, 0)
+                    continue
+
+            _i += 1
 
     # ----------------------
     # compute values per bin
@@ -586,6 +807,7 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
     vals_out = []
 
     def _append_bin_value(left, right, val):
+
         if not numpy.isclose(edges_out[-1], left, atol=1e-12, rtol=0.0):
             edges_out.append(left)
         edges_out.append(right)
@@ -594,10 +816,6 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
     i = 0
     while i < len(bins_with_gaps):
         left, right, kind = bins_with_gaps[i]
-        if kind == "gap":
-            _append_bin_value(left, right, 0.0)
-            i += 1
-            continue
         if kind.startswith("atom"):
             c, _ = numpy.histogram(x, bins=[left, right])
             w = right - left
@@ -643,4 +861,7 @@ def hist(eig, bins, m=8, density=True, support=None, atoms=None,
     if not numpy.all(numpy.diff(edges) >= 0.0):
         raise RuntimeError("edges are not monotone.")
 
-    return edges, vals
+    if return_support:
+        return edges, vals, supp
+    else:
+        return edges, vals

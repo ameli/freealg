@@ -93,8 +93,11 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
             if support is not None:
                 if len(support) == 2 and \
                         not isinstance(support[0], (list, tuple)):
+                    # Single-interval support in the format [a1, b1]
                     support = [(float(support[0]), float(support[1]))]
+
                 else:
+                    # Multi-interval support in format [(a1, b1),..., (ak, bk)]
                     support = [(float(a), float(b)) for a, b in support]
 
             #     lam_m, lam_p = support
@@ -106,12 +109,8 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
             #             edgecolor='none', label='Empirical Histogram')
 
             nbins = auto_bins(eig, factor=2)
-            atom_locs = [loc for loc, _ in atoms]
-            edges, vals = hist(eig, nbins, m=8, density=True, support=support,
-                               atoms=atom_locs, edge_tol=1.0e-3,
-                               detect_bins=512, trim_q=0.01, smooth_w=7,
-                               merge_gap_bins=2, min_interval_bins=3,
-                               atom_exclude_sigma=3.0)
+            edges, vals = hist(eig, bins=nbins, m=8, density=True,
+                               support=support, atoms=atoms)
 
             ax.stairs(vals, edges, fill=True, color='silver', alpha=1.0,
                       label='Empirical Histogram')

@@ -15,9 +15,9 @@ import numpy
 __all__ = ['decompress_newton']
 
 
-# ==========================
+# =========================
 # polynomial helpers: P, dP
-# ==========================
+# =========================
 
 def _poly_powers(z, deg):
     z = numpy.asarray(z, dtype=complex).ravel()

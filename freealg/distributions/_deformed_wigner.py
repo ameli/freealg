@@ -50,54 +50,90 @@ class DeformedWigner(BaseDistribution):
 
     poly
         Polynomial coefficients implicitly representing the Stieltjes
+
+    See Also
+    --------
+
+    freealg.distributions.DeformedMarchenkoPastur
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, t1, t2, w1, sigma=1.0):
+    def __init__(self, t, w, sigma=1.0):
         """
         Initialization.
         """
 
-        if not (0.0 <= w1 <= 1.0):
-            raise ValueError("w1 must be in [0, 1].")
+        # Convert t and w to numpy arrays
+        self.t = numpy.asarray(t, dtype=numpy.float64)
+        self.w = numpy.asarray(w, dtype=numpy.float64)
 
-        self.t1 = t1
-        self.t2 = t2
-        self.w1 = w1
+        if self.t.ndim != 1 or self.w.ndim != 1:
+            raise ValueError("t and w must be one-dimensional arrays.")
+
+        if self.t.size == 0:
+            raise ValueError("t must have at least one element.")
+
+        if self.t.size != self.w.size:
+            raise ValueError("t and w must have the same size.")
+
+        if numpy.any(self.w < 0.0):
+            raise ValueError("w must be nonnegative.")
+
+        wsum = float(numpy.sum(self.w))
+        if abs(wsum - 1.0) > 1e-12:
+            raise ValueError("sum of w must be one.")
+
         self.sigma = sigma
 
         # Bounds for smallest and largest eigenvalues
-        self.lam_lb = numpy.min([t1, t2]) - 2.0 * self.sigma
-        self.lam_ub = numpy.max([t1, t2]) + 2.0 * self.sigma
+        self.lam_lb = float(numpy.min(self.t)) - 2.0 * float(self.sigma)
+        self.lam_ub = float(numpy.max(self.t)) + 2.0 * float(self.sigma)
 
-    # ==================
-    # roots cubic scalar
-    # ==================
+    # =================
+    # roots poly scalar
+    # =================
 
-    def _roots_cubic_scalar(self, z):
+    def _roots_poly_scalar(self, z):
         """
         """
 
         # Unpack parameters
-        t1 = self.t1
-        t2 = self.t2
-        w1 = self.w1
+        t = self.t
+        w = self.w
         sigma = self.sigma
+        r = int(t.size)
 
-        w2 = 1.0 - w1
         s2 = sigma * sigma
-        a1 = t1 - z
-        a2 = t2 - z
 
-        c3 = s2 * s2
-        c2 = -s2 * (a1 + a2)
-        c1 = (a1 * a2) + s2
-        c0 = -(w1 * a2 + w2 * a1)
+        # Build polynomial in m corresponding to
+        # m prod_i (t_i - z - s2 m) - sum_i w_i prod_{j!=i}(t_j - z - s2 m) = 0
+        m = numpy.poly1d([1.0, 0.0])
 
-        return numpy.roots([c3, c2, c1, c0])
+        prefix = [numpy.poly1d([1.0])]
+        for i in range(r):
+            fac = numpy.poly1d([-s2, float(t[i]) - z])
+            prefix.append(prefix[-1] * fac)
+
+        suffix = [None] * (r + 1)
+        suffix[r] = numpy.poly1d([1.0])
+        for i in range(r - 1, -1, -1):
+            fac = numpy.poly1d([-s2, float(t[i]) - z])
+            suffix[i] = suffix[i + 1] * fac
+
+        prod = prefix[r]
+        term1 = m * prod
+
+        term2 = numpy.poly1d([0.0])
+        for i in range(r):
+            prod_ex = prefix[i] * suffix[i + 1]
+            term2 = term2 + float(w[i]) * prod_ex
+
+        P = term1 - term2
+
+        return numpy.roots(P.c)
 
     # =========
     # stieltjes
@@ -108,12 +144,11 @@ class DeformedWigner(BaseDistribution):
         """
 
         # Unpack parameters
-        t1 = self.t1
-        t2 = self.t2
-        w1 = self.w1
+        t = self.t
+        w = self.w
         sigma = self.sigma
+        r = int(t.size)
 
-        w2 = 1.0 - w1
         s2 = sigma * sigma
 
         z = numpy.asarray(z, dtype=numpy.complex128)
@@ -131,11 +166,12 @@ class DeformedWigner(BaseDistribution):
             ma = m[active]
             za = z[active]
 
-            d1 = (t1 - za - s2 * ma)
-            d2 = (t2 - za - s2 * ma)
+            # d_i = t_i - z - s2 m
+            d = (t.reshape((r, 1)) - za.reshape((1, -1)) -
+                 s2 * ma.reshape((1, -1)))
 
-            f = ma - (w1 / d1 + w2 / d2)
-            fp = 1.0 - (w1 * s2 / (d1 * d1) + w2 * s2 / (d2 * d2))
+            f = ma - numpy.sum(w.reshape((r, 1)) / d, axis=0)
+            fp = 1.0 - numpy.sum(w.reshape((r, 1)) * s2 / (d * d), axis=0)
 
             step = f / fp
             ma2 = ma - step
@@ -153,8 +189,8 @@ class DeformedWigner(BaseDistribution):
             mf = m.ravel()
             bad_idx = numpy.where(bad.ravel())[0]
             for i in bad_idx:
-                r = self._roots_cubic_scalar(zf[i])
-                mf[i] = _pick_physical_root_scalar(zf[i], r)
+                rts = self._roots_poly_scalar(zf[i])
+                mf[i] = _pick_physical_root_scalar(zf[i], rts)
             m = mf.reshape(z.shape)
 
         if scalar:
@@ -244,19 +280,21 @@ class DeformedWigner(BaseDistribution):
         Roots of polynomial implicitly representing Stieltjes transform
         """
 
+        r = int(self.t.size)
+
         z = numpy.asarray(z, dtype=numpy.complex128)
         scalar = (z.ndim == 0)
         if scalar:
             z = z.reshape((1,))
 
         zf = z.ravel()
-        out = numpy.empty((zf.size, 3), dtype=numpy.complex128)
+        out = numpy.empty((zf.size, r + 1), dtype=numpy.complex128)
         for i in range(zf.size):
-            out[i, :] = self._roots_cubic_scalar(zf[i])
+            out[i, :] = self._roots_poly_scalar(zf[i])
 
-        out = out.reshape(z.shape + (3,))
+        out = out.reshape(z.shape + (r + 1,))
         if scalar:
-            return out.reshape((3,))
+            return out.reshape((r + 1,))
         return out
 
     # =======
@@ -268,55 +306,85 @@ class DeformedWigner(BaseDistribution):
         Support intervals of distribution
         """
 
-        # Unpack parameters
-        t1 = self.t1
-        t2 = self.t2
-        w1 = self.w1
-        sigma = self.sigma
+        r = int(self.t.size)
 
-        w2 = 1.0 - w1
+        # For r = 2, use the closed-form critical point method (quartic).
+        if r == 2:
 
-        p_a = numpy.poly1d([-1.0, t1])
-        p_b = numpy.poly1d([-1.0, t2])
+            # Unpack parameters
+            t1 = float(self.t[0])
+            t2 = float(self.t[1])
+            w1 = float(self.w[0])
+            sigma = self.sigma
 
-        pa2 = p_a * p_a
-        pb2 = p_b * p_b
+            w2 = 1.0 - w1
 
-        eq = pa2 * pb2 - (sigma * sigma) * (w1 * pb2 + w2 * pa2)
-        u_roots = numpy.roots(eq.coeffs)
+            p_a = numpy.poly1d([-1.0, t1])
+            p_b = numpy.poly1d([-1.0, t2])
 
-        ucrit = []
-        for r in u_roots:
-            if numpy.isfinite(r) and abs(r.imag) < 1e-10:
-                ucrit.append(float(r.real))
-        ucrit.sort()
+            pa2 = p_a * p_a
+            pb2 = p_b * p_b
 
-        def G(u):
-            return w1 / (t1 - u) + w2 / (t2 - u)
+            eq = pa2 * pb2 - (sigma * sigma) * (w1 * pb2 + w2 * pa2)
+            u_roots = numpy.roots(eq.coeffs)
 
-        def z_of_u(u):
-            return u - (sigma * sigma) * G(u)
+            ucrit = []
+            for r0 in u_roots:
+                if numpy.isfinite(r0) and abs(r0.imag) < 1e-10:
+                    ucrit.append(float(r0.real))
+            ucrit.sort()
 
-        edges = []
-        for u in ucrit:
-            x = z_of_u(u)
-            if numpy.isfinite(x):
-                x = float(numpy.real(x))
-                if (len(edges) == 0) or (abs(x - edges[-1]) > 1e-8):
-                    edges.append(x)
+            def G(u):
+                return w1 / (t1 - u) + w2 / (t2 - u)
 
-        if len(edges) < 2:
-            return []
+            def z_of_u(u):
+                return u - (sigma * sigma) * G(u)
+
+            edges = []
+            for u in ucrit:
+                x = z_of_u(u)
+                if numpy.isfinite(x):
+                    x = float(numpy.real(x))
+                    if (len(edges) == 0) or (abs(x - edges[-1]) > 1e-8):
+                        edges.append(x)
+
+            if len(edges) < 2:
+                return []
+
+            thr = 100.0 * float(y_probe)
+            cuts = []
+            for i in range(len(edges) - 1):
+                xm = 0.5 * (edges[i] + edges[i + 1])
+                z = xm + 1j * float(y_probe)
+                rts = self._roots_poly_scalar(z)
+                m = _pick_physical_root_scalar(z, rts)
+                if numpy.imag(m) > thr:
+                    cuts.append((edges[i], edges[i + 1]))
+
+            return cuts
+
+        # For r != 2, use a probing method on a fine grid.
+        x = numpy.linspace(self.lam_lb, self.lam_ub, 2000)
+        rho = self.density(x, eta=max(float(y_probe), 1e-8), plot=False)
 
         thr = 100.0 * float(y_probe)
+        mask = numpy.isfinite(rho) & (rho > thr)
+
+        if not numpy.any(mask):
+            return []
+
+        idx = numpy.where(mask)[0]
         cuts = []
-        for i in range(len(edges) - 1):
-            xm = 0.5 * (edges[i] + edges[i + 1])
-            z = xm + 1j * float(y_probe)
-            r = self._roots_cubic_scalar(z)
-            m = _pick_physical_root_scalar(z, r)
-            if numpy.imag(m) > thr:
-                cuts.append((edges[i], edges[i + 1]))
+        start = idx[0]
+        prev = idx[0]
+        for k in idx[1:]:
+            if k == prev + 1:
+                prev = k
+                continue
+            cuts.append((float(x[start]), float(x[prev])))
+            start = k
+            prev = k
+        cuts.append((float(x[start]), float(x[prev])))
 
         return cuts
 
@@ -350,7 +418,7 @@ class DeformedWigner(BaseDistribution):
         :math:`\\mathbf{A} = \\mathbf{T} + \\sigma \\mathbf{W}`
         whose ESD converges to
         :math:`H \\boxplus \\mathrm{SC}_{\\sigma^2}`, where
-        :math:`H = w_1 \\delta_{t_1} + (1 - w_1) \\delta_{t_2}`.
+        :math:`H = \\sum_{i=1}^{r} w_i \\delta_{t_i}`.
 
         Examples
         --------
@@ -367,21 +435,34 @@ class DeformedWigner(BaseDistribution):
             raise ValueError("size must be a positive integer.")
 
         # Unpack parameters
-        t1 = float(self.t1)
-        t2 = float(self.t2)
-        w1 = float(self.w1)
+        t = numpy.asarray(self.t, dtype=numpy.float64)
+        w = numpy.asarray(self.w, dtype=numpy.float64)
         sigma = float(self.sigma)
+        r = int(t.size)
 
         # RNG
         rng = numpy.random.default_rng(seed)
 
         # T part
-        n1 = int(round(w1 * n))
-        n1 = max(0, min(n, n1))
+        wn = w * float(n)
+        n_int = numpy.floor(wn).astype(int)
+        rem = int(n - numpy.sum(n_int))
+        if rem > 0:
+            frac = wn - n_int
+            idx = numpy.argsort(frac)[::-1]
+            n_int[idx[:rem]] += 1
 
         d = numpy.empty(n, dtype=numpy.float64)
-        d[:n1] = t1
-        d[n1:] = t2
+        k = 0
+        for i in range(r):
+            ni = int(n_int[i])
+            if ni <= 0:
+                continue
+            d[k:k+ni] = float(t[i])
+            k += ni
+        if k < n:
+            d[k:] = float(t[-1])
+
         rng.shuffle(d)  # randomize positions
         T = numpy.diag(d)
 
@@ -403,36 +484,77 @@ class DeformedWigner(BaseDistribution):
         Polynomial coefficients implicitly representing the Stieltjes
 
         coeffs[i, j] is the coefficient of z^i m^j.
-        Shape is (deg_z+1, deg_m+1) = (3, 4).
         """
 
-        t1 = float(self.t1)
-        t2 = float(self.t2)
-        w1 = float(self.w1)
-        w2 = 1.0 - w1
+        t = self.t
+        w = self.w
         sigma = float(self.sigma)
+        r = int(t.size)
+
         s2 = sigma * sigma
 
-        a = numpy.zeros((3, 4), dtype=numpy.complex128)
+        # Multivariate polynomial dict: (kz, km) -> coef
+        def add_poly(A, B):
+            C = dict(A)
+            for k, v in B.items():
+                C[k] = C.get(k, 0.0) + v
+            return {k: v for k, v in C.items() if v != 0.0}
 
-        # m^0 column (a0(z) = z - (w1 t2 + w2 t1))
-        a[0, 0] = -(w1 * t2 + w2 * t1)
-        a[1, 0] = 1.0
-        a[2, 0] = 0.0
+        def mul_poly(A, B):
+            C = {}
+            for (az, am), av in A.items():
+                for (bz, bm), bv in B.items():
+                    k = (az + bz, am + bm)
+                    C[k] = C.get(k, 0.0) + av * bv
+            return {k: v for k, v in C.items() if v != 0.0}
 
-        # m^1 column (a1(z) = z^2 - (t1+t2)z + t1 t2 + s2)
-        a[0, 1] = t1 * t2 + s2
-        a[1, 1] = -(t1 + t2)
-        a[2, 1] = 1.0
+        def scale_poly(A, s):
+            if s == 0.0:
+                return {}
+            return {k: s * v for k, v in A.items()}
 
-        # m^2 column (a2(z) = 2 s2 z - s2 (t1+t2))
-        a[0, 2] = -s2 * (t1 + t2)
-        a[1, 2] = 2.0 * s2
-        a[2, 2] = 0.0
+        one = {(0, 0): 1.0}
+        # z_poly = {(1, 0): 1.0}
+        m_poly = {(0, 1): 1.0}
 
-        # m^3 column (a3(z) = s2^2)
-        a[0, 3] = s2 * s2
-        a[1, 3] = 0.0
-        a[2, 3] = 0.0
+        # Build prod_i (t_i - z - s2 m)
+        factors = []
+        prod = one
+        for i in range(r):
+            fac = {
+                (0, 0): float(t[i]),
+                (1, 0): -1.0,
+                (0, 1): -s2
+            }
+            factors.append(fac)
+            prod = mul_poly(prod, fac)
 
-        return a
+        # Term1: m * prod
+        term1 = mul_poly(m_poly, prod)
+
+        # Term2: sum_i w_i prod_{j!=i} (t_j - z - s2 m)
+        term2 = {}
+        for i in range(r):
+            p_ex = one
+            for j in range(r):
+                if j == i:
+                    continue
+                p_ex = mul_poly(p_ex, factors[j])
+            term2 = add_poly(term2, scale_poly(p_ex, float(w[i])))
+
+        P = add_poly(term1, scale_poly(term2, -1.0))
+
+        max_kz = max(kz for (kz, km) in P.keys()) if P else 0
+        max_km = max(km for (kz, km) in P.keys()) if P else 0
+
+        coeffs = numpy.zeros((max_kz + 1, max_km + 1), dtype=numpy.complex128)
+        for (kz, km), v in P.items():
+            coeffs[int(kz), int(km)] = v
+
+        # Clean tiny numerical noise
+        if coeffs.size > 0:
+            max_abs = float(numpy.max(numpy.abs(coeffs)))
+            if max_abs > 0.0:
+                coeffs[numpy.abs(coeffs) < 1.0e-12 * max_abs] = 0.0
+
+        return coeffs

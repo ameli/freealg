@@ -16,25 +16,25 @@ from ..visualization._plot_util import plot_density
 from .._algebraic_form._sheets_util import _pick_physical_root_scalar
 from ._base_distribution import BaseDistribution
 
-__all__ = ['CompoundPoisson']
+__all__ = ['CompoundFreePoisson']
 
 
-# ================
-# Compound Poisson
-# ================
+# =====================
+# Compound Free Poisson
+# =====================
 
-class CompoundPoisson(BaseDistribution):
+class CompoundFreePoisson(BaseDistribution):
     """
     Compound free Poisson distribution
 
     Parameters
     ----------
 
-    t1, t2 : float
+    t : array_like
         Jump sizes (must be > 0). For PSD-like support, keep them > 0.
 
-    w1 : float
-        Mixture weight in (0, 1) for ``t1``. Second weight is ``1-w1``.
+    w : array_like
+        Mixture weights for ``t`` (all entries must be > 0). Sum must be 1.
 
     lam : float
         Total rate (intensity), must be > 0.
@@ -63,6 +63,11 @@ class CompoundPoisson(BaseDistribution):
     poly
         Polynomial coefficients implicitly representing the Stieltjes
 
+    See Also
+    --------
+
+    freealg.distributions.FreeLevy
+
     Notes
     -----
 
@@ -72,13 +77,11 @@ class CompoundPoisson(BaseDistribution):
 
     .. math::
 
-        R(w) = \\lambda \\left(
-            w_1 \\frac{t_1}{1-t_1 w} + (1-w_1) \\frac{t_2}{1-t_2 w}
-        \\right),
+        R(w) = \\lambda \\sum_{i=1}^r w_i \\frac{t_i}{1-t_i w},
 
     where :math:`\\lambda>0` is the total rate (intensity),
-    :math:`t_1,t_2>0` are jump sizes, and :math:`w_1 \\in (0,1)` is the mixture
-    weight for the first jump.
+    :math:`t_i>0` are jump sizes, and :math:`w_i>0` are weights with
+    :math:`\\sum_i w_i = 1`.
 
     The Stieltjes transform :math:`m(z)` satisfies
 
@@ -96,7 +99,7 @@ class CompoundPoisson(BaseDistribution):
     FD-closure (free decompression):
         Under the FD rule that scales the argument of R, this family stays
         closed by scaling the jump sizes: :math:`a_i(t) = e^{-t} a_i`
-        (keeping :math:`\\lambda,w_1` fixed). If your convention uses
+        (keeping :math:`\\lambda,w` fixed). If your convention uses
         :math:`R_t(w)=R_0(e^{+t}w)`, then use :math:`a_i(t)=e^{+t}a_i` instead.
     """
 
@@ -104,28 +107,36 @@ class CompoundPoisson(BaseDistribution):
     # init
     # ====
 
-    def __init__(self, t1, t2, w1, lam):
+    def __init__(self, t, w, lam):
         """
         Initialization.
         """
 
-        t1 = float(t1)
-        t2 = float(t2)
-        w1 = float(w1)
+        t = numpy.asarray(t, dtype=numpy.float64)
+        w = numpy.asarray(w, dtype=numpy.float64)
         lam = float(lam)
 
-        if t1 <= 0.0 or t2 <= 0.0:
-            raise ValueError("t1 and t2 must be > 0.")
+        if t.ndim != 1 or t.size == 0:
+            raise ValueError("t must be a one-dimensional non-empty array.")
 
-        if not (0.0 < w1 < 1.0):
-            raise ValueError("w1 must be in (0, 1).")
+        if w.shape != t.shape:
+            raise ValueError("w and t must have the same shape.")
+
+        if numpy.any(t <= 0.0):
+            raise ValueError("t must be > 0.")
+
+        if numpy.any(w <= 0.0):
+            raise ValueError("w must be > 0.")
+
+        w_sum = float(numpy.sum(w))
+        if abs(w_sum - 1.0) > 1.0e-12:
+            raise ValueError("w must sum to 1.")
 
         if lam <= 0.0:
             raise ValueError("lam must be > 0.")
 
-        self.t1 = t1
-        self.t2 = t2
-        self.w1 = w1
+        self.t = t
+        self.w = w
         self.lam = lam
 
         # Bounds for smallest and largest eigenvalues
@@ -133,39 +144,74 @@ class CompoundPoisson(BaseDistribution):
             # In this case, there is an atom at the origin
             self.lam_lb = 0.0
         else:
-            self.lam_lb = numpy.min([t1, t2]) * (1 - numpy.sqrt(lam))**2
-        self.lam_ub = numpy.max([t1, t2]) * (1 + numpy.sqrt(lam))**2
+            self.lam_lb = numpy.min(t) * (1 - numpy.sqrt(lam))**2
+        self.lam_ub = numpy.max(t) * (1 + numpy.sqrt(lam))**2
 
-    # ====================
-    # roots cubic m scalar
-    # ====================
+    # ===================
+    # roots poly m scalar
+    # ===================
 
-    def _roots_cubic_m_scalar(self, z):
+    def _roots_poly_m_scalar(self, z):
         """
-        Return the three roots of the cubic equation in m at scalar z.
+        Return the roots of the polynomial equation in m at scalar z.
         """
 
-        t1 = float(self.t1)
-        t2 = float(self.t2)
-        w1 = float(self.w1)
-        lam = float(self.lam)
-        w2 = 1.0 - w1
+        if int(self.t.size) == 2:
+            # When r is two
+            t1 = float(self.t[0])
+            t2 = float(self.t[1])
 
-        lam1 = lam * w1
-        lam2 = lam * w2
+            w1 = float(self.w[0])
+            w2 = float(self.w[1])
 
-        z = complex(z)
+            lam = float(self.lam)
+            z = complex(z)
 
-        # Coefficients for:
-        #   a3(z)m^3 + t2(z)m^2 + t1(z)m + a0(z) = 0
-        c3 = z * t1 * t2
-        c2 = (z * (t1 + t2)) + (t1 * t2) * (1.0 - (lam1 + lam2))
-        c1 = z + (t1 + t2) - (lam1 * t1 + lam2 * t2)
-        c0 = 1.0
+            # cubic coefficients (same as old)
+            c3 = z * t1 * t2
+            c2 = z * (t1 + t2) + t1 * t2 * (1.0 - lam)
+            c1 = z + (t1 + t2) - lam * (w1 * t1 + w2 * t2)
+            c0 = 1.0
 
-        coeffs = numpy.array([c3, c2, c1, c0], dtype=numpy.complex128)
-        roots = numpy.roots(coeffs)
-        return roots
+            roots = numpy.roots(numpy.array([c3, c2, c1, c0],
+                                            dtype=numpy.complex128))
+            return roots
+
+        else:
+            # Any r other than 2
+            t = self.t
+            w = self.w
+            lam = float(self.lam)
+            r = int(t.size)
+
+            z = complex(z)
+
+            # Build prod_i (1 + t_i m)
+            prefix = [numpy.poly1d([1.0])]
+            for i in range(r):
+                prefix.append(prefix[-1] * numpy.poly1d([float(t[i]), 1.0]))
+
+            suffix = [None] * (r + 1)
+            suffix[r] = numpy.poly1d([1.0])
+            for i in range(r - 1, -1, -1):
+                suffix[i] = suffix[i + 1] * numpy.poly1d([float(t[i]), 1.0])
+
+            prod = prefix[r]
+
+            # Term1: (-1 - z m) * prod
+            term1 = numpy.poly1d([-z, -1.0]) * prod
+
+            # Term2: lam m sum_i w_i t_i prod_{j != i} (1 + t_j m)
+            s = numpy.poly1d([0.0])
+            for i in range(r):
+                prod_ex = prefix[i] * suffix[i + 1]
+                s = s + float(w[i] * t[i]) * prod_ex
+
+            term2 = numpy.poly1d([lam, 0.0]) * s
+            P = term1 + term2
+
+            roots = numpy.roots(P.c)
+            return roots
 
     # =====================
     # solve m newton scalar
@@ -176,14 +222,9 @@ class CompoundPoisson(BaseDistribution):
         Solve R(-m) = z + 1/m for scalar z using Newton iterations.
         """
 
-        t1 = float(self.t1)
-        t2 = float(self.t2)
-        w1 = float(self.w1)
+        t = self.t
+        w = self.w
         lam = float(self.lam)
-        w2 = 1.0 - w1
-
-        lam1 = lam * w1
-        lam2 = lam * w2
 
         z = complex(z)
         if m0 is None:
@@ -192,17 +233,13 @@ class CompoundPoisson(BaseDistribution):
             m = complex(m0)
 
         for _ in range(int(max_iter)):
-            d1 = 1.0 + t1 * m
-            d2 = 1.0 + t2 * m
+            d = 1.0 + t * m
 
             # f(m) = -1/m + R(-m) - z
-            f = (-1.0 / m) + (lam1 * t1 / d1) + (lam2 * t2 / d2) - z
+            f = (-1.0 / m) + lam * numpy.sum(w * t / d) - z
 
-            # f'(m) = 1/m^2 - sum lam_i a_i^2/(1+a_i m)^2
-            fp = (1.0 / (m * m)) - (
-                lam1 * (t1 * t1) / (d1 * d1) +
-                lam2 * (t2 * t2) / (d2 * d2)
-            )
+            # f'(m) = 1/m^2 - lam * sum w_i t_i^2/(1+t_i m)^2
+            fp = (1.0 / (m * m)) - lam * numpy.sum(w * (t * t) / (d * d))
 
             step = f / fp
             m2 = m - step
@@ -222,19 +259,14 @@ class CompoundPoisson(BaseDistribution):
         """
         Stieltjes transform
 
-        Physical/Herglotz branch of m(z) for the two-atom compound Poisson law.
+        Physical/Herglotz branch of m(z) for the compound Poisson law.
         Fast masked Newton in m, keeping z's original shape.
         """
 
         # Unpack parameters
-        t1 = float(self.t1)
-        t2 = float(self.t2)
-        w1 = float(self.w1)
+        t = self.t
+        w = self.w
         lam = float(self.lam)
-        w2 = 1.0 - w1
-
-        lam1 = lam * w1
-        lam2 = lam * w2
 
         z = numpy.asarray(z, dtype=numpy.complex128)
         scalar = (z.ndim == 0)
@@ -253,14 +285,16 @@ class CompoundPoisson(BaseDistribution):
             ma = m.ravel()[idx]
             za = z.ravel()[idx]
 
-            d1 = 1.0 + t1 * ma
-            d2 = 1.0 + t2 * ma
+            # Fast 1D accumulation (avoids (r x n) temporaries)
+            f = (-1.0 / ma) - za
+            fp = (1.0 / (ma * ma))
 
-            f = (-1.0 / ma) + (lam1 * t1 / d1) + (lam2 * t2 / d2) - za
-
-            fp = (1.0 / (ma * ma)) - (
-                lam1 * (t1 * t1) / (d1 * d1) +
-                lam2 * (t2 * t2) / (d2 * d2))
+            for k in range(int(t.size)):
+                tk = float(t[k])
+                wk = float(w[k])
+                dk = 1.0 + tk * ma
+                f += lam * (wk * tk) / dk
+                fp -= lam * (wk * tk * tk) / (dk * dk)
 
             step = f / fp
             mn = ma - step
@@ -285,7 +319,7 @@ class CompoundPoisson(BaseDistribution):
             bad_idx = numpy.flatnonzero(bad)
             for i in bad_idx:
                 zi = zb[i]
-                m_roots = self._roots_cubic_m_scalar(zi)
+                m_roots = self._roots_poly_m_scalar(zi)
                 mb[i] = _pick_physical_root_scalar(zi, m_roots)
             m = mb.reshape(z.shape)
 
@@ -363,9 +397,6 @@ class CompoundPoisson(BaseDistribution):
             x = numpy.asarray(x, dtype=numpy.float64)
 
         z = x + 1j * float(eta)
-        m = self.stieltjes(z)
-
-        z = numpy.asarray(x, dtype=numpy.float64) + 1j * float(eta)
         m = self.stieltjes(z, max_iter=max_iter, tol=tol)
         rho = numpy.imag(m) / numpy.pi
 
@@ -397,38 +428,52 @@ class CompoundPoisson(BaseDistribution):
     def roots(self, z):
         """
         Roots of polynomial implicitly representing Stieltjes transform
+
+        If z is scalar, returns an array of roots of shape (r+1,).
+        If z is array-like, returns an array of shape z.shape + (r+1,).
         """
 
         z = numpy.asarray(z, dtype=numpy.complex128)
-        if z.ndim != 0:
-            raise ValueError("roots(z) expects scalar z.")
-        return self._roots_cubic_m_scalar(z.reshape(()))
+
+        # scalar -> keep exact old behavior
+        if z.ndim == 0:
+            return self._roots_poly_m_scalar(z.reshape(()))
+
+        # array -> compute roots pointwise, preserve shape
+        z_flat = z.ravel()
+        roots_list = [self._roots_poly_m_scalar(zi) for zi in z_flat]
+
+        # r+1 roots per point
+        k = int(roots_list[0].size) if len(roots_list) > 0 else 0
+        out = numpy.empty((z_flat.size, k), dtype=numpy.complex128)
+        for i, ri in enumerate(roots_list):
+            out[i, :] = ri
+
+        return out.reshape(z.shape + (k,))
 
     # =======
     # support
     # =======
 
     def support(self, eta=2e-4, n_probe=4000, thr=5e-4, x_max=None,
-                x_pad=0.05, method='probe'):
+                x_pad=0.05):
         """
         Support intervals of distribution
 
         Parameters
         ----------
 
-        method : {'probe'}
-            Only probing is implemented here.
+        eta : float, default=2e-4
+            Small number for distinguising atoms from absolutely-continuous
+            part of density.
         """
 
-        _ = method  # keep signature compatible
-
-        t1 = float(self.t1)
-        t2 = float(self.t2)
+        t = self.t
         lam = float(self.lam)
 
         if x_max is None:
-            # Heuristic: scale grows ~ O(lam * max(a))
-            x_max = (1.0 + lam) * max(t1, t2) * 6.0
+            # Heuristic: scale grows ~ O(lam * max(t))
+            x_max = (1.0 + lam) * float(numpy.max(t)) * 6.0
         x_max = float(x_max)
         if x_max <= 0.0:
             raise ValueError("x_max must be > 0.")
@@ -465,6 +510,7 @@ class CompoundPoisson(BaseDistribution):
 
         Parameters
         ----------
+
         size : int
             Matrix size n.
 
@@ -479,29 +525,28 @@ class CompoundPoisson(BaseDistribution):
         Notes
         -----
 
-        Use a sum of two independent (rotationally invariant) Wishart terms,
+        Use a sum of independent (rotationally invariant) Wishart terms,
         which are asymptotically free:
 
         .. math::
 
-            A = s_1 \\frac{1}{m_1} \\mathbf{Z}_1 \\mathbf{Z}_1^{\\intercal} +
-            s_2 * \\frac{1}{m_2} \\mathbf{Z}_2 \\mathbf{Z}_2^{\\intefcal},
+            A = \\sum_{i=1}^r s_i \\frac{1}{m_i} \\mathbf{Z}_i
+            \\mathbf{Z}_i^{\\intercal},
 
-        where :math:`\\mathbf{Z}_i` are :math:`n \\times m_`i` i.i.d.
+        where :math:`\\mathbf{Z}_i` are :math:`n \\times m_i` i.i.d.
         :math:`N(0,1)`. Choose aspect ratios :math:`c_i = n/m_i` and
         scales :math:`s_i` so each term has R-transform
 
         .. math::
 
-            R_i(w) = \\lambda_i \\frac{a_i}{(1 - a_i w},
+            R_i(w) = \\lambda_i \\frac{t_i}{(1 - t_i w},
 
-        with :math:`\\lambda_1 = \\lambda w1`,
-        :math:`\\lambda_2 = \\lambda (1-w_1)`. This is achieved by setting
+        with :math:`\\lambda_i = \\lambda w_i`. This is achieved by setting
 
         .. math::
 
             c_i = 1 / \\lambda_i,
-            s_i = a_i * \\lambda_i.
+            s_i = t_i \\lambda_i.
         """
 
         n = int(size)
@@ -509,32 +554,22 @@ class CompoundPoisson(BaseDistribution):
             raise ValueError("size must be a positive integer.")
 
         # Unpack parameters
-        t1 = float(self.t1)
-        t2 = float(self.t2)
-        w1 = float(self.w1)
+        t = self.t
+        w = self.w
         lam = float(self.lam)
-        w2 = 1.0 - w1
-
-        lam1 = lam * w1
-        lam2 = lam * w2
+        r = int(t.size)
 
         rng = numpy.random.default_rng(seed)
 
         A = numpy.zeros((n, n), dtype=numpy.float64)
 
-        # term 1
-        c1 = 1.0 / lam1
-        m1 = max(1, int(round(n / c1)))
-        s1 = t1 * lam1
-        Z1 = rng.standard_normal((n, m1))
-        A += s1 * (Z1 @ Z1.T) / float(m1)
-
-        # term 2
-        c2 = 1.0 / lam2
-        m2 = max(1, int(round(n / c2)))
-        s2 = t2 * lam2
-        Z2 = rng.standard_normal((n, m2))
-        A += s2 * (Z2 @ Z2.T) / float(m2)
+        for i in range(r):
+            lami = lam * float(w[i])
+            ci = 1.0 / lami
+            mi = max(1, int(round(n / ci)))
+            si = float(t[i]) * lami
+            Zi = rng.standard_normal((n, mi))
+            A += si * (Zi @ Zi.T) / float(mi)
 
         return A
 
@@ -547,36 +582,53 @@ class CompoundPoisson(BaseDistribution):
         Polynomial coefficients implicitly representing the Stieltjes
 
         coeffs[i, j] is the coefficient of z^i m^j.
-        Shape is (2, 4) since deg_z=1 and deg_m=3.
-
-        Coefficients match _roots_cubic_m_scalar.
         """
 
-        t1 = float(self.t1)
-        t2 = float(self.t2)
-        w1 = float(self.w1)
-        w2 = 1.0 - w1
+        t = self.t
+        w = self.w
         lam = float(self.lam)
+        r = int(t.size)
 
-        lam1 = lam * w1
-        lam2 = lam * w2
+        # Build prod_i (1 + t_i m)
+        prod = numpy.poly1d([1.0])
+        for i in range(r):
+            prod = prod * numpy.poly1d([float(t[i]), 1.0])
 
-        a = numpy.zeros((2, 4), dtype=numpy.complex128)
+        # s(m) = sum_i w_i t_i prod_{j!=i} (1 + t_j m)
+        prefix = [numpy.poly1d([1.0])]
+        for i in range(r):
+            prefix.append(prefix[-1] * numpy.poly1d([float(t[i]), 1.0]))
+        suffix = [None] * (r + 1)
+        suffix[r] = numpy.poly1d([1.0])
+        for i in range(r - 1, -1, -1):
+            suffix[i] = suffix[i + 1] * numpy.poly1d([float(t[i]), 1.0])
 
-        # c3 = z * t1 * t2
-        a[0, 3] = 0.0
-        a[1, 3] = t1 * t2
+        s = numpy.poly1d([0.0])
+        for i in range(r):
+            prod_ex = prefix[i] * suffix[i + 1]
+            s = s + float(w[i] * t[i]) * prod_ex
 
-        # c2 = z (t1+t2) + t1 t2 (1 - (lam1+lam2))
-        a[0, 2] = (t1 * t2) * (1.0 - (lam1 + lam2))
-        a[1, 2] = (t1 + t2)
+        # P(z,m) = (-1 - z m) prod + lam m s
+        term0 = (-1.0) * prod + numpy.poly1d([lam, 0.0]) * s   # z^0 row
+        termz = (-1.0) * (numpy.poly1d([1.0, 0.0]) * prod)     # z^1 row
 
-        # c1 = z + (t1+t2) - (lam1 t1 + lam2 t2)
-        a[0, 1] = (t1 + t2) - (lam1 * t1 + lam2 * t2)
-        a[1, 1] = 1.0
+        deg_m = max(int(term0.order), int(termz.order))
+        coeffs = numpy.zeros((2, deg_m + 1), dtype=numpy.complex128)
 
-        # c0 = 1
-        a[0, 0] = 1.0
-        a[1, 0] = 0.0
+        def _fill_row(row, poly_m):
+            cc = numpy.asarray(poly_m.c, dtype=numpy.complex128)
+            # poly1d stores descending powers; convert to ascending
+            asc = cc[::-1]
+            for j in range(asc.size):
+                coeffs[row, j] = asc[j]
 
-        return a
+        _fill_row(0, term0)
+        _fill_row(1, termz)
+
+        # Make sure coeff[0, 0] is positive (just a sign convention)
+        # Normalize so coeffs[0, 0] is +1 (pure convention)
+        if coeffs.size > 0 and coeffs[0, 0] != 0:
+            if numpy.real(coeffs[0, 0]) < 0:
+                coeffs = -coeffs
+
+        return coeffs

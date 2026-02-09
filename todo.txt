@@ -1,0 +1,3 @@
+- in decompress, remove atom from x whearabouts.
+- in decompress, output atoms
+

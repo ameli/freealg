@@ -30,15 +30,14 @@ class DeformedMarchenkoPastur(BaseDistribution):
     Parameters
     ----------
 
-    t : array_like
-        Atom locations (jump sizes). For PSD-like support, keep them >= 0.
+    t1, t2 : float
+        Jump sizes (must be > 0). For PSD-like support, keep them > 0.
 
-    w : array_like
-        Weights for atoms. Must have same length as ``t``, each entry must be
-        nonnegative, and their sum must be 1.
+    w1 : float
+        Mixture weight in (0, 1) for ``t1``. Second weight is ``1-w1``.
 
     c : float
-        Ratio parameter of Marchenko-Pastur distribution, must be >= 0.
+        Ratio parameter of Marchenko-Pastur distribution, must be > 0.
 
     Methods
     -------
@@ -64,11 +63,6 @@ class DeformedMarchenkoPastur(BaseDistribution):
     poly
         Polynomial coefficients implicitly representing the Stieltjes
 
-    See Also
-    --------
-
-    freealg.distributions.DeformedWigner
-
     Notes
     -----
 
@@ -80,16 +74,15 @@ class DeformedMarchenkoPastur(BaseDistribution):
 
     .. math::
 
-        z = -1/u + c * \\mathbb{E}_H [ t / (1 + t u) ].
+        z = -1/u + c * E_H[ t / (1 + t u) ].
 
-    For :math:`H = \\sum_i w_i \\delta_{t_i}`:
+    For H = w1 \\delta_{t1} + w2 \\delta_{t2}:
 
     .. math::
 
-        z = -1/u + c \\sum_i \\frac{w_i*t_i}{1+t_i u}.
+        z = -1/u + c*( w1*t1/(1+t1 u) + w2*t2/(1+t2 u) ).
 
-    Then the (ordinary) Stieltjes transform m(z) of
-    :math:`\\mu = H \\boxtimes \\mathrm{MP}_c` is
+    Then the (ordinary) Stieltjes transform m(z) of \\mu = H \\boxtimes MP_c is
 
     .. math::
 
@@ -97,7 +90,7 @@ class DeformedMarchenkoPastur(BaseDistribution):
 
     (equivalently :math:`m = (u + (1-c)/z)/c` for :math:`c>0`).
 
-    This module solves for u (degree r+1 when H has r atoms), then maps to m.
+    This module solves for u (cubic when H has two atoms), then maps to m.
 
     Reference for the Silverstein equation form:
 
@@ -110,40 +103,23 @@ class DeformedMarchenkoPastur(BaseDistribution):
     # init
     # ====
 
-    def __init__(self, t, w, c=1.0):
+    def __init__(self, t1, t2, w1, c=1.0):
         """
         Initialization.
         """
 
-        t = numpy.asarray(t, dtype=numpy.float64)
-        w = numpy.asarray(w, dtype=numpy.float64)
-
-        if t.ndim != 1 or w.ndim != 1:
-            raise ValueError("t and w must be one-dimensional arrays.")
-
-        if t.size == 0:
-            raise ValueError("t must contain at least one atom.")
-
-        if t.size != w.size:
-            raise ValueError("t and w must have the same length.")
+        if not (0.0 <= w1 <= 1.0):
+            raise ValueError("w1 must be in [0, 1].")
 
         if c < 0.0:
             raise ValueError("c must be >= 0.")
 
-        if numpy.any(t < 0.0):
-            raise ValueError("All entries of t must be >= 0 for a covariance "
-                             "model.")
+        if t1 < 0.0 or t2 < 0.0:
+            raise ValueError("t1 and t2 must be >= 0 for a covariance model.")
 
-        if numpy.any(w < 0.0):
-            raise ValueError("All entries of w must be >= 0.")
-
-        w_sum = float(numpy.sum(w))
-        if not numpy.isfinite(w_sum) or abs(w_sum - 1.0) > 1e-12:
-            raise ValueError("Weights w must sum to 1.")
-
-        # Store
-        self.t = t
-        self.w = w
+        self.t1 = t1
+        self.t2 = t2
+        self.w1 = w1
         self.c = c
 
         # Bounds for smallest and largest eigenvalues
@@ -151,56 +127,36 @@ class DeformedMarchenkoPastur(BaseDistribution):
             # In this case, there is an atom at the origin
             self.lam_lb = 0.0
         else:
-            self.lam_lb = float(numpy.min(t)) * (1 - numpy.sqrt(c))**2
-        self.lam_ub = float(numpy.max(t)) * (1 + numpy.sqrt(c))**2
+            self.lam_lb = numpy.min([t1, t2]) * (1 - numpy.sqrt(c))**2
+        self.lam_ub = numpy.max([t1, t2]) * (1 + numpy.sqrt(c))**2
 
-    # ===================
-    # roots poly u scalar
-    # ===================
+    # ====================
+    # roots cubic u scalar
+    # ====================
 
-    def _roots_poly_u_scalar(self, z):
+    def _roots_cubic_u_scalar(self, z):
         """
-        Solve the polynomial for :math:`u = \\underline{m}(z)` for
-        :math:`H = \\sum_i w_i \\delta_{t_i}`.
-
-        Note: despite the name, for r != 2 the polynomial is not cubic.
+        Solve the cubic for u = \\underline{m}(z) for H = w_1
+        \\delta_{t_1} + (1-w_1)
+        \\delta_{t_2}.
         """
 
-        t = self.t
-        w = self.w
-        c = float(self.c)
-        r = int(t.size)
+        # Unpack parameters
+        t1 = self.t1
+        t2 = self.t2
+        w1 = self.w1
+        c = self.c
 
-        # Build prod_i (1 + t_i u) using explicit poly1d factors:
-        # (1 + t_i u) corresponds to poly in u with coefficients [t_i, 1].
-        prefix = [numpy.poly1d([1.0])]
-        for i in range(r):
-            fac = numpy.poly1d([float(t[i]), 1.0])     # t_i*u + 1
-            prefix.append(prefix[-1] * fac)
+        w2 = 1.0 - w1
+        mu1 = w1 * t1 + w2 * t2
 
-        suffix = [None] * (r + 1)
-        suffix[r] = numpy.poly1d([1.0])
-        for i in range(r - 1, -1, -1):
-            fac = numpy.poly1d([float(t[i]), 1.0])     # t_i*u + 1
-            suffix[i] = suffix[i + 1] * fac
+        # Cubic coefficients for u:
+        c3 = z * (t1 * t2)
+        c2 = z * (t1 + t2) + (t1 * t2) * (1.0 - c)
+        c1 = z + (t1 + t2) - c * mu1
+        c0 = 1.0
 
-        prod = prefix[r]  # poly1d
-
-        # Term1: (-1 - z u) * prod  -> polynomial (-z)*u + (-1)
-        term1 = numpy.poly1d([-z, -1.0]) * prod
-
-        # Term2: c u sum_i w_i t_i prod_{j!=i} (1 + t_j u)
-        s = numpy.poly1d([0.0])
-        for i in range(r):
-            prod_ex = prefix[i] * suffix[i + 1]
-            s = s + float(w[i] * t[i]) * prod_ex
-
-        # c*u is poly [c, 0]
-        term2 = numpy.poly1d([c, 0.0]) * s
-
-        P = term1 + term2
-
-        return numpy.roots(P.c)
+        return numpy.roots([c3, c2, c1, c0])
 
     # ==============
     # solve u Newton
@@ -211,19 +167,24 @@ class DeformedMarchenkoPastur(BaseDistribution):
         """
 
         # Unpack parameters
-        t = self.t
-        w = self.w
-        c = float(self.c)
+        t1 = self.t1
+        t2 = self.t2
+        w1 = self.w1
+        c = self.c
 
+        w2 = 1.0 - w1
         if u0 is None:
             u = -1.0 / z
         else:
             u = complex(u0)
 
         for _ in range(int(max_iter)):
-            d = 1.0 + t * u
-            f = (-1.0 / u) + c * numpy.sum(w * t / d) - z
-            fp = (1.0 / (u * u)) - c * numpy.sum(w * (t * t) / (d * d))
+            d1 = 1.0 + t1 * u
+            d2 = 1.0 + t2 * u
+
+            f = (-1.0 / u) + c * (w1 * t1 / d1 + w2 * t2 / d2) - z
+            fp = (1.0 / (u * u)) - c * (w1 * (t1 * t1) / (d1 * d1) +
+                                        w2 * (t2 * t2) / (d2 * d2))
 
             step = f / fp
             u2 = u - step
@@ -241,31 +202,31 @@ class DeformedMarchenkoPastur(BaseDistribution):
         """
         Stieltjes transform
 
-        Physical/Herglotz branch of m(z) for
-        :math:`\\mu = H \\boxtimes \\mathrm{MP}_c` with
-        :math:`H = \\sum_i w_i \\delta_{t_i}`.
+        Physical/Herglotz branch of m(z) for \\mu = H \\boxtimes MP_c with
+        H = w_1 \\delta_{t_1} + (1-w_1) \\delta_{t_2}.
         Fast masked Newton in u (companion Stieltjes), keeping z's original
         shape.
         """
 
         # Unpack parameters
-        t = self.t
-        w = self.w
-        c = float(self.c)
+        t1 = self.t1
+        t2 = self.t2
+        w1 = self.w1
+        c = self.c
 
         z = numpy.asarray(z, dtype=numpy.complex128)
         scalar = (z.ndim == 0)
         if scalar:
             z = z.reshape((1,))
 
+        c = float(c)
         if c < 0.0:
             raise ValueError("c must be >= 0.")
 
+        w2 = 1.0 - w1
+
         if c == 0.0:
-            # Degenerate case: no MP noise, spectrum equals population H
-            out = numpy.zeros_like(z, dtype=numpy.complex128)
-            for ti, wi in zip(t, w):
-                out = out + (wi / (ti - z))
+            out = (w1 / (t1 - z)) + (w2 / (t2 - z))
             return out.reshape(()) if scalar else out
 
         # u initial guess
@@ -282,12 +243,13 @@ class DeformedMarchenkoPastur(BaseDistribution):
             ua = u.ravel()[idx]
             za = z.ravel()[idx]
 
-            # d has shape (r, k)
-            d = 1.0 + (t[:, None] * ua[None, :])
+            d1 = 1.0 + t1 * ua
+            d2 = 1.0 + t2 * ua
 
-            f = (-1.0 / ua) + c * numpy.sum((w * t)[:, None] / d, axis=0) - za
-            fp = (1.0 / (ua * ua)) - c * numpy.sum((w * (t * t))[:, None] /
-                                                   (d * d), axis=0)
+            f = (-1.0 / ua) + c * (w1 * t1 / d1 + w2 * t2 / d2) - za
+            fp = (1.0 / (ua * ua)) - c * (
+                w1 * (t1 * t1) / (d1 * d1) +
+                w2 * (t2 * t2) / (d2 * d2))
 
             step = f / fp
             un = ua - step
@@ -313,7 +275,7 @@ class DeformedMarchenkoPastur(BaseDistribution):
             bad_idx = numpy.flatnonzero(bad)
             for i in bad_idx:
                 zi = zb[i]
-                u_roots = self._roots_poly_u_scalar(zi)
+                u_roots = self._roots_cubic_u_scalar(zi)
                 ub[i] = _pick_physical_root_scalar(zi, u_roots)
             u = ub.reshape(z.shape)
 
@@ -377,8 +339,8 @@ class DeformedMarchenkoPastur(BaseDistribution):
 
         * Do not warm-start across x<0 (MP-type support is >=0).
         * Reset warm-start when previous u is (nearly) real.
-        * If Newton lands on a non-Herglotz root, fall back to polynomial roots
-          and pick.
+        * If Newton lands on a non-Herglotz root, fall back to cubic roots +
+          pick.
 
         If ac_only is True and c < 1, subtract the smeared atom at zero of mass
         (1-c) for visualization.
@@ -433,35 +395,37 @@ class DeformedMarchenkoPastur(BaseDistribution):
         """
 
         # Unpack parameters
-        t = self.t
-        w = self.w
-        c = float(self.c)
-        r = int(t.size)
+        t1 = self.t1
+        t2 = self.t2
+        w1 = self.w1
+        c = self.c
 
         z = numpy.asarray(z, dtype=numpy.complex128)
         scalar = (z.ndim == 0)
         if scalar:
             z = z.reshape((1,))
 
+        c = float(c)
         if c < 0.0:
             raise ValueError("c must be >= 0.")
 
         zf = z.ravel()
-        out = numpy.empty((zf.size, r + 1), dtype=numpy.complex128)
+        out = numpy.empty((zf.size, 3), dtype=numpy.complex128)
 
         if c == 0.0:
-            mr = numpy.zeros_like(zf, dtype=numpy.complex128)
-            for ti, wi in zip(t, w):
-                mr = mr + (wi / (ti - zf))
-            out[:, :] = mr[:, None]
+            w2 = 1.0 - w1
+            mr = (w1 / (t1 - zf)) + (w2 / (t2 - zf))
+            out[:, 0] = mr
+            out[:, 1] = mr
+            out[:, 2] = mr
         else:
             for i in range(zf.size):
-                u_roots = self._roots_poly_u_scalar(zf[i])
+                u_roots = self._roots_cubic_u_scalar(zf[i])
                 out[i, :] = (u_roots + (1.0 - c) / zf[i]) / c
 
-        out = out.reshape(z.shape + (r + 1,))
+        out = out.reshape(z.shape + (3,))
         if scalar:
-            return out.reshape((r + 1,))
+            return out.reshape((3,))
         return out
 
     # =======
@@ -473,57 +437,57 @@ class DeformedMarchenkoPastur(BaseDistribution):
         """
         Support intervals of distribution
 
-        Estimate support intervals of
-        :math:`\\mu = H \\boxtimes \\mathrm{MP}_c` where
-        :math:`H = \\sum_i w_i \\delta_{t_i}`.
+        Estimate support intervals of μ = H \\boxtimes MP_c where H = w1
+        \\delta_{t1} + (1-w1) \\delta_{t2}.
 
         Parameters
         ----------
-
-        t : array_like
-            Atom locations (typically >=0).
-
-        w : array_like
-            Atom weights (sum to 1).
-
+        t1, t2 : float
+            Atom locations (typically >0).
+        w1 : float
+            Weight of atom at t1.
         c : float
             MP aspect ratio parameter.
-
         method : {'quartic','probe'}
-            - 'quartic' (default): fast endpoint finder available only for two
-              atoms (r=2); otherwise falls back to 'probe'.
-            - 'probe': density probing using :func:`density` on a grid
+            - 'quartic' (default): compute endpoints from the real Silverstein
+              critical equation x'(u)=0 (fast; robust for detecting split /
+              merged bulks).
+            - 'probe': legacy density probing using :func:`density` on a grid
               (can miss tiny gaps due to finite-eta leakage).
 
         Notes
         -----
+        In the companion variable u = \\underline{m}(z), the real mapping is
 
-        For two atoms, the critical equation reduces to a quartic polynomial
-        in u, so endpoints can be obtained with a handful of root solves.
+            x(u) = -1/u + c * ( w1*t1/(1+t1 u) + (1-w1)*t2/(1+t2 u) ),
+
+        and support endpoints occur at critical points where
+
+            x'(u) = 0  <=>  1/u^2 = c * ( w1*t1^2/(1+t1 u)^2 + (1-w1)*t2^2/
+            (1+t2 u)^2 ).
+
+        For two atoms, this reduces to a quartic polynomial in u, so endpoints
+        can be obtained with a handful of root solves (no expensive probing).
         """
 
         # Unpack parameters
-        t = self.t
-        w = self.w
-        c = float(self.c)
-        r = int(t.size)
+        t1 = self.t1
+        t2 = self.t2
+        w1 = self.w1
+        c = self.c
 
+        c = float(c)
         if c < 0.0:
             raise ValueError("c must be >= 0.")
+        if not (0.0 <= w1 <= 1.0):
+            raise ValueError("w1 must be in [0, 1].")
 
         if method not in ('quartic', 'probe'):
             raise ValueError("method must be 'quartic' or 'probe'.")
 
-        # The quartic shortcut is specific to two-atom H.
-        if (method == 'quartic') and (r != 2):
-            method = 'probe'
-
-        # --- fast endpoint finder via quartic in u (r=2 only) ---
+        # --- fast endpoint finder via quartic in u ---
         if method == 'quartic':
-            t1 = float(t[0])
-            t2 = float(t[1])
-            w1 = float(w[0])
-            w2 = float(w[1])
+            w2 = 1.0 - w1
 
             # Build the quartic polynomial:
             #   A(u)^2 B(u)^2 - c u^2 ( w1 t1^2 B(u)^2 + w2 t2^2 A(u)^2 ) = 0
@@ -546,12 +510,12 @@ class DeformedMarchenkoPastur(BaseDistribution):
                 poles.append(-1.0 / float(t2))
 
             u_crit = []
-            for rr in u_roots:
-                if not numpy.isfinite(rr):
+            for r in u_roots:
+                if not numpy.isfinite(r):
                     continue
-                if abs(rr.imag) > 1e-10 * (1.0 + abs(rr.real)):
+                if abs(r.imag) > 1e-10 * (1.0 + abs(r.real)):
                     continue
-                ur = float(rr.real)
+                ur = float(r.real)
                 if ur >= 0.0:
                     continue
                 if abs(ur) < 1e-14:
@@ -605,8 +569,8 @@ class DeformedMarchenkoPastur(BaseDistribution):
                     return cuts
                 method = 'probe'
 
-        # Legacy probing (works for any r). Heuristic x-range
-        tmax = float(max(numpy.max(numpy.abs(t)), 1e-12))
+        # Legacy probing (kept as fallback / comparison). Heuristic x-range
+        tmax = float(max(abs(t1), abs(t2), 1e-12))
         if x_max is None:
             s = (1.0 + numpy.sqrt(max(c, 0.0))) ** 2
             x_max = 3.0 * tmax * s + 1.0
@@ -694,17 +658,27 @@ class DeformedMarchenkoPastur(BaseDistribution):
 
         Generate an :math:`n x n` sample covariance matrix :math:`\\mathbf{S}`
         whose ESD converges to :math:`H \\boxtimes MP_c`, where
-        :math:`H = \\sum_i w_i \\delta_{t_i}`.
+        :math:`H = w_1 \\delta_{t_1} + (1-w_1) \\delta_{t_2}`.
 
         Finite :math:`n` construction:
 
         * :math:`m` is chosen so that :math:`n/m` approx :math:`c` (when
           :math:`c>0`),
         * :math:`Z` has i.i.d. :math:`N(0,1)`,
-        * :math:`\\boldsymbol{\\Sigma}` has eigenvalues :math:`t_i` with
-          proportions :math:`w_i`,
+        * :math:`\\boldsymbol{\\Sigma}` has eigenvalues :math:`t_1`,
+          :math:`t_2` with proportions
+          :math:`w_1`, and :math:`1-w_1`,
         * :math:`\\mathbf{S} = (1/m) \\boldsymbol{\\Sigma}^{1/2} \\mathbf{Z}
           \\mathbf{Z}^T \\boldsymbol{\\Sigma}^{1/2}`.
+
+        Examples
+        --------
+
+        .. code-block::python
+
+            >>> from freealg.distributions import MarchenkoPastur
+            >>> mp = MarchenkoPastur(1/50)
+            >>> A = mp.matrix(2000)
         """
 
         n = int(size)
@@ -712,8 +686,9 @@ class DeformedMarchenkoPastur(BaseDistribution):
             raise ValueError("size must be a positive integer.")
 
         # Unpack parameters
-        t = self.t
-        w = self.w
+        t1 = float(self.t1)
+        t2 = float(self.t2)
+        w1 = float(self.w1)
         c = float(self.c)
 
         rng = numpy.random.default_rng(seed)
@@ -721,19 +696,11 @@ class DeformedMarchenkoPastur(BaseDistribution):
         # Choose m so that n/m approx c (for c>0). For c=0, return population
         # Sigma.
         if c == 0.0:
-            # Build diagonal Sigma with r atoms
-            counts = numpy.floor(w * n).astype(int)
-            remainder = n - int(counts.sum())
-            if remainder > 0:
-                frac = (w * n) - counts
-                idx = numpy.argsort(frac)[::-1]
-                counts[idx[:remainder]] += 1
-
+            n1 = int(round(w1 * n))
+            n1 = max(0, min(n, n1))
             d = numpy.empty(n, dtype=numpy.float64)
-            pos = 0
-            for ti, ni in zip(t, counts):
-                d[pos:pos + ni] = float(ti)
-                pos += ni
+            d[:n1] = t1
+            d[n1:] = t2
             rng.shuffle(d)
             return numpy.diag(d)
 
@@ -741,19 +708,13 @@ class DeformedMarchenkoPastur(BaseDistribution):
         m = int(round(n / c)) if c > 0.0 else n
         m = max(1, m)
 
-        # Build diagonal Sigma^{1/2} with r atoms
-        counts = numpy.floor(w * n).astype(int)
-        remainder = n - int(counts.sum())
-        if remainder > 0:
-            frac = (w * n) - counts
-            idx = numpy.argsort(frac)[::-1]
-            counts[idx[:remainder]] += 1
+        # Build diagonal Sigma^{1/2} with two atoms
+        n1 = int(round(w1 * n))
+        n1 = max(0, min(n, n1))
 
         s = numpy.empty(n, dtype=numpy.float64)
-        pos = 0
-        for ti, ni in zip(t, counts):
-            s[pos:pos + ni] = numpy.sqrt(float(ti))
-            pos += ni
+        s[:n1] = numpy.sqrt(t1)
+        s[n1:] = numpy.sqrt(t2)
         rng.shuffle(s)
 
         # Draw Z and form X = Sigma^{1/2} Z / sqrt(m)
@@ -775,96 +736,39 @@ class DeformedMarchenkoPastur(BaseDistribution):
 
         This is the eliminated polynomial in m (not underline{m}).
         coeffs[i, j] is the coefficient of z^i m^j.
+        Shape is (3, 4).
         """
 
+        t1 = float(self.t1)
+        t2 = float(self.t2)
+        w1 = float(self.w1)
+        w2 = 1.0 - w1
         c = float(self.c)
-        t = self.t
-        w = self.w
-        r = int(t.size)
 
-        # Multivariate Laurent polynomial dict: (kz, km) -> coef
-        def add_poly(A, B):
-            C = dict(A)
-            for k, v in B.items():
-                C[k] = C.get(k, 0.0) + v
-            return {k: v for k, v in C.items() if v != 0.0}
+        # mu1 = w1 * t1 + w2 * t2
 
-        def mul_poly(A, B):
-            C = {}
-            for (az, am), av in A.items():
-                for (bz, bm), bv in B.items():
-                    k = (az + bz, am + bm)
-                    C[k] = C.get(k, 0.0) + av * bv
-            return {k: v for k, v in C.items() if v != 0.0}
+        a = numpy.zeros((3, 4), dtype=numpy.complex128)
 
-        def scale_poly(A, s):
-            if s == 0.0:
-                return {}
-            return {k: s * v for k, v in A.items()}
+        # NOTE: This polynomial is defined up to a global nonzero factor.
+        # The scaling below is chosen so that the m^3 term is (-c^3 t1 t2) z^2.
 
-        one = {(0, 0): 1.0}
-        z_poly = {(1, 0): 1.0}
-        zinv_poly = {(-1, 0): 1.0}
-        m_poly = {(0, 1): 1.0}
+        # Coefficients of  m^3:
+        a[2, 3] = -(c**3) * t1 * t2
 
-        # u = c m + (c-1)/z  (equivalently u = c m - (1-c)/z)
-        u_poly = add_poly(scale_poly(m_poly, c),
-                          scale_poly(zinv_poly, (c - 1.0)))
+        # Coefficients of  m^2:
+        a[0, 2] = 0.0
+        a[1, 2] = -(2.0 * (c**3) * t1 * t2 - 2.0 * (c**2) * t1 * t2)
+        a[2, 2] = -(c**2) * (t1 + t2)
 
-        # Build prod_i (1 + t_i u)
-        prod = one
-        factors = []
-        for i in range(r):
-            fac = add_poly(one, scale_poly(u_poly, float(t[i])))
-            factors.append(fac)
-            prod = mul_poly(prod, fac)
+        # Coefficients of m^1:
+        a[0, 1] = -c * ((c**2) * t1 * t2 - 2.0 * c * t1 * t2 + t1 * t2)
+        a[1, 1] = -c * ((-c * w1 * t1) + (2.0 * c * t1) + (c * w1 * t2) +
+                        (c * t2) - t1 - t2)
+        a[2, 1] = -c * (1.0)
 
-        # Term1: (-1 - z u) * prod
-        zu = mul_poly(z_poly, u_poly)
-        term_factor = add_poly(scale_poly(one, -1.0), scale_poly(zu, -1.0))
-        term1 = mul_poly(term_factor, prod)
+        # Coefficients of m^0
+        a[0, 0] = c * (1.0 - c) * (w2 * t1 + w1 * t2)
+        a[1, 0] = -c
+        a[2, 0] = 0.0
 
-        # Term2: c u sum_i w_i t_i prod_{j!=i} (1 + t_j u)
-        sum_poly = {}
-        for i in range(r):
-            p_ex = one
-            for j in range(r):
-                if j == i:
-                    continue
-                p_ex = mul_poly(p_ex, factors[j])
-            sum_poly = add_poly(sum_poly, scale_poly(p_ex, float(w[i] * t[i])))
-        term2 = scale_poly(mul_poly(u_poly, sum_poly), c)
-
-        P = add_poly(term1, term2)
-
-        # Clear negative z powers
-        min_kz = min(kz for (kz, km) in P.keys())
-        if min_kz < 0:
-            shift = -min_kz
-            P = {(kz + shift, km): v for (kz, km), v in P.items()}
-
-        # Remove any common factor z^k (keep smallest z-power at 0).
-        # Note: treat tiny coefficients as zero to avoid spurious kz=0 terms.
-        if P:
-            max_abs = max(abs(v) for v in P.values())
-            tol_abs = 1.0e-12 * max_abs
-            keys_nz = [(kz, km) for (kz, km), v in P.items()
-                       if abs(v) > tol_abs]
-            min_kz2 = min(kz for (kz, km) in keys_nz) if keys_nz else 0
-            if min_kz2 > 0:
-                P = {(kz - min_kz2, km): v for (kz, km), v in P.items()}
-
-        max_kz = max(kz for (kz, km) in P.keys()) if P else 0
-        max_km = max(km for (kz, km) in P.keys()) if P else 0
-
-        coeffs = numpy.zeros((max_kz + 1, max_km + 1), dtype=numpy.complex128)
-        for (kz, km), v in P.items():
-            coeffs[int(kz), int(km)] = v
-
-        # Clean tiny numerical noise (keeps poly stable and comparable)
-        if coeffs.size > 0:
-            max_abs = float(numpy.max(numpy.abs(coeffs)))
-            if max_abs > 0.0:
-                coeffs[numpy.abs(coeffs) < 1.0e-12 * max_abs] = 0.0
-
-        return coeffs
+        return a

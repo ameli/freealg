@@ -234,15 +234,15 @@ class AlgebraicForm(BaseForm):
 
         # Initialize
         self.coeffs = None                 # Polynomial coefficients
-        self.status = None                 # Fitting status
+        self.info = None                 # Fitting information
 
     # ===
     # fit
     # ===
 
     def fit(self, deg_m, deg_z, reg=0.0, r=[1.25, 6.0, 20.0], n_r=[3, 2, 1],
-            n_samples=4096, y_eps=2e-2, x_pad=0.0, triangular='auto', mu=None,
-            mu_reg=None, normalize=True, verbose=False):
+            n_samples=4096, y_eps=2e-2, x_pad=0.0, triangular=None, mu='auto',
+            mu_reg=None, normalize=True, verbose=False, return_info=False):
         """
         Fit an algebraic structure to the input data.
 
@@ -250,10 +250,24 @@ class AlgebraicForm(BaseForm):
         ----------
 
         deg_m : int
-            Degree :math:`\\mathrm{deg}_m(P)`
+            :math:`\\mathrm{deg}_m(P)`: egree polynomial :math:`P(z, m)` in
+            :math:`m`.
 
         deg_z : int
-            Degree :math:`\\mathrm{deg}_z(P)`
+            :math:`\\mathrm{deg}_z(P)`: degree polynomial :math:`P(z, m)` in
+            :math:`z`.
+
+        reg : float, default=0.0
+            Tikhonov regularization parameter for fitting.
+
+        triangular : {``'upper'``, ``'lower'``, ``'antidiag'``}, or None, \
+                default=None
+            The index set :math:`\\mathcal{A}` of the polynomial coefficients
+
+            * ``'upper'``: Upper triangular matrix of coefficients
+            * ``'lower'``: Lower triangular matrix of coefficients
+            * ``'antidiag'``: Anti-diagonal matrix of coefficients
+            * `None`: Full matrix
 
         mu : array_like, default= ``'auto'``
             Constraint to fit polynomial coefficients based on moments:
@@ -272,6 +286,31 @@ class AlgebraicForm(BaseForm):
             If `None`, the constraints ``mu`` are applied as hard constraint.
             If a positive number, the constraints are applied as a soft
             constraints with regularisation ``mu_reg``.
+
+        normalize : bool, default=True
+            If `True`, the coefficients are scaled so that ``coeff[0, 0] = 1``.
+            This improves the conditioning of the coefficients.
+
+        verbose : bool, default=False
+            If `True`, debugging info is printed.
+
+        return_info : bool, default=False
+            If `True`, debugging info is also returned.
+
+        Returns
+        -------
+
+        coeffs : numpy.ndarray
+            2D array of polynomial coefficients
+
+        info : dict
+            If ``return_info = True``, a dictionary of debugging info is also
+            returned.
+
+        See Also
+        --------
+
+        support
 
         Notes
         -----
@@ -322,7 +361,7 @@ class AlgebraicForm(BaseForm):
                 mu_reg=mu_reg)
 
         # Estimate support from the fitted polynomial
-        self.est_supp, _ = self.support(self.coeffs)
+        self.est_supp = self.support(self.coeffs)
 
         # Reporting error
         P_res = numpy.abs(eval_P(z_fit, m1_fit, self.coeffs))
@@ -332,14 +371,14 @@ class AlgebraicForm(BaseForm):
         # Check polynomial has Stieltjes root
         x_min = self.lam_m - 1.0
         x_max = self.lam_p + 1.0
-        status = sanity_check_stieltjes_branch(self.coeffs, x_min, x_max,
-                                               eta=max(y_eps, 1e-2), n_x=128,
-                                               max_bad_frac=0.05)
+        info = sanity_check_stieltjes_branch(self.coeffs, x_min, x_max,
+                                             eta=max(y_eps, 1e-2), n_x=128,
+                                             max_bad_frac=0.05)
 
-        status['res_max'] = float(res_max)
-        status['res_99_9'] = float(res_99_9)
-        status['fit_metrics'] = fit_metrics
-        self.status = status
+        info['res_max'] = float(res_max)
+        info['res_99_9'] = float(res_99_9)
+        info['fit_metrics'] = fit_metrics
+        self.into = info
 
         # -----------------
 
@@ -378,15 +417,18 @@ class AlgebraicForm(BaseForm):
             coeffs_img_norm = numpy.linalg.norm(self.coeffs.imag, ord='fro')
             print(f'\nCoefficients (imag) norm: {coeffs_img_norm:>0.4e}')
 
-            if not status['ok']:
+            if not info['ok']:
                 print("\nWARNING: sanity check failed:\n" +
-                      f"\tfrac_bad: {status['frac_bad']:>0.3f}\n" +
-                      f"\tn_bad   : {status['n_bad']}\n" +
-                      f"\tn_test  : {status['n_test']}")
+                      f"\tfrac_bad: {info['frac_bad']:>0.3f}\n" +
+                      f"\tn_bad   : {info['n_bad']}\n" +
+                      f"\tn_test  : {info['n_test']}")
             else:
                 print('\nStieltjes sanity check: OK')
 
-        return self.coeffs, self.est_supp, status
+        if return_info:
+            return self.coeffs, info
+        else:
+            return self.coeffs
 
     # ==================
     # inflate broad supp
@@ -415,9 +457,29 @@ class AlgebraicForm(BaseForm):
     # support
     # =======
 
-    def support(self, coeffs=None, scan_range=None, n_scan=4000):
+    def support(self, coeffs=None, scan_range=None, n_scan=4000,
+                return_info=False):
         """
         Estimate the spectral edges of the density.
+
+        Parameters
+        ----------
+
+        return_info : bool, default=False
+            If `True`, debug info is also returned.
+
+        Returns
+        -------
+
+        support : list of tuples
+            A list ``[(a1, b1), ..., (ak, bk)]``.
+
+        See Also
+        --------
+
+        fit
+        branch_points
+        atoms
         """
 
         if coeffs is None:
@@ -435,14 +497,17 @@ class AlgebraicForm(BaseForm):
         est_supp, info = estimate_support(coeffs, x_min=x_min, x_max=x_max,
                                           n_scan=n_scan)
 
-        return est_supp, info
+        if return_info:
+            return est_supp, info
+        else:
+            return est_supp
 
     # =============
     # branch points
     # =============
 
     def branch_points(self, tol=1e-15, real_tol=None, plot=False, latex=False,
-                      save=False):
+                      save=False, return_info=False):
         """
         Compute global branch points.
 
@@ -462,6 +527,9 @@ class AlgebraicForm(BaseForm):
             assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
 
+        return_info : bool, default=False
+            If `True`, debugging info is also returned.
+
         See Also
         --------
 
@@ -476,11 +544,14 @@ class AlgebraicForm(BaseForm):
 
         if plot:
             atoms_list = self.atoms()
-            est_supp, _ = self.support()
+            est_supp = self.support()
             plot_branch_points(bp, atoms_list, est_supp, latex=latex,
                                save=save)
 
-        return bp, info
+        if return_info:
+            return bp, info
+        else:
+            return bp
 
     # =====
     # atoms
@@ -625,7 +696,7 @@ class AlgebraicForm(BaseForm):
 
         if plot:
             plot_density(x, rho_ac, eig=self.eig, atoms=atoms_list,
-                         support=self.broad_supp, label='Estimate',
+                         support=self.est_supp, label='Estimate',
                          latex=latex, save=save)
 
         return rho
@@ -1008,7 +1079,7 @@ class AlgebraicForm(BaseForm):
     # =================
 
     def is_decompressible(self, ratio=2, n_ratios=5, K=(6, 8, 10), L=3,
-                          tol=1e-8, verbose=False):
+                          tol=1e-8, verbose=False, return_info=False):
         """
         Check if the given distribution can be decompressed.
 
@@ -1040,6 +1111,9 @@ class AlgebraicForm(BaseForm):
 
         verbose : bool, default=True
             If True, print a per-``t`` summary and the per-``K`` diagnostics.
+
+        return_info : bool, default=False
+            If `True`, debugging info is also returned.
 
         Returns
         -------
@@ -1162,7 +1236,10 @@ class AlgebraicForm(BaseForm):
             'res': res,
         }
 
-        return status, info
+        if return_info:
+            return status, info
+        else:
+            return status
 
     # ====
     # edge
