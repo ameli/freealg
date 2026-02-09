@@ -1,8 +1,8 @@
 :orphan:
 
-freealg.distributions.CompoundPoisson.stieltjes
+freealg.distributions.CompoundFreePoisson.roots
 ===============================================
 
 .. currentmodule:: freealg.distributions
 
-.. automethod:: CompoundPoisson.stieltjes
+.. automethod:: CompoundFreePoisson.roots

@@ -56,6 +56,8 @@
     <script src="../_static/js/custom-pydata.js"></script>
     <script src="../_static/design-tabs.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex2jax": {"inlineMath": [["\\(", "\\)"]], "displayMath": [["\\[", "\\]"]]}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/custom-pydata.css"></script>
     <link rel="canonical" href="https://ameli.github.io/freealg/generated/freealg.distributions.DeformedMarchenkoPastur.stieltjes.html" />
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
@@ -357,8 +359,13 @@
   </ul>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -459,8 +466,9 @@
 <dt class="sig sig-object py" id="freealg.distributions.DeformedMarchenkoPastur.stieltjes">
 <span class="sig-prename descclassname"><span class="pre">DeformedMarchenkoPastur.</span></span><span class="sig-name descname"><span class="pre">stieltjes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.DeformedMarchenkoPastur.stieltjes" title="Permalink to this definition">#</a></dt>
 <dd><p>Stieltjes transform</p>
-<p>Physical/Herglotz branch of m(z) for mu = H boxtimes MP_c with
-H = w_1 delta_{t_1} + (1-w_1) delta_{t_2}.
+<p>Physical/Herglotz branch of m(z) for
+<span class="math notranslate nohighlight">\(\mu = H \boxtimes \mathrm{MP}_c\)</span> with
+<span class="math notranslate nohighlight">\(H = \sum_i w_i \delta_{t_i}\)</span>.
 Fast masked Newton in u (companion Stieltjes), keeping z’s original
 shape.</p>
 </dd></dl>

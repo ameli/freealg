@@ -56,6 +56,8 @@
     <script src="../_static/js/custom-pydata.js"></script>
     <script src="../_static/design-tabs.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex2jax": {"inlineMath": [["\\(", "\\)"]], "displayMath": [["\\[", "\\]"]]}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/custom-pydata.css"></script>
     <link rel="canonical" href="https://ameli.github.io/freealg/generated/freealg.distributions.DeformedMarchenkoPastur.support.html" />
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
@@ -357,8 +359,13 @@
   </ul>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -459,22 +466,22 @@
 <dt class="sig sig-object py" id="freealg.distributions.DeformedMarchenkoPastur.support">
 <span class="sig-prename descclassname"><span class="pre">DeformedMarchenkoPastur.</span></span><span class="sig-name descname"><span class="pre">support</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0002</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_probe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0005</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_pad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'quartic'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.DeformedMarchenkoPastur.support" title="Permalink to this definition">#</a></dt>
 <dd><p>Support intervals of distribution</p>
-<p>Estimate support intervals of μ = H boxtimes MP_c where H = w1
-delta_{t1} + (1-w1) delta_{t2}.</p>
+<p>Estimate support intervals of
+<span class="math notranslate nohighlight">\(\mu = H \boxtimes \mathrm{MP}_c\)</span> where
+<span class="math notranslate nohighlight">\(H = \sum_i w_i \delta_{t_i}\)</span>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>t1, t2</strong><span class="classifier">float</span></dt><dd><p>Atom locations (typically &gt;0).</p>
+<dt><strong>t</strong><span class="classifier">array_like</span></dt><dd><p>Atom locations (typically &gt;=0).</p>
 </dd>
-<dt><strong>w1</strong><span class="classifier">float</span></dt><dd><p>Weight of atom at t1.</p>
+<dt><strong>w</strong><span class="classifier">array_like</span></dt><dd><p>Atom weights (sum to 1).</p>
 </dd>
 <dt><strong>c</strong><span class="classifier">float</span></dt><dd><p>MP aspect ratio parameter.</p>
 </dd>
 <dt><strong>method</strong><span class="classifier">{‘quartic’,’probe’}</span></dt><dd><ul class="simple">
-<li><p>‘quartic’ (default): compute endpoints from the real Silverstein
-critical equation x’(u)=0 (fast; robust for detecting split /
-merged bulks).</p></li>
-<li><p>‘probe’: legacy density probing using <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.density.html#freealg.distributions.DeformedMarchenkoPastur.density" title="freealg.distributions.DeformedMarchenkoPastur.density"><code class="xref py py-func docutils literal notranslate"><span class="pre">density()</span></code></a> on a grid
+<li><p>‘quartic’ (default): fast endpoint finder available only for two
+atoms (r=2); otherwise falls back to ‘probe’.</p></li>
+<li><p>‘probe’: density probing using <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.density.html#freealg.distributions.DeformedMarchenkoPastur.density" title="freealg.distributions.DeformedMarchenkoPastur.density"><code class="xref py py-func docutils literal notranslate"><span class="pre">density()</span></code></a> on a grid
 (can miss tiny gaps due to finite-eta leakage).</p></li>
 </ul>
 </dd>
@@ -482,17 +489,8 @@ merged bulks).</p></li>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
-<p>In the companion variable u = underline{m}(z), the real mapping is</p>
-<blockquote>
-<div><p>x(u) = -1/u + c * ( w1*t1/(1+t1 u) + (1-w1)*t2/(1+t2 u) ),</p>
-</div></blockquote>
-<p>and support endpoints occur at critical points where</p>
-<blockquote>
-<div><p>x’(u) = 0  &lt;=&gt;  1/u^2 = c * ( w1*t1^2/(1+t1 u)^2 + (1-w1)*t2^2/
-(1+t2 u)^2 ).</p>
-</div></blockquote>
-<p>For two atoms, this reduces to a quartic polynomial in u, so endpoints
-can be obtained with a handful of root solves (no expensive probing).</p>
+<p>For two atoms, the critical equation reduces to a quartic polynomial
+in u, so endpoints can be obtained with a handful of root solves.</p>
 </dd></dl>
 
 </section>

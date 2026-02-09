@@ -359,8 +359,13 @@
   </ul>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -500,8 +505,8 @@ option is relevant only if <code class="docutils literal notranslate"><span clas
 <ul class="simple">
 <li><p>Do not warm-start across x&lt;0 (MP-type support is &gt;=0).</p></li>
 <li><p>Reset warm-start when previous u is (nearly) real.</p></li>
-<li><p>If Newton lands on a non-Herglotz root, fall back to cubic roots +
-pick.</p></li>
+<li><p>If Newton lands on a non-Herglotz root, fall back to polynomial roots
+and pick.</p></li>
 </ul>
 <p>If ac_only is True and c &lt; 1, subtract the smeared atom at zero of mass
 (1-c) for visualization.</p>

@@ -359,8 +359,13 @@
   </ul>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -459,35 +464,43 @@
 <h1>freealg.distributions.DeformedMarchenkoPastur<a class="headerlink" href="#freealg-distributions-deformedmarchenkopastur" title="Permalink to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="freealg.distributions.DeformedMarchenkoPastur">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.distributions.</span></span><span class="sig-name descname"><span class="pre">DeformedMarchenkoPastur</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.DeformedMarchenkoPastur" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.distributions.</span></span><span class="sig-name descname"><span class="pre">DeformedMarchenkoPastur</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.DeformedMarchenkoPastur" title="Permalink to this definition">#</a></dt>
 <dd><p>Deformed Marchenko-Pastur distribution</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>t1, t2</strong><span class="classifier">float</span></dt><dd><p>Jump sizes (must be &gt; 0). For PSD-like support, keep them &gt; 0.</p>
+<dt><strong>t</strong><span class="classifier">array_like</span></dt><dd><p>Atom locations (jump sizes). For PSD-like support, keep them &gt;= 0.</p>
 </dd>
-<dt><strong>w1</strong><span class="classifier">float</span></dt><dd><p>Mixture weight in (0, 1) for <code class="docutils literal notranslate"><span class="pre">t1</span></code>. Second weight is <code class="docutils literal notranslate"><span class="pre">1-w1</span></code>.</p>
+<dt><strong>w</strong><span class="classifier">array_like</span></dt><dd><p>Weights for atoms. Must have same length as <code class="docutils literal notranslate"><span class="pre">t</span></code>, each entry must be
+nonnegative, and their sum must be 1.</p>
 </dd>
-<dt><strong>c</strong><span class="classifier">float</span></dt><dd><p>Ratio parameter of Marchenko-Pastur distribution, must be &gt; 0.</p>
+<dt><strong>c</strong><span class="classifier">float</span></dt><dd><p>Ratio parameter of Marchenko-Pastur distribution, must be &gt;= 0.</p>
 </dd>
 </dl>
 </dd>
 </dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="freealg.distributions.DeformedWigner.html#freealg.distributions.DeformedWigner" title="freealg.distributions.DeformedWigner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.DeformedWigner</span></code></a></dt><dd></dd>
+</dl>
+</div>
 <p class="rubric">Notes</p>
 <p>Silverstein / companion Stieltjes variable</p>
 <p>For sample-covariance, free multiplicative convolution with <span class="math notranslate nohighlight">\(MP_c\)</span>:
 Let <span class="math notranslate nohighlight">\(u(z)\)</span> be the <em>companion</em> Stieltjes transform (often denoted
 <span class="math notranslate nohighlight">\(\underline{m})\)</span>. It satisfies the Silverstein equation:</p>
 <div class="math notranslate nohighlight">
-\[z = -1/u + c * E_H[ t / (1 + t u) ].\]</div>
-<p>For H = w1 delta_{t1} + w2 delta_{t2}:</p>
+\[z = -1/u + c * \mathbb{E}_H [ t / (1 + t u) ].\]</div>
+<p>For <span class="math notranslate nohighlight">\(H = \sum_i w_i \delta_{t_i}\)</span>:</p>
 <div class="math notranslate nohighlight">
-\[z = -1/u + c*( w1*t1/(1+t1 u) + w2*t2/(1+t2 u) ).\]</div>
-<p>Then the (ordinary) Stieltjes transform m(z) of mu = H boxtimes MP_c is</p>
+\[z = -1/u + c \sum_i \frac{w_i*t_i}{1+t_i u}.\]</div>
+<p>Then the (ordinary) Stieltjes transform m(z) of
+<span class="math notranslate nohighlight">\(\mu = H \boxtimes \mathrm{MP}_c\)</span> is</p>
 <div class="math notranslate nohighlight">
 \[u = -(1-c)/z + c m\]</div>
 <p>(equivalently <span class="math notranslate nohighlight">\(m = (u + (1-c)/z)/c\)</span> for <span class="math notranslate nohighlight">\(c&gt;0\)</span>).</p>
-<p>This module solves for u (cubic when H has two atoms), then maps to m.</p>
+<p>This module solves for u (degree r+1 when H has r atoms), then maps to m.</p>
 <p>Reference for the Silverstein equation form:</p>
 <div class="math notranslate nohighlight">
 \[z = -1/u + c \int t/(1 + t u) dH(t).\]</div>

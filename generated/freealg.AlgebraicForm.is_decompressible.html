@@ -404,8 +404,13 @@
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -504,7 +509,7 @@
 <h1>freealg.AlgebraicForm.is_decompressible<a class="headerlink" href="#freealg-algebraicform-is-decompressible" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.AlgebraicForm.is_decompressible">
-<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">is_decompressible</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ratios</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">K</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(6,</span> <span class="pre">8,</span> <span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.is_decompressible" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">is_decompressible</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ratios</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">K</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(6,</span> <span class="pre">8,</span> <span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.is_decompressible" title="Permalink to this definition">#</a></dt>
 <dd><p>Check if the given distribution can be decompressed.</p>
 <p>To this end, this function checks if the evolved polynomial under the
 free decompression admits a valid Stieltjes root.</p>
@@ -527,6 +532,8 @@ is <code class="docutils literal notranslate"><span class="pre">max_p</span> <sp
 Laurent coefficients of <span class="math notranslate nohighlight">\(P_t(1/w, m(w))\)</span>.</p>
 </dd>
 <dt><strong>verbose</strong><span class="classifier">bool, default=True</span></dt><dd><p>If True, print a per-<code class="docutils literal notranslate"><span class="pre">t</span></code> summary and the per-<code class="docutils literal notranslate"><span class="pre">K</span></code> diagnostics.</p>
+</dd>
+<dt><strong>return_info</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, debugging info is also returned.</p>
 </dd>
 </dl>
 </dd>

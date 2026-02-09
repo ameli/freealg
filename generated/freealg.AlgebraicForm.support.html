@@ -402,8 +402,13 @@
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -502,8 +507,30 @@
 <h1>freealg.AlgebraicForm.support<a class="headerlink" href="#freealg-algebraicform-support" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.AlgebraicForm.support">
-<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">support</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coeffs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_scan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.support" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">support</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coeffs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_scan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.support" title="Permalink to this definition">#</a></dt>
 <dd><p>Estimate the spectral edges of the density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>return_info</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, debug info is also returned.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>support</strong><span class="classifier">list of tuples</span></dt><dd><p>A list <code class="docutils literal notranslate"><span class="pre">[(a1,</span> <span class="pre">b1),</span> <span class="pre">...,</span> <span class="pre">(ak,</span> <span class="pre">bk)]</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="freealg.AlgebraicForm.fit.html#freealg.AlgebraicForm.fit" title="freealg.AlgebraicForm.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.AlgebraicForm.branch_points.html#freealg.AlgebraicForm.branch_points" title="freealg.AlgebraicForm.branch_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">branch_points</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.AlgebraicForm.atoms.html#freealg.AlgebraicForm.atoms" title="freealg.AlgebraicForm.atoms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atoms</span></code></a></dt><dd></dd>
+</dl>
+</div>
 </dd></dl>
 
 </section>

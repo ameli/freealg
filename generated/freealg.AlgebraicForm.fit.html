@@ -404,8 +404,13 @@
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -504,14 +509,26 @@
 <h1>freealg.AlgebraicForm.fit<a class="headerlink" href="#freealg-algebraicform-fit" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="freealg.AlgebraicForm.fit">
-<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deg_m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1.25,</span> <span class="pre">6.0,</span> <span class="pre">20.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[3,</span> <span class="pre">2,</span> <span class="pre">1]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_pad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangular</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_reg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.fit" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">AlgebraicForm.</span></span><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deg_m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deg_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1.25,</span> <span class="pre">6.0,</span> <span class="pre">20.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[3,</span> <span class="pre">2,</span> <span class="pre">1]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_pad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triangular</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_reg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.AlgebraicForm.fit" title="Permalink to this definition">#</a></dt>
 <dd><p>Fit an algebraic structure to the input data.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl>
-<dt><strong>deg_m</strong><span class="classifier">int</span></dt><dd><p>Degree <span class="math notranslate nohighlight">\(\mathrm{deg}_m(P)\)</span></p>
+<dt><strong>deg_m</strong><span class="classifier">int</span></dt><dd><p><span class="math notranslate nohighlight">\(\mathrm{deg}_m(P)\)</span>: egree polynomial <span class="math notranslate nohighlight">\(P(z, m)\)</span> in
+<span class="math notranslate nohighlight">\(m\)</span>.</p>
 </dd>
-<dt><strong>deg_z</strong><span class="classifier">int</span></dt><dd><p>Degree <span class="math notranslate nohighlight">\(\mathrm{deg}_z(P)\)</span></p>
+<dt><strong>deg_z</strong><span class="classifier">int</span></dt><dd><p><span class="math notranslate nohighlight">\(\mathrm{deg}_z(P)\)</span>: degree polynomial <span class="math notranslate nohighlight">\(P(z, m)\)</span> in
+<span class="math notranslate nohighlight">\(z\)</span>.</p>
+</dd>
+<dt><strong>reg</strong><span class="classifier">float, default=0.0</span></dt><dd><p>Tikhonov regularization parameter for fitting.</p>
+</dd>
+<dt><strong>triangular</strong><span class="classifier">{<code class="docutils literal notranslate"><span class="pre">'upper'</span></code>, <code class="docutils literal notranslate"><span class="pre">'lower'</span></code>, <code class="docutils literal notranslate"><span class="pre">'antidiag'</span></code>}, or None,                 default=None</span></dt><dd><p>The index set <span class="math notranslate nohighlight">\(\mathcal{A}\)</span> of the polynomial coefficients</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'upper'</span></code>: Upper triangular matrix of coefficients</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'lower'</span></code>: Lower triangular matrix of coefficients</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'antidiag'</span></code>: Anti-diagonal matrix of coefficients</p></li>
+<li><p><cite>None</cite>: Full matrix</p></li>
+</ul>
 </dd>
 <dt><strong>mu</strong><span class="classifier">array_like, default= <code class="docutils literal notranslate"><span class="pre">'auto'</span></code></span></dt><dd><p>Constraint to fit polynomial coefficients based on moments:</p>
 <ul class="simple">
@@ -529,9 +546,31 @@ eigenvalues of the input matrix as moment constraints.</p></li>
 If a positive number, the constraints are applied as a soft
 constraints with regularisation <code class="docutils literal notranslate"><span class="pre">mu_reg</span></code>.</p>
 </dd>
+<dt><strong>normalize</strong><span class="classifier">bool, default=True</span></dt><dd><p>If <cite>True</cite>, the coefficients are scaled so that <code class="docutils literal notranslate"><span class="pre">coeff[0,</span> <span class="pre">0]</span> <span class="pre">=</span> <span class="pre">1</span></code>.
+This improves the conditioning of the coefficients.</p>
+</dd>
+<dt><strong>verbose</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, debugging info is printed.</p>
+</dd>
+<dt><strong>return_info</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, debugging info is also returned.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>coeffs</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>2D array of polynomial coefficients</p>
+</dd>
+<dt><strong>info</strong><span class="classifier">dict</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">return_info</span> <span class="pre">=</span> <span class="pre">True</span></code>, a dictionary of debugging info is also
+returned.</p>
+</dd>
 </dl>
 </dd>
 </dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="freealg.AlgebraicForm.support.html#freealg.AlgebraicForm.support" title="freealg.AlgebraicForm.support"><code class="xref py py-obj docutils literal notranslate"><span class="pre">support</span></code></a></dt><dd></dd>
+</dl>
+</div>
 <p class="rubric">Notes</p>
 <p>When the input data are from an exact model, hard moment constraint is
 preferred over soft constraint as the latter can hurt an already a good

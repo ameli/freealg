@@ -315,8 +315,13 @@
   </a>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -415,16 +420,27 @@
 <h1>freealg.visualization.hist<a class="headerlink" href="#freealg-visualization-hist" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="freealg.visualization.hist">
-<span class="sig-prename descclassname"><span class="pre">freealg.visualization.</span></span><span class="sig-name descname"><span class="pre">hist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detect_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">512</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trim_q</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smooth_w</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge_gap_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_interval_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atom_exclude_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.visualization.hist" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">freealg.visualization.</span></span><span class="sig-name descname"><span class="pre">hist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detect_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">512</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trim_q</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smooth_w</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge_gap_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_interval_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atom_exclude_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_support</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.visualization.hist" title="Permalink to this definition">#</a></dt>
 <dd><p>Histogram (optionally ASH-smoothed) with detected multi-interval support
-and optiatom-centered bins.</p>
+and atom-centered bins.</p>
+<p>This function produces histogram for empirical data with three features:</p>
+<ul class="simple">
+<li><p>It can perform averaged shift histogram (ASH) to reduce the sensitivity
+of histogram values to bin selection.</p></li>
+<li><p>It can detect multi-interval densities (separate bulks) and snap the bin
+edges to the edges of the density bulks for crisper histograms on the
+edges and reduce the smoothing artifact at sharp edges.</p></li>
+<li><p>It ensures the bins on the atoms are centered so the spikes are shown
+right at the atom location.</p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>eig</strong><span class="classifier">array_like</span></dt><dd><p>One-dimensional samples.</p>
+<dt><strong>array</strong><span class="classifier">array_like</span></dt><dd><p>One-dimensional samples.</p>
 </dd>
-<dt><strong>bins</strong><span class="classifier">int</span></dt><dd><p>Number of bins used for the absolutely-continuous (AC) part. Atom bins
-(if any) are added in addition to these bins.</p>
+<dt><strong>bins</strong><span class="classifier">int, default=None</span></dt><dd><p>Number of bins used for the absolutely-continuous (AC) part. Atom bins
+(if any) are added in addition to these bins. If <cite>None</cite>, number of bins
+are automatically detected using <a class="reference internal" href="freealg.visualization.auto_bins.html#freealg.visualization.auto_bins" title="freealg.visualization.auto_bins"><code class="xref py py-func docutils literal notranslate"><span class="pre">auto_bins()</span></code></a>.</p>
 </dd>
 <dt><strong>m</strong><span class="classifier">int, default=8</span></dt><dd><p>ASH smoothing parameter. Use m=1 for a plain histogram.</p>
 </dd>
@@ -433,9 +449,9 @@ and optiatom-centered bins.</p>
 <dt><strong>support</strong><span class="classifier">list of (float, float) or None, default=None</span></dt><dd><p>AC support intervals [(a1, b1), …, (ak, bk)]. If None, the AC support
 is detected from the samples using edge_tol and related parameters.</p>
 </dd>
-<dt><strong>atoms</strong><span class="classifier">list of float or None, default=None</span></dt><dd><p>Atom locations only (no weights). A centered bin is created at each
-atom location (and atoms strictly inside AC intervals may also be
-carved into the AC binning).</p>
+<dt><strong>atoms</strong><span class="classifier">list of float or None, default=None</span></dt><dd><p>Atom locations only. A centered bin is created at each atom location
+(and atoms strictly inside AC intervals may also be carved into the AC
+binning).</p>
 </dd>
 <dt><strong>edge_tol</strong><span class="classifier">float, default=1e-3</span></dt><dd><p>Relative threshold for AC support detection, as a fraction of the
 maximum coarse density.</p>
@@ -455,6 +471,8 @@ coarse bins.</p>
 <dt><strong>atom_exclude_sigma</strong><span class="classifier">float, default=3.0</span></dt><dd><p>When detecting AC support, exclude a neighborhood around each atom
 location with radius atom_exclude_sigma * (coarse_bin_width).</p>
 </dd>
+<dt><strong>return_support</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, the detected support is also returned.</p>
+</dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -464,6 +482,8 @@ location with radius atom_exclude_sigma * (coarse_bin_width).</p>
 <dt><strong>vals</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>Bin heights of length n_bins. If density=True, vals integrates to the
 empirical mass within the plotted bins (up to smoothing/
 discretization).</p>
+</dd>
+<dt><strong>support</strong><span class="classifier">numpy.array</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">return_support=True</span></code>, this array is also returned.</p>
 </dd>
 </dl>
 </dd>

@@ -359,8 +359,13 @@
   </ul>
  </li>
  <li class="toctree-l1">
-  <a class="reference internal" href="freealg.distributions.CompoundPoisson.html">
-   freealg.distributions.CompoundPoisson
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
   </a>
  </li>
  <li class="toctree-l1">
@@ -480,19 +485,17 @@
 <p class="rubric">Notes</p>
 <p>Generate an <span class="math notranslate nohighlight">\(n x n\)</span> sample covariance matrix <span class="math notranslate nohighlight">\(\mathbf{S}\)</span>
 whose ESD converges to <span class="math notranslate nohighlight">\(H \boxtimes MP_c\)</span>, where
-<span class="math notranslate nohighlight">\(H = w_1 \delta_{t_1} + (1-w_1) \delta_{t_2}\)</span>.</p>
+<span class="math notranslate nohighlight">\(H = \sum_i w_i \delta_{t_i}\)</span>.</p>
 <p>Finite <span class="math notranslate nohighlight">\(n\)</span> construction:</p>
 <ul class="simple">
 <li><p><span class="math notranslate nohighlight">\(m\)</span> is chosen so that <span class="math notranslate nohighlight">\(n/m\)</span> approx <span class="math notranslate nohighlight">\(c\)</span> (when
 <span class="math notranslate nohighlight">\(c&gt;0\)</span>),</p></li>
 <li><p><span class="math notranslate nohighlight">\(Z\)</span> has i.i.d. <span class="math notranslate nohighlight">\(N(0,1)\)</span>,</p></li>
-<li><p><span class="math notranslate nohighlight">\(\boldsymbol{\Sigma}\)</span> has eigenvalues <span class="math notranslate nohighlight">\(t_1\)</span>,
-<span class="math notranslate nohighlight">\(t_2\)</span> with proportions
-<span class="math notranslate nohighlight">\(w_1\)</span>, and <span class="math notranslate nohighlight">\(1-w_1\)</span>,</p></li>
+<li><p><span class="math notranslate nohighlight">\(\boldsymbol{\Sigma}\)</span> has eigenvalues <span class="math notranslate nohighlight">\(t_i\)</span> with
+proportions <span class="math notranslate nohighlight">\(w_i\)</span>,</p></li>
 <li><p><span class="math notranslate nohighlight">\(\mathbf{S} = (1/m) \boldsymbol{\Sigma}^{1/2} \mathbf{Z}
 \mathbf{Z}^T \boldsymbol{\Sigma}^{1/2}\)</span>.</p></li>
 </ul>
-<p class="rubric">Examples</p>
 </dd></dl>
 
 </section>

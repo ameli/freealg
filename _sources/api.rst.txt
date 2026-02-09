@@ -70,7 +70,8 @@ The following classes define classical random ensembles.
     freealg.distributions.ChiralBlock
     freealg.distributions.DeformedWigner
     freealg.distributions.DeformedMarchenkoPastur
-    freealg.distributions.CompoundPoisson
+    freealg.distributions.CompoundFreePoisson
+    freealg.distributions.FreeLevy
     freealg.distributions.FussCatalan
 
 Visualization
