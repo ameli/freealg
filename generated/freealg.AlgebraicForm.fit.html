@@ -557,7 +557,9 @@ This improves the conditioning of the coefficients.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>coeffs</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>2D array of polynomial coefficients</p>
+<dt><strong>coeffs</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>A 2D array of the size <span class="math notranslate nohighlight">\((d_z, d_m)\)</span> where <span class="math notranslate nohighlight">\(d_z\)</span> and
+<span class="math notranslate nohighlight">\(d_m\)</span> are the degrees of <span class="math notranslate nohighlight">\(P(z, m)\)</span> in <span class="math notranslate nohighlight">\(z\)</span> and
+<span class="math notranslate nohighlight">\(m\)</span> respectively.</p>
 </dd>
 <dt><strong>info</strong><span class="classifier">dict</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">return_info</span> <span class="pre">=</span> <span class="pre">True</span></code>, a dictionary of debugging info is also
 returned.</p>
@@ -569,12 +571,58 @@ returned.</p>
 <p class="admonition-title">See also</p>
 <dl class="simple">
 <dt><a class="reference internal" href="freealg.AlgebraicForm.support.html#freealg.AlgebraicForm.support" title="freealg.AlgebraicForm.support"><code class="xref py py-obj docutils literal notranslate"><span class="pre">support</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.AlgebraicForm.branch_points.html#freealg.AlgebraicForm.branch_points" title="freealg.AlgebraicForm.branch_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">branch_points</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.AlgebraicForm.atoms.html#freealg.AlgebraicForm.atoms" title="freealg.AlgebraicForm.atoms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atoms</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="freealg.AlgebraicForm.stieltjes.html#freealg.AlgebraicForm.stieltjes" title="freealg.AlgebraicForm.stieltjes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stieltjes</span></code></a></dt><dd></dd>
 </dl>
 </div>
 <p class="rubric">Notes</p>
-<p>When the input data are from an exact model, hard moment constraint is
-preferred over soft constraint as the latter can hurt an already a good
-fit.</p>
+<p>The Stieltjes transform <span class="math notranslate nohighlight">\(m = m(z)\)</span> is the root of the implicit
+relation <span class="math notranslate nohighlight">\(P(z, m) = 0\)</span>, where <span class="math notranslate nohighlight">\(P\)</span> is given by</p>
+<div class="math notranslate nohighlight">
+\[P(z, m) = \sum_{i=1}^{d_z} \sum_{j=1}^{d_m} c_{ij} z^i m^j,\]</div>
+<p>and <span class="math notranslate nohighlight">\(d_z\)</span>, <span class="math notranslate nohighlight">\(d_m\)</span> are the degrees of <span class="math notranslate nohighlight">\(P\)</span> in <span class="math notranslate nohighlight">\(z\)</span>
+and <span class="math notranslate nohighlight">\(m\)</span>, respectively.</p>
+<p>This function returns the <span class="math notranslate nohighlight">\((d_z \times d_m)\)</span> matrix
+<span class="math notranslate nohighlight">\(\mathbf{C} = [c_{ij}]\)</span></p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\mathbf{C} =
+\begin{bmatrix}
+    c_{11} &amp; \dots &amp; c_{1 d_m} \\
+    \vdots &amp; &amp; \vdots \\
+    c_{d_z 1} &amp; \dots &amp; c_{d_z d_m}
+\end{bmatrix}.\end{split}\]</div>
+<p>These coefficients are real, however, they are returned as complex
+numbers with their imaginary part all being zero.</p>
+<p>This matrix is empirically fitted based on the samples of the Stieltjes
+transform. To get this matrix, the <a class="reference internal" href="#freealg.AlgebraicForm.fit" title="freealg.AlgebraicForm.fit"><code class="xref py py-func docutils literal notranslate"><span class="pre">fit()</span></code></a> function should have
+been called first.</p>
+<p class="rubric">Examples</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a distribution</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">FreeLevy</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create an object of the class</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fl</span> <span class="o">=</span> <span class="n">FreeLevy</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.5</span><span class="p">],</span> <span class="n">w</span><span class="o">=</span><span class="p">[</span><span class="mf">0.75</span><span class="p">,</span> <span class="mi">1</span><span class="o">-</span><span class="mf">0.75</span><span class="p">],</span> <span class="n">lam</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="gp">... </span>              <span class="n">sigma</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create an algebraic form object from the distribution</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">freealg</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlgebraicForm</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">af</span> <span class="o">=</span> <span class="n">AlgebraicForm</span><span class="p">(</span><span class="n">fl</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Fit polynomial</span>
+<span class="hll"><span class="gp">&gt;&gt;&gt; </span><span class="n">af</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">deg_m</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">deg_z</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get the empirically fitted polynomial coefficients</span>
+<span class="hll"><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">af</span><span class="o">.</span><span class="n">coeffs</span><span class="o">.</span><span class="n">real</span><span class="p">)</span>
+</span><span class="go">[[ 1.      7.2125 12.15   16.875  24.75  ]</span>
+<span class="go"> [ 0.      1.      7.5    11.      0.    ]]</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Compare with the exact polynomial from the distribution law</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">fl</span><span class="o">.</span><span class="n">poly</span><span class="p">()</span><span class="o">.</span><span class="n">real</span><span class="p">)</span>
+<span class="go">[[ 1.      7.2125 12.15   16.875  24.75  ]</span>
+<span class="go"> [ 0.      1.      7.5    11.     -0.    ]]</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

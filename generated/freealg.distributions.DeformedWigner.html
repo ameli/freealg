@@ -56,6 +56,8 @@
     <script src="../_static/js/custom-pydata.js"></script>
     <script src="../_static/design-tabs.js"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex2jax": {"inlineMath": [["\\(", "\\)"]], "displayMath": [["\\[", "\\]"]]}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/custom-pydata.css"></script>
     <link rel="canonical" href="https://ameli.github.io/freealg/generated/freealg.distributions.DeformedWigner.html" />
     <link rel="shortcut icon" href="../_static/favicon.ico"/>
@@ -459,6 +461,24 @@
 <dt class="sig sig-object py" id="freealg.distributions.DeformedWigner">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">freealg.distributions.</span></span><span class="sig-name descname"><span class="pre">DeformedWigner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.distributions.DeformedWigner" title="Permalink to this definition">#</a></dt>
 <dd><p>Deformed Wiger distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>t</strong><span class="classifier">array_like</span></dt><dd><p>Array <span class="math notranslate nohighlight">\([t_1, \dots, t_r]\)</span>, where <span class="math notranslate nohighlight">\(t_i\)</span> is the jump
+location <span class="math notranslate nohighlight">\(\delta_{t_i}\)</span> in the discrete distribution <span class="math notranslate nohighlight">\(H\)</span>
+(see notes below).</p>
+</dd>
+<dt><strong>w</strong><span class="classifier">array_like</span></dt><dd><p>Array <span class="math notranslate nohighlight">\([w_1, \dots, w_r]\)</span>, where <span class="math notranslate nohighlight">\(w_i\)</span> is the jump
+weights of <span class="math notranslate nohighlight">\(\delta_{t_i}\)</span> in the discrete distribution <span class="math notranslate nohighlight">\(H\)</span>
+(see notes below). The sum of all weights must be one:
+<span class="math notranslate nohighlight">\(\sum_{i=1}^r w_i = 1\)</span>.</p>
+</dd>
+<dt><strong>sigma</strong><span class="classifier">float, default=0.0</span></dt><dd><p>Semicircle standard deviation <span class="math notranslate nohighlight">\(\sigma\)</span> (variance is
+<span class="math notranslate nohighlight">\(\sigma^2\)</span>).</p>
+</dd>
+</dl>
+</dd>
+</dl>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <dl class="simple">
