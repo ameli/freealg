@@ -28,7 +28,7 @@ from __future__ import annotations
 import math
 import numpy as np
 
-__all__ = ["build_time_grid", "decompress_newton"]
+__all__ = ["decompress_newton"]
 
 
 def _inside_support_mask(x: np.ndarray, edges_row: np.ndarray, pad: float) -> np.ndarray:
@@ -47,36 +47,6 @@ def _inside_support_mask(x: np.ndarray, edges_row: np.ndarray, pad: float) -> np
         bb = float(b) + float(pad)
         mask |= (x >= aa) & (x <= bb)
     return mask
-
-
-
-def build_time_grid(size, n0, min_n_times=0, include_t0=True):
-    n0 = float(n0)
-    size = np.asarray(size, dtype=float).ravel()
-    if size.size == 0:
-        if include_t0:
-            return np.array([0.0], dtype=float), np.array([0], dtype=int)
-        return np.empty((0,), dtype=float), np.empty((0,), dtype=int)
-
-    t_sizes = np.log(size / n0)
-
-    t_req = t_sizes.copy()
-    if include_t0:
-        t_req = np.concatenate((np.array([0.0], dtype=float), t_req))
-
-    t_req = np.unique(t_req)
-    t_req.sort()
-
-    if int(min_n_times) > 0 and t_req.size < int(min_n_times):
-        t_all = np.linspace(float(t_req[0]), float(t_req[-1]), int(min_n_times))
-    else:
-        t_all = t_req
-
-    t_all = np.unique(t_all)
-    t_all.sort()
-
-    idx_req = np.array([int(np.argmin(np.abs(t_all - ts))) for ts in t_sizes], dtype=int)
-    return t_all, idx_req
 
 
 # ===========================

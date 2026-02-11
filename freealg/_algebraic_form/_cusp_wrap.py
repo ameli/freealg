@@ -12,257 +12,309 @@
 # =======
 
 import numpy
-import scipy.optimize as opt
+from ._cusp import solve_cusp
+
+__all__ = ['cusp_wrap']
 
 
-# ================
-# poly coeffs in y
-# ================
+# ========
+# norm inf
+# ========
 
-def _poly_coeffs_in_y(coeffs, zeta):
+def _norm_inf(vec):
     """
-    Build coefficients c_j(zeta) so that P(zeta, y) = sum_j c_j(zeta) y^j.
-
-    Assumes coeffs[i, j] multiplies z^i y^j (same layout as eval_P in
-    _continuation_algebraic). Returns coefficients in ascending powers of y.
     """
 
-    a = numpy.asarray(coeffs)
-    deg_z = a.shape[0] - 1
-    deg_y = a.shape[1] - 1
-
-    # c_j(zeta) = sum_i a[i,j] zeta^i
-    z_pows = numpy.power(zeta, numpy.arange(deg_z + 1, dtype=numpy.int64))
-    c = numpy.empty((deg_y + 1,), dtype=numpy.complex128)
-    for j in range(deg_y + 1):
-        c[j] = numpy.dot(a[:, j], z_pows)
-
-    return c
+    if vec is None:
+        return numpy.inf
+    v = numpy.asarray(vec, dtype=float).ravel()
+    if v.size == 0:
+        return numpy.inf
+    return float(numpy.max(numpy.abs(v)))
 
 
-# ===================
-# pick realish root y
-# ===================
+# ========
+# seed key
+# ========
 
-def _pick_realish_root_y(coeffs, zeta):
+def _seed_key(t0, z0, zb0, zb1, nd=12):
     """
-    Pick a reasonable real-ish root y of P(zeta, y)=0 to seed Newton.
-
-    Returns a float (real part of the selected root).
     """
 
-    c_asc = _poly_coeffs_in_y(coeffs, zeta)  # ascending in y
-    # numpy.roots wants descending order
-    c_desc = c_asc[::-1]
-    # strip leading ~0 coefficients
-    k = 0
-    while k < len(c_desc) and abs(c_desc[k]) == 0:
-        k += 1
-    c_desc = c_desc[k:] if k < len(c_desc) else c_desc
+    # used only to reduce identical seeds; not for cusp dedup
+    return (round(float(t0), nd), round(float(z0), nd),
+            round(float(zb0), 8), round(float(zb1), 8))
 
-    if len(c_desc) <= 1:
-        return 0.0
 
-    roots = numpy.roots(c_desc)
-    # choose the root closest to the real axis
-    j = int(numpy.argmin(numpy.abs(numpy.imag(roots))))
-    return float(numpy.real(roots[j]))
+# ===========
+# dedup cusps
+# ===========
+
+def _dedup_cusps(cusps, t_tol=1e-6, x_tol=1e-6):
+    """
+    Deduplicate cusps by clustering in (t, x).
+    Keeps the lowest-residual representative per cluster.
+    """
+
+    if not cusps:
+        return []
+
+    # sort by (t, x) for stable clustering
+    cusps = sorted(cusps, key=lambda c: (c["t"], c["x"]))
+
+    clusters = []  # each: {"rep": cusp, "members": [...]}
+
+    for c in cusps:
+        placed = False
+        for cl in clusters:
+            r = cl["rep"]
+            if abs(c["t"] - r["t"]) <= t_tol and abs(c["x"] - r["x"]) <= x_tol:
+                cl["members"].append(c)
+                # keep best (smallest norm_inf_F)
+                if c["info"]["norm_inf_F"] < r["info"]["norm_inf_F"]:
+                    cl["rep"] = c
+                placed = True
+                break
+        if not placed:
+            clusters.append({"rep": c, "members": [c]})
+
+    return [cl["rep"] for cl in clusters]
+
+
+# =====================
+# make edge based seeds
+# =====================
+
+def _make_edge_based_seeds(self, t_grid, edge_kwargs, max_take=10):
+    """
+    Build seeds from all adjacent gaps if edges show >=2 bulks at any time.
+    Seed zeta at the midpoint of the smallest gaps.
+    """
+
+    seeds = []
+
+    try:
+        ce, re, _ = self.edge(t_grid, verbose=False, **edge_kwargs)
+    except Exception:
+        return seeds
+
+    if re is None or re.ndim != 2 or re.shape[0] == 0:
+        return seeds
+
+    if re.shape[1] < 4:
+        return seeds  # no adjacent gaps exist
+
+    m = re.shape[1]
+    kmax = m // 2
+
+    gap_list = []
+    meta = []  # (i, j, b, a)
+
+    for i in range(re.shape[0]):
+        row = re[i, :]
+        for j in range(kmax - 1):
+            b = row[2*j + 1]
+            a = row[2*j + 2]
+            if numpy.isfinite(a) and numpy.isfinite(b) and (a > b):
+                gap_list.append(float(a - b))
+                meta.append((i, j, float(b), float(a)))
+
+    if not gap_list:
+        return seeds
+
+    order = numpy.argsort(numpy.asarray(gap_list, dtype=float))
+    take = min(max_take, order.size)
+
+    for idx in order[:take]:
+        i, j, b, a = meta[int(idx)]
+        t0 = float(t_grid[i])
+        z0 = 0.5 * (a + b)
+        seeds.append((t0, z0, None, (b, a)))
+
+    return seeds
+
+
+# ==================
+# make generic seeds
+# ==================
+
+def _make_generic_seeds(self, t_grid, edge_kwargs, t_count=9,
+                        q=(0.2, 0.5, 0.8)):
+    """
+    Generic multistart: choose a few t0 values and zeta quantiles in the outer
+    support. Works for split (k=1 -> 2) as well as a fallback for anything.
+    """
+
+    seeds = []
+    t_min = float(numpy.min(t_grid))
+    t_max = float(numpy.max(t_grid))
+
+    t_seeds = numpy.linspace(t_min, t_max, min(t_count, t_grid.size))
+    for t0 in t_seeds:
+        try:
+            ce0, re0, _ = self.edge(numpy.array([float(t0)]), verbose=False,
+                                    **edge_kwargs)
+            row = re0[0] if (re0 is not None and re0.shape[1] >= 2) else \
+                numpy.real(ce0[0])
+            a0 = float(row[0])
+            b0 = float(row[1])
+        except Exception:
+            continue
+
+        if not (numpy.isfinite(a0) and numpy.isfinite(b0) and (b0 > a0)):
+            continue
+
+        for qq in q:
+            z0 = a0 + float(qq) * (b0 - a0)
+            seeds.append((float(t0), float(z0), None, (a0, b0)))
+
+    return seeds
+
+
+# ============
+# unique seeds
+# ============
+
+def _unique_seeds(seeds):
+    """
+    """
+
+    uniq = []
+    seen = set()
+    for (t0, z0, y0, zb) in seeds:
+        key = _seed_key(t0, z0, zb[0], zb[1])
+        if key not in seen:
+            seen.add(key)
+            uniq.append((t0, z0, y0, zb))
+    return uniq
+
+
+# ==============
+# run solve cusp
+# ==============
+
+def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, zeta_bounds, max_iter, tol):
+    """
+    Calls solve_cusp and extracts compact debugging info.
+    """
+
+    out = solve_cusp(coeffs, t_init=float(t0), zeta_init=float(z0), y_init=y0,
+                     t_bounds=t_bounds, zeta_bounds=zeta_bounds,
+                     max_iter=max_iter, tol=tol)
+
+    success = bool(out.get("success", False))
+    ok = bool(out.get("ok", False)) if "ok" in out else success
+
+    info = {
+        "success": success,
+        "ok": ok,
+        "norm_inf_F": _norm_inf(out.get("F", None)),
+        "message": out.get("message", None),
+    }
+
+    # If your solve_cusp reports iterations, keep it (optional)
+    if "n_iter" in out:
+        info["n_iter"] = out["n_iter"]
+
+    if not success:
+        return None
+
+    # Minimal actionable payload
+    return {
+        "t": float(out["t"]),
+        "x": float(out["x"]),
+        "info": info,
+        # keep a few internal vars only if useful for debugging
+        "debug": {
+            "tau": float(out["tau"]) if "tau" in out else None,
+            "zeta": float(out["zeta"]) if "zeta" in out else None,
+            "y": float(out["y"]) if "y" in out else None,
+        },
+    }
 
 
 # =========
-# cusp wrap
+# cusp_wrap
 # =========
 
-def cusp_wrap(self, t_grid, edge_kwargs=None, max_iter=80, tol=1e-12,
-              verbose=False):
+def cusp_wrap(self, coeffs, t_grid, edge_kwargs=None, max_iter=80, tol=1e-12,
+              verbose=False, dedup_t_tol=1e-6, dedup_x_tol=1e-6,
+              max_solutions=None):
+    """
+    Find cusp points and return a list of independent cusps.
+
+    Returns
+    -------
+
+    cusps : list of dict
+        Each item has:
+          - 't': float
+          - 'x': float
+          - 'info': dict (compact diagnostics)
+          - 'debug': dict (optional internal vars)
+    """
 
     if edge_kwargs is None:
         edge_kwargs = {}
 
     t_grid = numpy.asarray(t_grid, dtype=float).ravel()
+    if t_grid.size < 2:
+        raise ValueError("t_grid must contain at least two points")
 
-    # allow scalar / len-1 input
-    if t_grid.size == 1:
-        t0 = float(t_grid[0])
-        dt = 0.25
-        t_grid = numpy.linspace(max(0.0, t0 - dt), t0 + dt, 21)
+    t_min = float(numpy.min(t_grid))
+    t_max = float(numpy.max(t_grid))
+    t_bounds = (t_min, t_max)
 
-    if t_grid.size < 5:
-        raise ValueError("t_grid too small")
+    # Build seeds
+    seeds = []
+    seeds += _make_edge_based_seeds(self, t_grid, edge_kwargs=edge_kwargs,
+                                    max_take=12)
+    seeds += _make_generic_seeds(self, t_grid, edge_kwargs=edge_kwargs,
+                                 t_count=9)
 
-    def gap_at(tt):
-        ce, _, _ = self.edge(numpy.array([float(tt)]), verbose=False,
-                             **edge_kwargs)
-        return float(ce[0, 2].real - ce[0, 1].real)
+    seeds = _unique_seeds(seeds)
 
-    # coarse grid gap
-    ce, _, _ = self.edge(t_grid, verbose=False, **edge_kwargs)
-    gap = ce[:, 2].real - ce[:, 1].real
-    m = numpy.isfinite(gap)
+    if verbose:
+        print(f"[cusp_wrap] seeds={len(seeds)}  t in [{t_min}, {t_max}]")
 
-    if numpy.count_nonzero(m) < 2:
-        return {"success": False, "reason": "gap is not finite on grid"}
+    # Run solver on all seeds
+    sols = []
+    for (t0, z0, y0, zb) in seeds:
+        sol = _run_solve_cusp(coeffs, t0=t0, z0=z0, y0=y0, t_bounds=t_bounds,
+                              zeta_bounds=zb, max_iter=max_iter, tol=tol)
 
-    tg = t_grid[m]
-    gg = gap[m]
+        if sol is None:
+            continue
 
-    # candidate bracket indices from coarse grid
-    s = numpy.sign(gg)
-    idx = numpy.where(s[:-1] * s[1:] < 0)[0]
+        # Optional quality filter: reject very weak convergences
+        # (You can tune this; this is a safe-ish default.)
+        if not numpy.isfinite(sol["info"]["norm_inf_F"]):
+            continue
 
-    bracketed = False
-    t_star = None
+        # Require true convergence
+        F_tol = max(1e-10, 1e4 * tol)
+        if not sol["info"].get("ok", False):
+            if sol["info"]["norm_inf_F"] > F_tol:
+                continue
 
-    # robust: verify sign change using the true gap_at before calling brentq
-    if idx.size > 0:
-        for ii in idx[:5]:  # try a few brackets
-            tL, tR = float(tg[ii]), float(tg[ii + 1])
-            gL = gap_at(tL)
-            gR = gap_at(tR)
-            if numpy.isfinite(gL) and numpy.isfinite(gR) and (gL * gR < 0.0):
-                t_star = float(opt.brentq(gap_at, tL, tR, xtol=1e-12,
-                                          rtol=1e-12, maxiter=200))
-                bracketed = True
-                break
+        # ignore boundary-hugging solutions
+        t_eps = 1e-8 * (t_max - t_min)
+        if sol["t"] <= t_min + t_eps or sol["t"] >= t_max - t_eps:
+            continue
 
-    # fallback: minimizer of |gap| on the coarse grid
-    if t_star is None:
-        i0 = int(numpy.argmin(numpy.abs(gg)))
-        t_star = float(tg[i0])
-        bracketed = False
+        sols.append(sol)
 
-    # --- seed (zeta,y) correctly using zeta = x + (tau-1)/y ---
-    ce_star, _, _ = self.edge(numpy.array([t_star]), verbose=False,
-                              **edge_kwargs)
-    x_seed = float(ce_star[0, 1].real)  # inner edge b1
-    tau = float(numpy.exp(t_star))
-    c = tau - 1.0
+    # Deduplicate independent cusps
+    sols = _dedup_cusps(sols, t_tol=dedup_t_tol, x_tol=dedup_x_tol)
 
-    a = numpy.asarray(self.coeffs, dtype=numpy.complex128)
-    deg_z = a.shape[0] - 1
-    deg_y = a.shape[1] - 1
+    # Sort by time for stable output
+    sols = sorted(sols, key=lambda s: (s["t"], s["x"]))
 
-    def poly_in_y(zeta):
-        zi = numpy.power(zeta, numpy.arange(deg_z + 1, dtype=numpy.int64))
-        c_asc = numpy.array([numpy.dot(a[:, j], zi) for j in range(deg_y + 1)],
-                            dtype=numpy.complex128)
-        return c_asc
+    # Optionally cap number of reported solutions
+    if max_solutions is not None:
+        sols = sols[:int(max_solutions)]
 
-    zeta0 = float(x_seed)
-    c_asc = poly_in_y(zeta0)
-    roots = numpy.roots(c_asc[::-1])
-    j = int(numpy.argmin(numpy.abs(numpy.imag(roots))))
-    y0 = float(numpy.real(roots[j]))
-    if abs(y0) < 1e-12:
-        jj = numpy.argsort(numpy.abs(numpy.imag(roots)))
-        for k in jj:
-            if abs(numpy.real(roots[k])) > 1e-8:
-                y0 = float(numpy.real(roots[k]))
-                break
+    if verbose:
+        print(f"[cusp_wrap] solutions={len(sols)}")
 
-    zeta_seed = float(x_seed + c / y0)
-    y_seed = float(y0)
-
-    def P_all(zeta, y):
-        zeta = numpy.complex128(zeta)
-        y = numpy.complex128(y)
-        zi = numpy.power(zeta, numpy.arange(deg_z + 1))
-        yj = numpy.power(y, numpy.arange(deg_y + 1))
-        P = numpy.sum(a * zi[:, None] * yj[None, :])
-
-        if deg_z >= 1:
-            iz = numpy.arange(1, deg_z + 1)
-            Pz = numpy.sum((a[iz, :] * iz[:, None]) *
-                           numpy.power(zeta, iz - 1)[:, None] * yj[None, :])
-        else:
-            Pz = 0.0 + 0.0j
-
-        if deg_y >= 1:
-            jy = numpy.arange(1, deg_y + 1)
-            Py = numpy.sum((a[:, jy] * jy[None, :]) * zi[:, None] *
-                           numpy.power(y, jy - 1)[None, :])
-        else:
-            Py = 0.0 + 0.0j
-
-        if deg_z >= 2:
-            iz = numpy.arange(2, deg_z + 1)
-            Pzz = numpy.sum((a[iz, :] * (iz * (iz - 1))[:, None]) *
-                            numpy.power(zeta, iz - 2)[:, None] * yj[None, :])
-        else:
-            Pzz = 0.0 + 0.0j
-
-        if deg_y >= 2:
-            jy = numpy.arange(2, deg_y + 1)
-            Pyy = numpy.sum((a[:, jy] * (jy * (jy - 1))[None, :]) *
-                            zi[:, None] * numpy.power(y, jy - 2)[None, :])
-        else:
-            Pyy = 0.0 + 0.0j
-
-        if (deg_z >= 1) and (deg_y >= 1):
-            iz = numpy.arange(1, deg_z + 1)
-            jy = numpy.arange(1, deg_y + 1)
-            coeff = a[numpy.ix_(iz, jy)] * (iz[:, None] * jy[None, :])
-            Pzy = numpy.sum(coeff * numpy.power(zeta, iz - 1)[:, None] *
-                            numpy.power(y, jy - 1)[None, :])
-        else:
-            Pzy = 0.0 + 0.0j
-
-        return P, Pz, Py, Pzz, Pzy, Pyy
-
-    def G(v):
-        zeta, y = float(v[0]), float(v[1])
-        P, Pz, Py, _, _, _ = P_all(zeta, y)
-        P = float(numpy.real(P))
-        Pz = float(numpy.real(Pz))
-        Py = float(numpy.real(Py))
-        F2 = (y * y) * Py - c * Pz
-        return numpy.array([P, F2], dtype=float)
-
-    z_rad = 0.5
-    y_rad = 5.0 * (1.0 + abs(y_seed))
-    lb = numpy.array([zeta_seed - z_rad, y_seed - y_rad], dtype=float)
-    ub = numpy.array([zeta_seed + z_rad, y_seed + y_rad], dtype=float)
-
-    res = opt.least_squares(
-        G, numpy.array([zeta_seed, y_seed], dtype=float),
-        bounds=(lb, ub), method="trf",
-        max_nfev=8000, ftol=tol, xtol=tol, gtol=tol, x_scale="jac"
-    )
-
-    zeta_star = float(res.x[0])
-    y_star = float(res.x[1])
-    x_star = float(zeta_star - c / y_star)
-
-    P, Pz, Py, Pzz, Pzy, Pyy = P_all(zeta_star, y_star)
-    P = float(numpy.real(P))
-    Pz = float(numpy.real(Pz))
-    Py = float(numpy.real(Py))
-    Pzz = float(numpy.real(Pzz))
-    Pzy = float(numpy.real(Pzy))
-    Pyy = float(numpy.real(Pyy))
-
-    F2 = (y_star * y_star) * Py - c * Pz
-    F3 = y_star * (Pzz * (Py * Py) - 2.0 * Pzy * Pz * Py + Pyy * (Pz * Pz)) + \
-        2.0 * (Pz * Pz) * Py
-    F = numpy.array([P, float(F2), float(F3)], dtype=float)
-
-    ok = bool(numpy.max(numpy.abs(F)) < 1e-8)
-
-    return {
-        "ok": ok,
-        "t": float(t_star),
-        "tau": float(tau),
-        "zeta": float(zeta_star),
-        "y": float(y_star),
-        "x": float(x_star),
-        "F": F,
-        "success": True,
-        "seed": {
-            "t": float(t_star),
-            "x": float(x_seed),
-            "zeta": float(zeta_seed),
-            "y": float(y_seed)
-        },
-        "merge": {"bracketed": bool(bracketed)},
-        "gap_at_t": float(gap_at(t_star)),
-        "lsq_success": bool(res.success)}
+    return sols

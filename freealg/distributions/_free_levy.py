@@ -100,7 +100,7 @@ class FreeLevy(BaseDistribution):
 
     where
 
-    * :math:`\\delta_a` is the shift :math:`x \\mapsto x - a` (given by the
+    * :math:`\\delta_a` is the shift :math:`X \\mapsto X + a` (given by the
       parameter ``a``);
     * :math:`\\mathrm{SC}_{\\sigma^2}` is the semicircle (free Gaussian) law
       with variance :math:`\\sigma^2` (give by the parameter ``sigma``);
@@ -110,7 +110,7 @@ class FreeLevy(BaseDistribution):
       .. math::
 
           R_{\\mathrm{CFP}(\\lambda, H)} =
-          \\lambda \\int_{\\mathbf{R}} \\frac{x}{1 - wz} H(\\mathrm{d} x).
+          \\lambda \\int_{\\mathbb{R}} \\frac{x}{1 - wx} H(\\mathrm{d} x).
 
       Here, :math:`H > 0` is a positive measure. The free Levy distribution
       represents all free infinitely divisible (FID) distributions.

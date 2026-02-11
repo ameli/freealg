@@ -27,6 +27,24 @@ class DeformedWigner(BaseDistribution):
     """
     Deformed Wiger distribution
 
+    Parameters
+    ----------
+
+    t : array_like
+        Array :math:`[t_1, \\dots, t_r]`, where :math:`t_i` is the jump
+        location :math:`\\delta_{t_i}` in the discrete distribution :math:`H`
+        (see notes below).
+
+    w : array_like
+        Array :math:`[w_1, \\dots, w_r]`, where :math:`w_i` is the jump
+        weights of :math:`\\delta_{t_i}` in the discrete distribution :math:`H`
+        (see notes below). The sum of all weights must be one:
+        :math:`\\sum_{i=1}^r w_i = 1`.
+
+    sigma : float, default=0.0
+        Semicircle standard deviation :math:`\\sigma` (variance is
+        :math:`\\sigma^2`).
+
     Methods
     -------
 

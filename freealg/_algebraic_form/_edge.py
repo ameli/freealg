@@ -246,16 +246,20 @@ def merge_edges(edges, tol=0.0):
 
     Parameters
     ----------
+
     edges : ndarray, shape (nt, 2k)
         Edge trajectories [a1,b1,a2,b2,...].
+
     tol : float
         Merge tolerance in x-units.
 
     Returns
     -------
+
     edges2 : ndarray, shape (nt, 2k)
         Same shape as input. Inner merged edges are NaN. No columns are
         shifted.
+
     active_k : ndarray, shape (nt,)
         Number of remaining bulks (connected components) at each time.
     """

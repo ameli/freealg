@@ -23,84 +23,12 @@ from __future__ import annotations
 import os
 import numpy as np
 
-__all__ = ["build_time_grid", "decompress_newton"]
+__all__ = ["decompress_newton"]
 
 
-# =================
-# Time grid helper
-# =================
-
-def build_time_grid(size, n0, min_n_times=0):
-    """
-    Build a monotone time grid for FD.
-
-    Parameters
-    ----------
-    size : array_like
-        Requested size ratios, i.e., n(t)/n0 = size. Can include 1.
-    n0 : int
-        Initial matrix size.
-    min_n_times : int, default=0
-        Ensures at least this many intermediate time points between
-        successive requested times, based on implied integer sizes.
-
-    Returns
-    -------
-    t_all : numpy.ndarray
-        Full time grid (including intermediates), sorted.
-    idx_req : numpy.ndarray
-        Indices into t_all corresponding to the originally requested times.
-    """
-    size = np.asarray(size, dtype=float).ravel()
-    if size.size == 0:
-        raise ValueError("size must be non-empty")
-    if np.any(size <= 0.0):
-        raise ValueError("size must be > 0")
-
-    t_req = np.log(size)
-    order = np.argsort(t_req)
-    t_req_sorted = t_req[order]
-
-    n0 = int(n0)
-    if n0 <= 0:
-        raise ValueError("n0 must be a positive integer")
-
-    t_all = [float(t_req_sorted[0])]
-    for k in range(1, t_req_sorted.size):
-        t0 = float(t_req_sorted[k - 1])
-        t1 = float(t_req_sorted[k])
-        if t1 <= t0:
-            continue
-
-        if int(min_n_times) <= 0:
-            t_all.append(t1)
-            continue
-
-        nA = max(1, int(round(n0 * np.exp(t0))))
-        nB = max(1, int(round(n0 * np.exp(t1))))
-        dn = max(1, nB - nA)
-        step_n = max(1, int(np.ceil(dn / float(min_n_times))))
-        n_grid = list(range(nA, nB, step_n))
-        if n_grid[-1] != nB:
-            n_grid.append(nB)
-        for nn in n_grid[1:]:
-            t_all.append(float(np.log(nn / float(n0))))
-
-    t_all = np.asarray(t_all, dtype=float)
-
-    idx_req_sorted = np.empty(t_req_sorted.size, dtype=int)
-    for i, t in enumerate(t_req_sorted):
-        idx_req_sorted[i] = int(np.argmin(np.abs(t_all - float(t))))
-
-    inv = np.empty_like(order)
-    inv[order] = np.arange(order.size)
-    idx_req = idx_req_sorted[inv]
-    return t_all, idx_req
-
-
-# ===================
+# ====================
 # Polynomial utilities
-# ===================
+# ====================
 
 def _poly_coef_in_w(z, coeffs):
     """

@@ -31,11 +31,15 @@ class DeformedMarchenkoPastur(BaseDistribution):
     ----------
 
     t : array_like
-        Atom locations (jump sizes). For PSD-like support, keep them >= 0.
+        Array :math:`[t_1, \\dots, t_r]`, where :math:`t_i` is the jump
+        location :math:`\\delta_{t_i}` in the discrete distribution :math:`H`
+        (see notes below). For PSD matrix, :math:`t_i > 0`.
 
     w : array_like
-        Weights for atoms. Must have same length as ``t``, each entry must be
-        nonnegative, and their sum must be 1.
+        Array :math:`[w_1, \\dots, w_r]`, where :math:`w_i` is the jump
+        weights of :math:`\\delta_{t_i}` in the discrete distribution :math:`H`
+        (see notes below). The sum of all weights must be one:
+        :math:`\\sum_{i=1}^r w_i = 1`.
 
     c : float
         Ratio parameter of Marchenko-Pastur distribution, must be >= 0.

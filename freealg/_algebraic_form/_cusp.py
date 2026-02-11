@@ -13,7 +13,7 @@
 
 import numpy
 import scipy.optimize
-from ._decompress import eval_P_partials
+from ._poly_util import eval_P_partials
 
 __all__ = ["solve_cusp"]
 
@@ -92,10 +92,12 @@ def _newton_3x3(F, x0, max_iter=60, tol=1e-12, bounds=None, max_step=None):
     return x, False, fx
 
 
-__all__ = ["solve_cusp"]
-
+# =================
+# second partial fd
+# =================
 
 def _second_partials_fd(zeta, y, coeffs, eps_z=None, eps_y=None):
+
     zeta = float(zeta)
     y = float(y)
 
@@ -117,6 +119,10 @@ def _second_partials_fd(zeta, y, coeffs, eps_z=None, eps_y=None):
     Pzy = 0.5 * (Pzy1 + Pzy2)
     return float(Pzz), float(Pzy), float(Pyy)
 
+
+# ===========
+# cusp F real
+# ===========
 
 def _cusp_F_real(zeta, y, s, coeffs):
     # tau = 1 + exp(s)  => c = tau-1 = exp(s) > 0
@@ -142,6 +148,7 @@ def _cusp_F_real(zeta, y, s, coeffs):
 # ================
 
 def _poly_coeffs_in_y(coeffs, zeta):
+
     a = numpy.asarray(coeffs)
     deg_z = a.shape[0] - 1
     deg_y = a.shape[1] - 1
@@ -346,7 +353,7 @@ def solve_cusp(
     ok = bool(res.success and
               (numpy.max(numpy.abs(F_final)) <= max(1e-9, 50.0 * tol)))
 
-    return {
+    info = {
         "ok": ok,
         "t": t,
         "tau": float(tau),
@@ -354,4 +361,7 @@ def solve_cusp(
         "y": float(y),
         "x": x,
         "F": F_final,
-        "success": bool(res.success)}
+        "success": bool(res.success)
+    }
+
+    return info

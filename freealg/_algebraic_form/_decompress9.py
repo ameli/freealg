@@ -20,6 +20,9 @@ __all__ = ['decompress_newton']
 # =========================
 
 def _poly_powers(z, deg):
+    """
+    """
+
     z = numpy.asarray(z, dtype=complex).ravel()
     n = z.size
     zp = numpy.ones((n, deg + 1), dtype=complex)
@@ -27,6 +30,10 @@ def _poly_powers(z, deg):
         zp[:, k] = zp[:, k - 1] * z
     return zp
 
+
+# =========
+# eval P dP
+# =========
 
 def _eval_P_dP(z, m, coeffs):
     """
@@ -36,6 +43,7 @@ def _eval_P_dP(z, m, coeffs):
         P(z,m) = sum_{j=0}^s a_j(z) m^j
         a_j(z) = sum_{i=0}^{deg_z} coeffs[i,j] z^i
     """
+
     z = numpy.asarray(z, dtype=complex).ravel()
     m = numpy.asarray(m, dtype=complex).ravel()
 

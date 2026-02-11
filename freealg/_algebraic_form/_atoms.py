@@ -14,7 +14,7 @@
 import numpy
 from ._poly_util import poly_trim
 
-__all__ = ['detect_atoms']
+__all__ = ['detect_atoms', 'evolve_atoms']
 
 
 # =============
@@ -37,32 +37,41 @@ def detect_atoms(coeffs, m_eval, eta=1e-6, tol=1e-12, real_tol=None,
 
     Parameters
     ----------
+
     coeffs : array_like, shape (deg_z+1, s+1)
         Polynomial coefficients where coeffs[i, j] is the coefficient of
         z^i * m^j.
+
     m_eval : callable
         Function handle m_eval(z) returning the physical-branch Stieltjes
         transform evaluated at complex z. Must accept scalar complex input and
         return scalar complex output.
+
     eta : float, default=1e-6
         Small imaginary part used to probe the pole strength.
+
     tol : float, default=1e-12
         Tolerance for trimming polynomial coefficients.
+
     real_tol : float or None, default=None
         Tolerance for treating a complex root as real. If None, uses 1e3*tol.
+
     w_tol : float, default=1e-10
         Minimum atom weight to report.
+
     merge_tol : float, default=1e-8
         Merge roots whose real parts differ by at most this tolerance.
 
     Returns
     -------
+
     atoms : list of (float, float)
         List of (atom_loc, atom_w). Locations are real numbers and weights are
         nonnegative.
 
     Notes
     -----
+
     - This is intended for plotting/diagnostics. For fitted polynomials, a_s(z)
       roots can include spurious candidates; the weight filter w_tol is a
       practical guard.
@@ -119,3 +128,52 @@ def detect_atoms(coeffs, m_eval, eta=1e-6, tol=1e-12, real_tol=None,
             atoms.append((float(x), float(w)))
 
     return atoms
+
+
+# ============
+# evolve atoms
+# ============
+
+def evolve_atoms(atoms0, ratios):
+    """
+    Evolves the weight of atoms with free decompression. The location of the
+    atoms stay the same, just their weight changes.
+
+    Parameters
+    ----------
+
+    atoms0 : list
+        A list of tuples (atom_loc, atom_weight)
+
+    ratios : list
+        A list of ratios of final matrix size to the initial matrix size.
+
+    Returns
+    -------
+
+    atoms_t : list
+        A list of tuples (atom_loc, weight_series), where atom_weight itself is
+        a list with the same size a of ``ratios``.
+
+    Notes
+    -----
+
+    Atom weight is evolved by
+
+    .. math:
+
+        w(t) = (1 - w_0) e^{-t},
+
+    where :math:`\\tau = e^t` are the ratios :math:`\\tau = n(t) / n_0`.
+    """
+
+    atoms_t = []
+
+    for loc, w0 in atoms0:
+        w0 = float(w0)
+        w_list = 1.0 - (1.0 - w0) / ratios
+        w_list = numpy.clip(w_list, 0.0, 1.0).astype(float)
+        atom_t = (float(loc), w_list)
+        atoms_t.append(atom_t)
+
+    return atoms_t

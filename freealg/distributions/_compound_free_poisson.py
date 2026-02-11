@@ -31,13 +31,18 @@ class CompoundFreePoisson(BaseDistribution):
     ----------
 
     t : array_like
-        Jump sizes (must be > 0). For PSD-like support, keep them > 0.
+        Array :math:`[t_1, \\dots, t_r]`, where :math:`t_i` is the jump
+        location :math:`\\delta_{t_i}` in the discrete distribution :math:`H`
+        (see notes below).
 
     w : array_like
-        Mixture weights for ``t`` (all entries must be > 0). Sum must be 1.
+        Array :math:`[w_1, \\dots, w_r]`, where :math:`w_i` is the jump
+        weights of :math:`\\delta_{t_i}` in the discrete distribution :math:`H`
+        (see notes below). The sum of all weights must be one:
+        :math:`\\sum_{i=1}^r w_i = 1`.
 
     lam : float
-        Total rate (intensity), must be > 0.
+        Total rate (intensity) :math:`\\lambda > 0`.
 
     Methods
     -------
@@ -464,7 +469,7 @@ class CompoundFreePoisson(BaseDistribution):
         ----------
 
         eta : float, default=2e-4
-            Small number for distinguising atoms from absolutely-continuous
+            Small number for distinguishing atoms from absolutely-continuous
             part of density.
         """
 

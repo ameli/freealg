@@ -12,55 +12,14 @@
 # =======
 
 import numpy
+from ._poly_util import eval_P_partials
 
-__all__ = ['build_time_grid', 'decompress_newton_old', 'decompress_newton']
-
-
-# ===============
-# build time grid
-# ===============
-
-def build_time_grid(sizes, n0, min_n_times=0):
-    """
-    sizes: list/array of requested matrix sizes (e.g. [2000,3000,4000,8000])
-    n0:    initial size (self.n)
-    min_n_times: minimum number of time points to run Newton sweep on
-
-    Returns
-    -------
-    t_all: sorted time grid to run solver on
-    idx_req: indices of requested times inside t_all (same order as sizes)
-    """
-
-    sizes = numpy.asarray(sizes, dtype=float)
-    alpha = sizes / float(n0)
-    t_req = numpy.log(alpha)
-
-    # Always include t=0 and T=max(t_req)
-    T = float(numpy.max(t_req)) if t_req.size else 0.0
-    base = numpy.unique(numpy.r_[0.0, t_req, T])
-    t_all = numpy.sort(base)
-
-    # Add points only if needed: split largest gaps
-    N = int(min_n_times) if min_n_times is not None else 0
-    while t_all.size < N and t_all.size >= 2:
-        gaps = numpy.diff(t_all)
-        k = int(numpy.argmax(gaps))
-        mid = 0.5 * (t_all[k] + t_all[k+1])
-        t_all = numpy.sort(numpy.unique(numpy.r_[t_all, mid]))
-
-    # Map each requested time to an index in t_all (stable, no float drama)
-    # (t_req values came from same construction, so they should match exactly;
-    # still: use searchsorted + assert)
-    idx_req = numpy.searchsorted(t_all, t_req)
-    # optional sanity:
-    # assert numpy.allclose(t_all[idx_req], t_req, rtol=0, atol=0)
-
-    return t_all, idx_req
+__all__ = ['decompress_newton']
 
 
-
-
+# ==========
+# fd solve w
+# ==========
 
 def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
                armijo=1e-4, min_lam=1e-6, w_min=1e-14):
@@ -118,8 +77,7 @@ def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
 
         w, ok = fd_solve_w(
             z=0.5 + 1e-6j, t=2.0, coeffs=coeffs, w_init=m1_fn(0.5 + 1e-6j),
-            max_iter=50, tol=1e-12
-        )
+            max_iter=50, tol=1e-12)
     """
 
     z = complex(z)
@@ -152,7 +110,8 @@ def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
                     continue
                 for k in range(i + 1):
                     p = deg_z + j - k
-                    poly_y[p] += aij * comb(i, k) * (z ** (i - k)) * (beta ** k)
+                    poly_y[p] += aij * comb(i, k) * (z ** (i - k)) * \
+                        (beta ** k)
 
         # numpy.roots expects highest degree first
         coeffs = poly_y[::-1]
@@ -165,7 +124,8 @@ def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
 
         roots_y = numpy.roots(coeffs)
 
-        # Pick root with Im(w)>0 (if z in upper half-plane), closest to time seed
+        # Pick root with Im(w)>0 (if z in upper half-plane), closest to time
+        # seed
         y_seed = tau * w_init
         best = None
         best_score = None
@@ -198,24 +158,21 @@ def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
         F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
         return w, (abs(F_end) <= 1e3 * tol)
 
-    # -------------------
-
-
     F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
     return w, (abs(F_end) <= 10.0 * tol)
 
 
-# ============
-# NEW FUNCTION
-# ============
+# ===============
+# fd candidates w
+# ===============
 
 def fd_candidates_w(z, t, coeffs, w_min=1e-14):
     """
-    Return candidate roots w solving P(z + alpha/w, tau*w)=0 with Im(w)>0 (if Im(z)>0).
+    Return candidate roots w solving P(z + alpha/w, tau*w)=0 with Im(w)>0 (if
+    Im(z)>0).
     """
     z = complex(z)
     tau = float(numpy.exp(t))
-    alpha = 1.0 - 1.0 / tau
     want_pos_imag = (z.imag > 0.0)
 
     a = numpy.asarray(coeffs, dtype=numpy.complex128)
@@ -253,16 +210,7 @@ def fd_candidates_w(z, t, coeffs, w_min=1e-14):
             continue
         if want_pos_imag and (w.imag <= 0.0):
             continue
-        # residual filter (optional but helps)
-        # -------------
-        # TEST
-        # F = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
-        # if abs(F) < 1e-6:
-        #     cands.append(complex(w))
-        # ---------------
-        # TEST
         cands.append(complex(w))
-        # ------------------
 
     return cands
 
@@ -346,58 +294,9 @@ def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
         active_imag_eps = 50.0 * eta0 if eta0 > 0.0 else 1e-10
     active_imag_eps = float(active_imag_eps)
 
-    # --------------------------------------
-    # TEST
-    # def solve_with_choice(iz, w_seed):
-    #     # Neighbor-seeded candidate (spatial continuity)
-    #     w_a, ok_a = fd_solve_w(
-    #         z_list[iz], t, coeffs, w_seed,
-    #         max_iter=max_iter, tol=tol, armijo=armijo,
-    #         min_lam=min_lam, w_min=w_min
-    #     )
-    #
-    #     # Time-seeded candidate (time continuation)
-    #     w_b, ok_b = fd_solve_w(
-    #         z_list[iz], t, coeffs, w_prev[iz],
-    #         max_iter=max_iter, tol=tol, armijo=armijo,
-    #         min_lam=min_lam, w_min=w_min
-    #     )
-    #
-    #     if ok_a and ok_b:
-    #         da = abs(w_a - w_prev[iz])
-    #         db = abs(w_b - w_prev[iz])
-    #
-    #         # Reject neighbor result if it drifted too far in one step
-    #         if da > time_rel_tol * (1.0 + abs(w_prev[iz])):
-    #             return w_b, True
-    #
-    #         return (w_a, True) if (da <= db) else (w_b, True)
-    #
-    #     if ok_a:
-    #         da = abs(w_a - w_prev[iz])
-    #         if da > time_rel_tol * (1.0 + abs(w_prev[iz])) and ok_b:
-    #             return w_b, True
-    #         return w_a, True
-    #
-    #     if ok_b:
-    #         return w_b, True
-    #
-    #     return w_a, False
-    # ----------------------------------------
-    # TEST
     def solve_with_choice(iz, w_seed):
         # candidate roots at this (t,z)
         cands = fd_candidates_w(z_list[iz], t, coeffs, w_min=w_min)
-
-        # ---------------------
-        # TEST
-        if iz in (0, nz//2, nz-1):
-            ims = [float(w.imag) for w in cands]
-            print(f"      iz={iz} ncand={len(cands)} Im(cands) min/med/max="
-                  f"{(min(ims) if ims else None)}/"
-                  f"{(numpy.median(ims) if ims else None)}/"
-                  f"{(max(ims) if ims else None)}")
-        # ---------------------
 
         if len(cands) == 0:
             # fallback to your existing single-root solver
@@ -415,19 +314,15 @@ def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
         best_cost = None
 
         for w in cands:
-            # TEST
-            # cost = abs(w - w_space) + 0.25 * abs(w - w_time)
-            # TEST
-            # prefer continuity, but also prefer larger Im(w) to stay on the bulk branch
+            # prefer continuity, but also prefer larger Im(w) to stay on the
+            # bulk branch
             cost = abs(w - w_space) + 0.25 * abs(w - w_time) - 5.0 * w.imag
-            # --------------
 
             if (best_cost is None) or (cost < best_cost):
                 best = w
                 best_cost = cost
 
         return best, True
-    # ----------------------------------------
 
     for it in range(1, nt):
         t0 = float(t_grid[it - 1])
@@ -465,24 +360,10 @@ def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
             # Define "active" region from previous time: inside bulks
             # Im(w_prev) is O(1), outside bulks Im(w_prev) is ~O(eta). Dilate
             # by sweep_pad to allow edges to move.
-
-            # ------------------------------
-            # TEST
-            # active = (numpy.abs(numpy.imag(w_prev)) > active_imag_eps)
-            # active_pad = active.copy()
-            # if sweep_pad > 0 and numpy.any(active):
-            #     idx = numpy.flatnonzero(active)
-            #     for i in idx:
-            #         lo = 0 if (i - sweep_pad) < 0 else (i - sweep_pad)
-            #         hi = \
-            #             nz if (i + sweep_pad + 1) > nz else (i + sweep_pad + 1)
-            #         active_pad[lo:hi] = True
-            # ------------------------------
-            # TEST
             active = (numpy.abs(numpy.imag(w_prev)) > active_imag_eps)
 
             # Split active indices into contiguous blocks (bulks)
-            pad_label = -numpy.ones(nz, dtype=numpy.int64)   # bulk id per index
+            pad_label = -numpy.ones(nz, dtype=numpy.int64)  # bulk id per index
             active_pad = numpy.zeros(nz, dtype=bool)
 
             idx = numpy.flatnonzero(active)
@@ -503,69 +384,15 @@ def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
                 for lo, hi in pads:
                     active_pad[lo:hi + 1] = True
 
-                # Assign each padded index to the nearest bulk center (no overlap label)
+                # Assign each padded index to the nearest bulk center (no
+                # overlap label)
                 idx_u = numpy.flatnonzero(active_pad)
                 c = numpy.asarray(centers, dtype=numpy.int64)
                 dist = numpy.abs(idx_u[:, None] - c[None, :])
                 winner = numpy.argmin(dist, axis=1).astype(numpy.int64)
                 pad_label[idx_u] = winner
-            # ------------------------------
 
-            # ------------------------------
-            # TEST
-            def _ranges(idxs):
-                if idxs.size == 0:
-                    return []
-                cuts = numpy.where(numpy.diff(idxs) > 1)[0]
-                blocks = numpy.split(idxs, cuts + 1)
-                return [(int(b[0]), int(b[-1])) for b in blocks]
-
-            print("    pad_label>=0 ranges:", _ranges(numpy.flatnonzero(pad_label >= 0)))
-            print("    overlap(-2) ranges:", _ranges(numpy.flatnonzero(pad_label == -2)))
-            # ------------------------------
-
-
-
-            # ----------------------------------------------
-
-            # TEST
-            # eta = float(abs(z_list[0].imag))
-            #
-            # # Barrier: points that look like "gap" (tiny Im(w_prev))
-            # barrier_eps = 10.0 * eta   # try 5*eta or 10*eta
-            # barrier = (numpy.abs(numpy.imag(w_prev)) <= barrier_eps)
-
-
-
-            # TEST
-            # -------------------------
-            # --- diagnostics ---
             active = (numpy.abs(numpy.imag(w_prev)) > active_imag_eps)
-            idx_active = numpy.flatnonzero(active)
-            idx_pad = numpy.flatnonzero(active_pad)
-
-            def _ranges(idxs):
-                if idxs.size == 0:
-                    return []
-                cuts = numpy.where(numpy.diff(idxs) > 1)[0]
-                blocks = numpy.split(idxs, cuts + 1)
-                return [(b[0], b[-1]) for b in blocks]
-
-            print(f"[t={t:.6g}] eta={z_list[0].imag:.2e} active_eps={active_imag_eps:.2e} "
-                  f"active_n={idx_active.size}/{nz} pad_n={idx_pad.size}/{nz} "
-                  f"active_ranges={_ranges(idx_active)} pad_ranges={_ranges(idx_pad)}")
-
-            # Track the physical “gap” region around between bulks by looking at low Im(w_prev)
-            gap = numpy.abs(numpy.imag(w_prev)) <= 5.0 * z_list[0].imag
-            ig = numpy.flatnonzero(gap)
-            if ig.size > 0:
-                print(f"    gap_ranges(Im<=5eta)={_ranges(ig)} "
-                      f"Im(w) min/med/max = {numpy.min(w_prev.imag):.3e}/"
-                      f"{numpy.median(w_prev.imag):.3e}/{numpy.max(w_prev.imag):.3e}")
-
-            # ------------------
-
-
 
             # Left-to-right: use neighbor seed only within padded active
             # regions, so we don't propagate a branch across the gap between
@@ -574,47 +401,17 @@ def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
                 if iz == 0:
                     w_seed = w_prev[iz]
                 else:
-                    # TEST
-                    # if active_pad[iz] and active_pad[iz - 1]:
-                    #     w_seed = w_row[iz - 1]
-                    # else:
-                    #     w_seed = w_prev[iz]
-                    # TEST
-                    # if (active_pad[iz] and active_pad[iz - 1] and
-                    #         (not barrier[iz]) and (not barrier[iz - 1])):
-                    #     w_seed = w_row[iz - 1]
-                    # else:
-                    #     w_seed = w_prev[iz]
-                    # ----------------------
-                    # TEST
-                    # if (active_pad[iz] and active_pad[iz - 1] and
-                    #         (pad_label[iz] == pad_label[iz - 1]) and
-                    #         (pad_label[iz] >= 0)):
-                    # -----------------
-                    # TEST
                     if (active_pad[iz] and active_pad[iz - 1] and
                         (pad_label[iz] == pad_label[iz - 1]) and
-                        (pad_label[iz] >= 0)):
+                            (pad_label[iz] >= 0)):
                         w_seed = w_row[iz - 1]
                     else:
                         w_seed = w_prev[iz]
-                    # ----------------------
-
 
                 w_row[iz], ok_row[iz] = solve_with_choice(iz, w_seed)
 
             # Right-to-left refinement: helps stabilize left edges of bulks.
             for iz in range(nz - 2, -1, -1):
-                # TEST
-                # if active_pad[iz] and active_pad[iz + 1]:
-                # TEST
-                # if (active_pad[iz] and active_pad[iz + 1] and
-                #         (not barrier[iz]) and (not barrier[iz + 1])):
-                # TEST
-                # if (active_pad[iz] and active_pad[iz + 1] and
-                #         (pad_label[iz] == pad_label[iz + 1]) and
-                #         (pad_label[iz] >= 0)):
-                # TEST
                 if (active_pad[iz] and active_pad[iz + 1] and
                         (pad_label[iz] == pad_label[iz + 1]) and
                         (pad_label[iz] >= 0)):
@@ -627,11 +424,6 @@ def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
                                                 abs(w_row[iz] - w_prev[iz])):
                             w_row[iz] = w_new
                             ok_row[iz] = True
-
-
-
-            # TEST
-            print(f'solved_ok={ok_row.sum()}/{nz}  (this substep)')
 
             w_prev = w_row
 

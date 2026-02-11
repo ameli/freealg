@@ -13,251 +13,14 @@
 
 import numpy
 from ._continuation_algebraic import powers
+from ._poly_util import eval_P_partials
 
 __all__ = ['decompress_newton']
-
-
-
-# ===============
-# eval P partials
-# ===============
-
-def eval_P_partials(z, m, coeffs):
-    """
-    Evaluate P(z,m) and its partial derivatives dP/dz and dP/dm.
-
-    This assumes P is represented by `coeffs` in the monomial basis
-
-        P(z, m) = sum_{j=0..s} a_j(z) * m^j,
-        a_j(z) = sum_{i=0..deg_z} coeffs[i, j] * z^i.
-
-    The function returns P, dP/dz, dP/dm with broadcasting over z and m.
-
-    Parameters
-    ----------
-    z : complex or array_like of complex
-        First argument to P.
-    m : complex or array_like of complex
-        Second argument to P. Must be broadcast-compatible with `z`.
-    coeffs : ndarray, shape (deg_z+1, s+1)
-        Coefficient matrix for P in the monomial basis.
-
-    Returns
-    -------
-    P : complex or ndarray of complex
-        Value P(z,m).
-    Pz : complex or ndarray of complex
-        Partial derivative dP/dz evaluated at (z,m).
-    Pm : complex or ndarray of complex
-        Partial derivative dP/dm evaluated at (z,m).
-
-    Notes
-    -----
-    For scalar (z,m), this uses Horner evaluation for a_j(z) and then Horner
-    in m. For array inputs, it uses precomputed power tables via `_powers` for
-    simplicity.
-
-    Examples
-    --------
-    .. code-block:: python
-
-        P, Pz, Pm = eval_P_partials(1.0 + 1j, 0.2 + 0.3j, coeffs)
-    """
-
-    z = numpy.asarray(z, dtype=complex)
-    m = numpy.asarray(m, dtype=complex)
-
-    deg_z = int(coeffs.shape[0] - 1)
-    s = int(coeffs.shape[1] - 1)
-
-    if (z.ndim == 0) and (m.ndim == 0):
-        zz = complex(z)
-        mm = complex(m)
-
-        a = numpy.empty(s + 1, dtype=complex)
-        ap = numpy.empty(s + 1, dtype=complex)
-
-        for j in range(s + 1):
-            c = coeffs[:, j]
-
-            val = 0.0 + 0.0j
-            for i in range(deg_z, -1, -1):
-                val = val * zz + c[i]
-            a[j] = val
-
-            dval = 0.0 + 0.0j
-            for i in range(deg_z, 0, -1):
-                dval = dval * zz + (i * c[i])
-            ap[j] = dval
-
-        p = a[s]
-        pm = 0.0 + 0.0j
-        for j in range(s - 1, -1, -1):
-            pm = pm * mm + p
-            p = p * mm + a[j]
-
-        pz = ap[s]
-        for j in range(s - 1, -1, -1):
-            pz = pz * mm + ap[j]
-
-        return p, pz, pm
-
-    shp = numpy.broadcast(z, m).shape
-    zz = numpy.broadcast_to(z, shp).ravel()
-    mm = numpy.broadcast_to(m, shp).ravel()
-
-    zp = powers(zz, deg_z)
-    mp = powers(mm, s)
-
-    dzp = numpy.zeros_like(zp)
-    for i in range(1, deg_z + 1):
-        dzp[:, i] = i * zp[:, i - 1]
-
-    P = numpy.zeros(zz.size, dtype=complex)
-    Pz = numpy.zeros(zz.size, dtype=complex)
-    Pm = numpy.zeros(zz.size, dtype=complex)
-
-    for j in range(s + 1):
-        aj = zp @ coeffs[:, j]
-        P += aj * mp[:, j]
-
-        ajp = dzp @ coeffs[:, j]
-        Pz += ajp * mp[:, j]
-
-        if j >= 1:
-            Pm += (j * aj) * mp[:, j - 1]
-
-    return P.reshape(shp), Pz.reshape(shp), Pm.reshape(shp)
 
 
 # ==========
 # fd solve w
 # ==========
-
-# def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
-#                armijo=1e-4, min_lam=1e-6, w_min=1e-14):
-#     """
-#     Solve for w = m(t,z) from the implicit FD equation using damped Newton.
-#
-#     We solve in w the equation
-#
-#         F(w) = P(z + alpha/w, tau*w) = 0,
-#
-#     where tau = exp(t) and alpha = 1 - 1/tau.
-#
-#     A backtracking (Armijo) line search is used to stabilize Newton updates.
-#     When Im(z) > 0, the iterate is constrained to remain in the upper
-#     half-plane (Im(w) > 0), enforcing the Herglotz branch.
-#
-#     Parameters
-#     ----------
-#     z : complex
-#         Query point in the complex plane.
-#     t : float
-#         Time parameter (tau = exp(t)).
-#     coeffs : ndarray
-#         Coefficients defining P(zeta,y) in the monomial basis.
-#     w_init : complex
-#         Initial guess for w.
-#     max_iter : int, optional
-#         Maximum number of Newton iterations.
-#     tol : float, optional
-#         Residual tolerance on |F(w)|.
-#     armijo : float, optional
-#         Armijo parameter for backtracking sufficient decrease.
-#     min_lam : float, optional
-#         Minimum damping factor allowed in backtracking.
-#     w_min : float, optional
-#         Minimum |w| allowed to avoid singularity in z + alpha/w.
-#
-#     Returns
-#     -------
-#     w : complex
-#         The computed solution (last iterate if not successful).
-#     success : bool
-#         True if convergence criteria were met, False otherwise.
-#
-#     Notes
-#     -----
-#     This function does not choose the correct branch globally by itself; it
-#     relies on a good initialization strategy (e.g. time continuation and/or
-#     x-sweeps) to avoid converging to a different valid root of the implicit
-#     equation.
-#
-#     Examples
-#     --------
-#     .. code-block:: python
-#
-#         w, ok = fd_solve_w(
-#             z=0.5 + 1e-6j, t=2.0, coeffs=coeffs, w_init=m1_fn(0.5 + 1e-6j),
-#             max_iter=50, tol=1e-12
-#         )
-#     """
-#
-#     z = complex(z)
-#     w = complex(w_init)
-#
-#     tau = float(numpy.exp(t))
-#     alpha = 1.0 - 1.0 / tau
-#
-#     want_pos_imag = (z.imag > 0.0)
-#
-#     for _ in range(max_iter):
-#         if not numpy.isfinite(w.real) or not numpy.isfinite(w.imag):
-#             return w, False
-#         if abs(w) < w_min:
-#             return w, False
-#         if want_pos_imag and (w.imag <= 0.0):
-#             return w, False
-#
-#         zeta = z + alpha / w
-#         y = tau * w
-#
-#         F, Pz, Py = eval_P_partials(zeta, y, coeffs)
-#         F = complex(F)
-#         Pz = complex(Pz)
-#         Py = complex(Py)
-#
-#         if abs(F) <= tol:
-#             return w, True
-#
-#         dF = (-alpha / (w * w)) * Pz + tau * Py
-#         if dF == 0.0:
-#             return w, False
-#
-#         step = -F / dF
-#
-#         lam = 1.0
-#         F_abs = abs(F)
-#         ok = False
-#
-#         while lam >= min_lam:
-#             w_new = w + lam * step
-#             if abs(w_new) < w_min:
-#                 lam *= 0.5
-#                 continue
-#             if want_pos_imag and (w_new.imag <= 0.0):
-#                 lam *= 0.5
-#                 continue
-#
-#             zeta_new = z + alpha / w_new
-#             y_new = tau * w_new
-#
-#             F_new = eval_P_partials(zeta_new, y_new, coeffs)[0]
-#             F_new = complex(F_new)
-#
-#             if abs(F_new) <= (1.0 - armijo * lam) * F_abs:
-#                 w = w_new
-#                 ok = True
-#                 break
-#
-#             lam *= 0.5
-#
-#         if not ok:
-#             return w, False
-#
-#     F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
-#     return w, (abs(F_end) <= 10.0 * tol)
 
 def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
                armijo=1e-4, min_lam=1e-6, w_min=1e-14):
@@ -329,74 +92,6 @@ def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
 
     for _ in range(max_iter):
 
-        # ----------------
-
-        # if not numpy.isfinite(w.real) or not numpy.isfinite(w.imag):
-        #     return w, False
-        # if abs(w) < w_min:
-        #     return w, False
-        # if want_pos_imag and (w.imag <= 0.0):
-        #     return w, False
-        #
-        # zeta = z + alpha / w
-        # y = tau * w
-        #
-        # F, Pz, Py = eval_P_partials(zeta, y, coeffs)
-        # F = complex(F)
-        # Pz = complex(Pz)
-        # Py = complex(Py)
-        #
-        # if abs(F) <= tol:
-        #     return w, True
-        #
-        # dF = (-alpha / (w * w)) * Pz + tau * Py
-        # if dF == 0.0:
-        #     return w, False
-        #
-        # step = -F / dF
-        #
-        # lam = 1.0
-        # F_abs = abs(F)
-        # ok = False
-        #
-        # while lam >= min_lam:
-        #     w_new = w + lam * step
-        #     if abs(w_new) < w_min:
-        #         lam *= 0.5
-        #         continue
-        #     if want_pos_imag and (w_new.imag <= 0.0):
-        #         lam *= 0.5
-        #         continue
-        #
-        #     zeta_new = z + alpha / w_new
-        #     y_new = tau * w_new
-        #
-        #     F_new = eval_P_partials(zeta_new, y_new, coeffs)[0]
-        #     F_new = complex(F_new)
-        #
-        #     if abs(F_new) <= (1.0 - armijo * lam) * F_abs:
-        #         w = w_new
-        #         ok = True
-        #         break
-        #
-        #     lam *= 0.5
-        #
-        # if not ok:
-        #     return w, False
-
-        # ---------------
-
-        # TEST
-
-        # -------------------------
-        # Polynomial root selection
-        # -------------------------
-        # We solve: P(z + alpha/w, tau*w) = 0.
-        # Let y = tau*w. Then alpha/w = alpha*tau/y = (tau - 1)/y.
-        # So we solve in y:
-        #     P(z + beta/y, y) = 0,  beta = tau - 1.
-        # Multiply by y^deg_z to clear denominators and get a polynomial in y.
-
         a = numpy.asarray(coeffs, dtype=numpy.complex128)
         deg_z = a.shape[0] - 1
         deg_m = a.shape[1] - 1
@@ -463,16 +158,13 @@ def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
         F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
         return w, (abs(F_end) <= 1e3 * tol)
 
-    # -------------------
-
-
     F_end = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
     return w, (abs(F_end) <= 10.0 * tol)
 
 
-# ============
-# NEW FUNCTION
-# ============
+# ===============
+# fd candidates w
+# ===============
 
 def fd_candidates_w(z, t, coeffs, w_min=1e-14):
     """
@@ -519,15 +211,7 @@ def fd_candidates_w(z, t, coeffs, w_min=1e-14):
         if want_pos_imag and (w.imag <= 0.0):
             continue
         # residual filter (optional but helps)
-        # -------------
-        # TEST
-        # F = eval_P_partials(z + alpha / w, tau * w, coeffs)[0]
-        # if abs(F) < 1e-6:
-        #     cands.append(complex(w))
-        # ---------------
-        # TEST
         cands.append(complex(w))
-        # ------------------
 
     return cands
 

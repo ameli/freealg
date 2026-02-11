@@ -12,28 +12,31 @@
 # =======
 
 import numpy
+from .._base_form import BaseForm
 from .._util import compute_eig
 from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, \
         sanity_check_stieltjes_branch, eval_P
 from ._edge import evolve_edges, merge_edges
 from ._cusp_wrap import cusp_wrap
+from ._branch_points import estimate_branch_points, plot_branch_points
+from ._atoms import detect_atoms, evolve_atoms
+from ._support import estimate_support
+from .._support import supp as estimate_broad_supp
 from ._decompressible import precheck_laurent
 from ._decompress_util import build_time_grid
 from ._decompress_coeffs import decompress_coeffs, plot_candidates
 
 # Decompress with Newton
-# from ._decompress import decompress_newton
+from ._decompress import decompress_newton
+# from ._decompress_new import decompress_newton
+# from ._decompress_new_2 import decompress_newton
 # from ._decompress4 import decompress_newton # WORKS (mass issue)
 # from ._decompress5 import decompress_newton
 # from ._decompress6 import decompress_newton
-# from ._decompress4_2 import decompress_newton
-# from ._decompress_new_2 import decompress_newton
-# from ._decompress_new import decompress_newton
-# from ._decompress6 import decompress_newton
 # from ._decompress7 import decompress_newton
 # from ._decompress8 import decompress_newton
-from ._decompress9 import decompress_newton  # With Predictor/Corrector
+# from ._decompress9 import decompress_newton  # With Predictor/Corrector
 
 # Homotopy
 # from ._homotopy import StieltjesPoly
@@ -42,14 +45,9 @@ from ._decompress9 import decompress_newton  # With Predictor/Corrector
 # from ._homotopy4 import StieltjesPoly
 from ._homotopy5 import StieltjesPoly
 
-from ._branch_points import estimate_branch_points, plot_branch_points
-from ._atoms import detect_atoms
-from ._support import estimate_support
-from .._support import supp as estimate_broad_supp
 from ._moments import Moments, AlgebraicStieltjesMoments
 from ..visualization._plot_util import plot_density, plot_hilbert, \
     plot_stieltjes
-from .._base_form import BaseForm
 
 # Fallback to previous numpy API
 if not hasattr(numpy, 'trapezoid'):
@@ -108,6 +106,9 @@ class AlgebraicForm(BaseForm):
     n : int
       Initial array size (assuming a square matrix when :math:`\\mathbf{A}` is
       2D).
+
+    coeffs : numpy.ndarray
+        The coefficients of the fitted polynomial
 
     Methods
     -------
@@ -301,7 +302,9 @@ class AlgebraicForm(BaseForm):
         -------
 
         coeffs : numpy.ndarray
-            2D array of polynomial coefficients
+            A 2D array of the size :math:`(d_z, d_m)` where :math:`d_z` and
+            :math:`d_m` are the degrees of :math:`P(z, m)` in :math:`z` and
+            :math:`m` respectively.
 
         info : dict
             If ``return_info = True``, a dictionary of debugging info is also
@@ -311,14 +314,72 @@ class AlgebraicForm(BaseForm):
         --------
 
         support
+        branch_points
+        atoms
+        stieltjes
 
         Notes
         -----
 
-        When the input data are from an exact model, hard moment constraint is
-        preferred over soft constraint as the latter can hurt an already a good
-        fit.
-        """
+        The Stieltjes transform :math:`m = m(z)` is the root of the implicit
+        relation :math:`P(z, m) = 0`, where :math:`P` is given by
+
+        .. math::
+
+            P(z, m) = \\sum_{i=1}^{d_z} \\sum_{j=1}^{d_m} c_{ij} z^i m^j,
+
+        and :math:`d_z`, :math:`d_m` are the degrees of :math:`P` in :math:`z`
+        and :math:`m`, respectively.
+
+        This function returns the :math:`(d_z \\times d_m)` matrix
+        :math:`\\mathbf{C} = [c_{ij}]`
+
+        .. math::
+
+            \\mathbf{C} =
+            \\begin{bmatrix}
+                c_{11} & \\dots & c_{1 d_m} \\\\
+                \\vdots & & \\vdots \\\\
+                c_{d_z 1} & \\dots & c_{d_z d_m}
+            \\end{bmatrix}.
+
+        These coefficients are real, however, they are returned as complex
+        numbers with their imaginary part all being zero.
+
+        This matrix is empirically fitted based on the samples of the Stieltjes
+        transform. To get this matrix, the :func:`fit` function should have
+        been called first.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 13,16
+
+            >>> # Create a distribution
+            >>> from freealg.distributions import FreeLevy
+
+            >>> # Create an object of the class
+            >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+            ...               sigma=0.9)
+
+            >>> # Create an algebraic form object from the distribution
+            >>> from freealg import AlgebraicForm
+            >>> af = AlgebraicForm(fl)
+
+            >>> # Fit polynomial
+            >>> af.fit(deg_m=4, deg_z=1)
+
+            >>> # Get the empirically fitted polynomial coefficients
+            >>> print(af.coeffs.real)
+            [[ 1.      7.2125 12.15   16.875  24.75  ]
+             [ 0.      1.      7.5    11.      0.    ]]
+
+            >>> # Compare with the exact polynomial from the distribution law
+            >>> print(fl.poly().real)
+            [[ 1.      7.2125 12.15   16.875  24.75  ]
+             [ 0.      1.      7.5    11.     -0.    ]]
+            """
 
         # Sampling around support, or broad_support. This is only needed to
         # ensure sampled points are not hitting the support itself is not used
@@ -686,9 +747,9 @@ class AlgebraicForm(BaseForm):
             for atom_loc, atom_w in atoms_list:
 
                 # Mollifier to approximate atom function
-                atom_func = (atom_w * eta / (numpy.pi)) / \
+                atom_mollifier = (atom_w * eta / (numpy.pi)) / \
                     ((x - atom_loc)**2 + eta**2)
-                rho_ac = rho_ac - atom_func
+                rho_ac = rho_ac - atom_mollifier
             rho_ac = numpy.maximum(rho_ac, 0.0)
 
             if (ac_only is True):
@@ -853,10 +914,10 @@ class AlgebraicForm(BaseForm):
     # decompress
     # ==========
 
-    def decompress(self, size, x=None, method='moc', min_n_times=10,
+    def decompress(self, size, x=None, method='moc', atom_eps=None,
+                   return_atoms=False, min_n_times=10,
                    newton_opt={'max_iter': 50, 'tol': 1e-12, 'armijo': 1e-4,
-                               'min_lam': 1e-6, 'w_min': 1e-14,
-                               'sweep': True},
+                               'min_lam': 1e-6, 'w_min': 1e-14, 'sweep': True},
                    plot=False, latex=False, save=False, verbose=False):
         """
         Free decompression of spectral density.
@@ -966,13 +1027,35 @@ class AlgebraicForm(BaseForm):
         else:
             x = numpy.asarray(x)
 
+        # Epsilon-neighborhood to exclude atoms from x
+        if atom_eps is None:
+            atom_eps = 50.0 * float(self.delta)
+
+        # Remove points too close to atoms to avoid Newton stall at poles
+        atoms0 = self.atoms()
+        if len(atoms0) > 0:
+
+            # Evolve atoms
+            atoms_t = evolve_atoms(atoms0, alpha)
+
+            # Exclude x grid near atoms
+            near_atom = numpy.zeros(x.size, dtype=bool)
+            for x0, _w0 in (atoms0 or []):
+                near_atom |= (numpy.abs(x - float(x0)) <= float(atom_eps))
+
         if method == 'moc':
 
             # Query grid on the real axis + a small imaginary buffer
-            z_query = x + 1j * self.delta
+            x_safe = x[~near_atom]
+            z_query = x_safe + 1j * self.delta
 
             # Initial condition at t = 0 (physical branch)
             w0_list = self._stieltjes(z_query)
+
+            # TEST
+            if len(atoms0) > 0:
+                for x0, w0 in atoms0:
+                    w0_list = w0_list - (float(w0) / (float(x0) - z_query))
 
             # Ensure there are at least min_n_times time t, including requested
             # times, and especially time t = 0
@@ -981,10 +1064,13 @@ class AlgebraicForm(BaseForm):
 
             # Evolve
             W, ok = decompress_newton(
-                z_query, t_all, self.coeffs,
-                w0_list=w0_list, **newton_opt)
+                z_query, t_all, self.coeffs, w0_list=w0_list, **newton_opt)
 
-            rho_all = W.imag / numpy.pi
+            rho_all_safe = W.imag / numpy.pi
+
+            # Back into full grid (fill with zero, may not be a good idea)
+            rho_all = numpy.full((t_all.size, x.size), 0.0, dtype=float)
+            rho_all[:, ~near_atom] = rho_all_safe
 
             # return only the user-requested ones
             rho = rho_all[idx_req]
@@ -1019,14 +1105,25 @@ class AlgebraicForm(BaseForm):
 
         # Plot only the last size
         if plot:
+
+            # Density (absolutely-continuois part) at the last time
             if numpy.isscalar(size):
                 rho_last = rho
             else:
                 rho_last = rho[-1, :]
-            plot_density(x, rho_last, support=(lb, ub),
+
+            # Atoms at the last time
+            if len(atoms0) > 0:
+                atoms_last = [(loc, w[-1]) for loc, w in atoms_t]
+
+            # Plot only the last time of atoms and density
+            plot_density(x, rho_last, atoms=atoms_last, support=(lb, ub),
                          label='Decompression', latex=latex, save=save)
 
-        return rho, x
+        if return_atoms:
+            return rho, x, atoms_t
+        else:
+            return rho, x
 
     # ==========
     # candidates
@@ -1305,5 +1402,5 @@ class AlgebraicForm(BaseForm):
         Find cusp (merge) point of evolving spectral edges
         """
 
-        return cusp_wrap(self, t_grid, edge_kwargs=None, max_iter=50,
-                         tol=1.0e-12)
+        return cusp_wrap(self, self.coeffs, t_grid, edge_kwargs=None,
+                         max_iter=50, tol=1.0e-12)

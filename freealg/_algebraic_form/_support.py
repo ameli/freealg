@@ -192,7 +192,7 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, **kwargs):
     max_im = float(numpy.nanmax(im_grid)) \
         if numpy.any(numpy.isfinite(im_grid)) else 0.0
 
-    thr_rel = float(kwargs.get('thr_rel', 1e-3))
+    thr_rel = float(kwargs.get('thr_rel', 1e-4))
     thr_abs = kwargs.get('thr_abs', None)
 
     im_thr = thr_rel * max_im
@@ -246,6 +246,25 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, **kwargs):
         b = float(edges[k + 1])
         if b > a:
             est_supp.append((a, b))
+
+    # Merge adjacent intervals separated by less than (about) the scan grid
+    # resolution. Otherwise a 1-2 point dip below the Im-threshold can create
+    # a fake micro-gap and split a single bulk into two intervals.
+    if len(est_supp) >= 2 and x_grid.size >= 2:
+        dx = float(x_grid[1] - x_grid[0])
+        gap_tol = 2.0 * dx
+        merged = []
+        a0, b0 = est_supp[0]
+
+        for a1, b1 in est_supp[1:]:
+            if float(a1) - float(b0) <= gap_tol:
+                b0 = max(float(b0), float(b1))
+            else:
+                merged.append((float(a0), float(b0)))
+                a0, b0 = float(a1), float(b1)
+
+        merged.append((float(a0), float(b0)))
+        est_supp = merged
 
     info = {
         'x_grid': x_grid,
