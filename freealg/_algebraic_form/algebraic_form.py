@@ -17,7 +17,7 @@ from .._util import compute_eig
 from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, \
         sanity_check_stieltjes_branch, eval_P
-from ._edge import evolve_edges, merge_edges
+from ._edge import evolve_edges, merge_edges, evolve_edges_with_births
 from ._cusp_wrap import cusp_wrap
 from ._branch_points import estimate_branch_points, plot_branch_points
 from ._atoms import detect_atoms, evolve_atoms
@@ -1368,20 +1368,25 @@ class AlgebraicForm(BaseForm):
                     t_grid, self.coeffs, support=known_supp, eta=eta,
                     dt_max=dt_max, max_iter=max_iter, tol=tol)
             else:
-                # prepend 0 and drop it after evolution
-                t_grid = numpy.array([0.0, t1], dtype=float)
-                complex_edges2, ok_edges2 = evolve_edges(
-                    t_grid, self.coeffs, support=known_supp, eta=eta,
-                    dt_max=dt_max, max_iter=max_iter, tol=tol)
+                # Use an internal grid so bifurcations (newborn edges) can be
+                # detected
+                n_internal = 64  # small, but enough to pass cusp/birth
+                t_grid = numpy.linspace(0.0, t1, n_internal)
+
+                cusps = self.cusp(t_grid)
+                complex_edges2, ok_edges2 = evolve_edges_with_births(
+                    t_grid, self.coeffs, support=known_supp, cusps=cusps,
+                    eta=eta, dt_max=dt_max, max_iter=max_iter, tol=tol,
+                    split_tol=0.0, seed_eps=1e-6)
 
                 complex_edges = complex_edges2[-1:, :]
                 ok_edges = ok_edges2[-1:, :]
         else:
-            # For vector t, require it starts at 0 for correct initialization
-            # (you can relax this if you want by prepending 0 similarly).
-            complex_edges, ok_edges = evolve_edges(
-                t, self.coeffs, support=known_supp, eta=eta,
-                dt_max=dt_max, max_iter=max_iter, tol=tol)
+            cusps = self.cusp(t)
+            complex_edges, ok_edges = evolve_edges_with_births(
+                t, self.coeffs, support=known_supp, cusps=cusps,
+                eta=eta, dt_max=dt_max, max_iter=max_iter, tol=tol,
+                split_tol=0.0, seed_eps=1e-6)
 
         real_edges = complex_edges.real
 
@@ -1389,7 +1394,10 @@ class AlgebraicForm(BaseForm):
         real_merged_edges, active_k = merge_edges(real_edges, tol=1e-4)
 
         if verbose:
-            print("edge success rate:", ok_edges.mean())
+            m_exist = numpy.isfinite(numpy.real(complex_edges))
+            rate = numpy.count_nonzero(ok_edges & m_exist) / \
+                numpy.count_nonzero(m_exist)
+            print("edge success rate:", rate)
 
         return complex_edges, real_merged_edges, active_k
 
@@ -1402,5 +1410,12 @@ class AlgebraicForm(BaseForm):
         Find cusp (merge) point of evolving spectral edges
         """
 
-        return cusp_wrap(self, self.coeffs, t_grid, edge_kwargs=None,
-                         max_iter=50, tol=1.0e-12)
+        if self.supp is not None:
+            known_supp = self.supp
+        elif self.est_supp is not None:
+            known_supp = self.est_supp
+        else:
+            raise RuntimeError('Call "fit" first.')
+
+        return cusp_wrap(self.coeffs, t_grid, support=known_supp, max_iter=50,
+                         tol=1.0e-12)

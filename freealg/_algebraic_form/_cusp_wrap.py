@@ -13,6 +13,7 @@
 
 import numpy
 from ._cusp import solve_cusp
+from ._edge import evolve_edges, merge_edges
 
 __all__ = ['cusp_wrap']
 
@@ -81,11 +82,36 @@ def _dedup_cusps(cusps, t_tol=1e-6, x_tol=1e-6):
     return [cl["rep"] for cl in clusters]
 
 
+# ====
+# edge
+# ====
+
+def _edge(t, coeffs, support=None):
+    """
+    Returns edges that is already merged and real.
+    """
+
+    eta = 1e-3
+    dt_max = 0.1
+    max_iter = 30
+    tol = 1e-12
+
+    complex_edges, _ = evolve_edges(t, coeffs, support=support, eta=eta,
+                                    dt_max=dt_max, max_iter=max_iter, tol=tol)
+
+    real_edges = complex_edges.real
+
+    # Remove spurious edges / merges for plotting
+    real_merged_edges, _ = merge_edges(real_edges, tol=1e-4)
+
+    return complex_edges, real_merged_edges
+
+
 # =====================
 # make edge based seeds
 # =====================
 
-def _make_edge_based_seeds(self, t_grid, edge_kwargs, max_take=10):
+def _make_edge_based_seeds(coeffs, t_grid, support=None, max_take=10):
     """
     Build seeds from all adjacent gaps if edges show >=2 bulks at any time.
     Seed zeta at the midpoint of the smallest gaps.
@@ -94,7 +120,7 @@ def _make_edge_based_seeds(self, t_grid, edge_kwargs, max_take=10):
     seeds = []
 
     try:
-        ce, re, _ = self.edge(t_grid, verbose=False, **edge_kwargs)
+        ce, re = _edge(t_grid, coeffs, support=support)
     except Exception:
         return seeds
 
@@ -138,7 +164,7 @@ def _make_edge_based_seeds(self, t_grid, edge_kwargs, max_take=10):
 # make generic seeds
 # ==================
 
-def _make_generic_seeds(self, t_grid, edge_kwargs, t_count=9,
+def _make_generic_seeds(coeffs, t_grid, support=None, t_count=9,
                         q=(0.2, 0.5, 0.8)):
     """
     Generic multistart: choose a few t0 values and zeta quantiles in the outer
@@ -152,8 +178,7 @@ def _make_generic_seeds(self, t_grid, edge_kwargs, t_count=9,
     t_seeds = numpy.linspace(t_min, t_max, min(t_count, t_grid.size))
     for t0 in t_seeds:
         try:
-            ce0, re0, _ = self.edge(numpy.array([float(t0)]), verbose=False,
-                                    **edge_kwargs)
+            ce0, re0 = _edge(numpy.array([float(t0)]), coeffs, support=support)
             row = re0[0] if (re0 is not None and re0.shape[1] >= 2) else \
                 numpy.real(ce0[0])
             a0 = float(row[0])
@@ -237,7 +262,7 @@ def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, zeta_bounds, max_iter, tol):
 # cusp_wrap
 # =========
 
-def cusp_wrap(self, coeffs, t_grid, edge_kwargs=None, max_iter=80, tol=1e-12,
+def cusp_wrap(coeffs, t_grid, support=None, max_iter=80, tol=1e-12,
               verbose=False, dedup_t_tol=1e-6, dedup_x_tol=1e-6,
               max_solutions=None):
     """
@@ -254,9 +279,6 @@ def cusp_wrap(self, coeffs, t_grid, edge_kwargs=None, max_iter=80, tol=1e-12,
           - 'debug': dict (optional internal vars)
     """
 
-    if edge_kwargs is None:
-        edge_kwargs = {}
-
     t_grid = numpy.asarray(t_grid, dtype=float).ravel()
     if t_grid.size < 2:
         raise ValueError("t_grid must contain at least two points")
@@ -267,10 +289,9 @@ def cusp_wrap(self, coeffs, t_grid, edge_kwargs=None, max_iter=80, tol=1e-12,
 
     # Build seeds
     seeds = []
-    seeds += _make_edge_based_seeds(self, t_grid, edge_kwargs=edge_kwargs,
+    seeds += _make_edge_based_seeds(coeffs, t_grid, support=support,
                                     max_take=12)
-    seeds += _make_generic_seeds(self, t_grid, edge_kwargs=edge_kwargs,
-                                 t_count=9)
+    seeds += _make_generic_seeds(coeffs, t_grid, support=support, t_count=9)
 
     seeds = _unique_seeds(seeds)
 
