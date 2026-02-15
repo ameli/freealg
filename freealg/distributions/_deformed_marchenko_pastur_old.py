@@ -437,7 +437,7 @@ class DeformedMarchenkoPastur(BaseDistribution):
         """
         Support intervals of distribution
 
-        Estimate support intervals of μ = H \\boxtimes MP_c where H = w1
+        Estimate support intervals of \\mu = H \\boxtimes MP_c where H = w1
         \\delta_{t1} + (1-w1) \\delta_{t2}.
 
         Parameters

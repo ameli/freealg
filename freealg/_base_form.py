@@ -399,3 +399,87 @@ class BaseForm(object):
             norm_ = norm_q**(1.0 / order)
 
         return norm_
+
+    # =============
+    # plot branches
+    # =============
+
+    def plot_branches(self, x=None, y=None, latex=False, save=False, **kwargs):
+        """
+        Plot branches of the spectral curve of Stieltjes transform.
+
+        Parameters
+        ----------
+
+        x : numpy.array, default=None
+            The x axis of the grid where the Stieltjes transform is evaluated.
+            If `None`, an interval slightly larger than the support interval of
+            the spectral density is used.
+
+        y : numpy.array, default=None
+            The y axis of the grid where the Stieltjes transform is evaluated.
+            If `None`, a grid on the interval ``[-1, 1]`` is used.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        **kwargs : dict
+            Parameters to pass to
+            :func:`freealg.visualization.domain_coloring`.
+
+        See Also
+        --------
+
+        stieltjes
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 11
+
+            >>> import numpy
+            >>> from freealg import AlgebraicForm
+
+            >>> # Create an object of the class
+            >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+            ...               sigma=0.0)
+
+            >>> # Plot on a grid
+            >>> x = numpy.linspace(0, 4)
+            >>> y = numpy.linspace(-1, 1)
+            >>> fl.plot_branches(x, y)
+        """
+
+        # Create x if not given
+        if x is None:
+            radius = 0.5 * (self.lam_ub - self.lam_lb)
+            center = 0.5 * (self.lam_ub + self.lam_lb)
+            scale = 2.0
+            x_min = numpy.floor(
+                2.0 * (center - 2.0 * radius * scale)) / 2.0
+            x_max = numpy.ceil(
+                2.0 * (center + 2.0 * radius * scale)) / 2.0
+            x = numpy.linspace(x_min, x_max, 400)
+
+        # Create y if not given
+        if y is None:
+            y = numpy.linspace(-1, 1, 400)
+
+        if y.size % 2 != 0:
+            raise ValueError('Size of "y" should be even.')
+
+        X, Y = numpy.meshgrid(x, y)
+        z = X + 1j * Y
+
+        m1 = self.stieltjes(z)
+        roots_ = self.roots(z.ravel())
+        support = self.support()
+
+        plot_branches(z, m1, roots_, support, latex=latex, save=save)

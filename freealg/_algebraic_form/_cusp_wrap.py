@@ -237,7 +237,7 @@ def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, zeta_bounds, max_iter, tol):
         "message": out.get("message", None),
     }
 
-    # If your solve_cusp reports iterations, keep it (optional)
+    # If solve_cusp reports iterations, keep it (optional)
     if "n_iter" in out:
         info["n_iter"] = out["n_iter"]
 
@@ -308,7 +308,7 @@ def cusp_wrap(coeffs, t_grid, support=None, max_iter=80, tol=1e-12,
             continue
 
         # Optional quality filter: reject very weak convergences
-        # (You can tune this; this is a safe-ish default.)
+        # (May need to tune this; this is a safe-ish default.)
         if not numpy.isfinite(sol["info"]["norm_inf_F"]):
             continue
 

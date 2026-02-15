@@ -21,9 +21,11 @@ from matplotlib.lines import Line2D
 from matplotlib.legend_handler import HandlerLine2D
 from ._domain_coloring import domain_coloring
 from ._hist_util import auto_bins, hist
+from ._glue_util import glue_branches
+from ._sheets_util import infer_m1_partners_on_cuts, build_sheets_from_roots
 
 __all__ = ['plot_density', 'plot_hilbert', 'plot_stieltjes',
-           'plot_stieltjes_on_disk', 'plot_samples']
+           'plot_stieltjes_on_disk', 'plot_samples', 'plot_branches']
 
 
 # =====================
@@ -248,7 +250,7 @@ def _value_formatter(v, pos):
 # plot stieltjes
 # ==============
 
-def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
+def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False, **kwargs):
     """
     """
 
@@ -265,10 +267,9 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
         gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.2], wspace=0.3)
 
         eps = 2 / n_y
-        shift = 0.0
 
         ax0 = fig.add_subplot(gs[0])
-        ax0.imshow(domain_coloring(m1, shift=shift),
+        ax0.imshow(domain_coloring(m1, **kwargs),
                    extent=[x_min, x_max, y_min, y_max], origin='lower',
                    interpolation='gaussian', rasterized=True)
         ax0.plot([lam_m, lam_p], [eps, eps], 'o', markersize=1.5,
@@ -283,7 +284,7 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
         ax0.set_ylim([y_min, y_max])
 
         ax1 = fig.add_subplot(gs[1])
-        ax1.imshow(domain_coloring(m2, shift=shift),
+        ax1.imshow(domain_coloring(m2, **kwargs),
                    extent=[x_min, x_max, y_min, y_max], origin='lower',
                    interpolation='gaussian', rasterized=True)
         ax1.plot([lam_m, lam_p], [eps, eps], 'o', markersize=1.5,
@@ -361,7 +362,8 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False):
 # plot stieltjes on disk
 # ======================
 
-def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False):
+def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False,
+                           **kwargs):
     """
     """
 
@@ -389,10 +391,8 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False):
         # gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.2], wspace=0.3)
         gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.2], wspace=-0.75)
 
-        shift = 0.0
-
         ax0 = fig.add_subplot(gs[0], projection='polar')
-        ax0.pcolormesh(grid_t, grid_r, domain_coloring(m1_D, shift=shift),
+        ax0.pcolormesh(grid_t, grid_r, domain_coloring(m1_D, **kwargs),
                        shading='auto', rasterized=True)
         ax0.plot(theta_branch, r_branch, '-', linewidth=1, color='black')
         ax0.plot(theta_n, 0.994, 'o', markersize=1.5, color='black')
@@ -413,7 +413,7 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False):
             pad=25)
 
         ax1 = fig.add_subplot(gs[1], projection='polar')
-        ax1.pcolormesh(grid_t, grid_r, domain_coloring(m2_D, shift=shift),
+        ax1.pcolormesh(grid_t, grid_r, domain_coloring(m2_D, **kwargs),
                        shading='auto', rasterized=True)
         ax1.plot(theta_alt_branch, r_branch, '-', linewidth=1, color='black')
         ax1.plot(theta_n, 0.994, 'o', markersize=1.5, color='black')
@@ -528,4 +528,237 @@ def plot_samples(x, rho, x_min, x_max, samples, latex=False, save=False):
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=400,
+                                  show_and_save=save_status, verbose=True)
+
+
+# ===========
+# plot branch
+# ===========
+
+def _plot_branch(ax, img, extent, support, x_ax=True, y_ax=True, bc=None,
+                 title='', **kwargs):
+    """
+    Helper for plot_branches. This plots each branch on a given axis.
+
+    Parameters
+    ----------
+
+    ax : matplotlib.axes._axes.Axes
+        Matplotlib axis.
+
+    img : numpy.ndarray
+        Data to be plotted, as domain-coloring RGB code.
+
+    extent : list
+        The extend of the domain
+
+    support : list
+        Support of the distribution
+
+    x_ax : bool, default=True
+        If `True, x-label is included.
+
+    y_ax : bool, default=True
+        If `True, y-label is included.
+
+    bc : int or list of int or string
+        If negative integer and i = -bc, the complement of the i-th branch cut
+        is covered with a solid line. If list [i, j], the branch cuts i and j
+        are covered with solid lines.
+
+    title : str
+        Title of the axis.
+
+    **kwargs : dict
+        Parameters to pass to :func:`freealg.domain_coloring`.
+    """
+
+    ax.imshow(domain_coloring(img, **kwargs), extent=extent, origin='lower',
+              interpolation='gaussian', rasterized=True)
+
+    n_y = img.shape[0]
+    eps = 2 / n_y
+    x_min, x_max, y_min, y_max = extent
+
+    bc_color = 'darkgray'
+    if isinstance(bc, list):
+        # Plot a line inside branch cut
+        for bc_ in bc:
+            a, b = support[bc_ - 1]
+            ax.plot([a, b], [eps, eps], '-', linewidth=1, color=bc_color)
+            ax.plot([a, b], [eps, eps], 'o', markersize=1.5, color=bc_color)
+    elif bc < 0:
+        # Plot lines out. These are not applicable for k-2, side of branch cut
+        # (complement of branch cut)
+        a, b = support[-bc - 1]
+        ax.plot([x_min, a], [eps, eps], '-', linewidth=1, color=bc_color)
+        ax.plot([b, x_max], [eps, eps], '-', linewidth=1, color=bc_color)
+        ax.plot([a, b], [eps, eps], 'o', markersize=1.5, color=bc_color)
+
+    ax.set_title(title)
+
+    if x_ax is True:
+        ax.set_xlabel(r'$\mathrm{Re}(z)$')
+    if y_ax is True:
+        ax.set_ylabel(r'$\mathrm{Im}(z)$')
+
+    if x_ax is False:
+        ax.tick_params(axis='x', bottom=False, top=False, labelbottom=False)
+    if y_ax is False:
+        ax.tick_params(axis='y', left=False, right=False, labelleft=False)
+
+    ax.set_xlim([x_min, x_max])
+    ax.set_ylim([y_min, y_max])
+
+
+# =============
+# plot branches
+# =============
+
+def plot_branches(z, m1, roots, support, latex=False, save=False, **kwargs):
+    """
+    Plot branches of the spectral curve of Stieltjes transform.
+
+    Parameters
+    ----------
+
+    x : numpy.array, default=None
+        The x axis of the grid where the Stieltjes transform is evaluated.
+
+    y : numpy.array, default=None
+        The y axis of the grid where the Stieltjes transform is evaluated.
+
+    latex : bool, default=False
+        If `True`, the plot is rendered using LaTeX. This option is
+        relevant only if ``plot=True``.
+
+    save : bool, default=False
+        If not `False`, the plot is saved. If a string is given, it is
+        assumed to the save filename (with the file extension). This option
+        is relevant only if ``plot=True``.
+
+    **kwargs : dict
+        Parameters to pass to :func:`freealg.visualization.domain_coloring`.
+    """
+
+    # Defaults to pass to domain_coloring function
+    kwargs.setdefault('n_mod', 18)
+    kwargs.setdefault('n_ph', 18)
+    kwargs.setdefault('vmin', 0.35)
+    kwargs.setdefault('vmax', 1.0)
+    kwargs.setdefault('tile_gamma', 0.9)
+    kwargs.setdefault('tile_mix', 1.0)
+    kwargs.setdefault('shift', 0.0)
+
+    if z.shape[0] % 2 != 0:
+        raise ValueError('Size of along "y" axis should be even.')
+
+    sheets, _ = build_sheets_from_roots(z, roots, m1, cuts=support)
+    m1 = sheets[0]
+    n_sheets = len(sheets)
+    n_cuts = len(support)
+
+    if n_sheets < 1:
+        raise ValueError('No sheets were constructed from roots.')
+
+    # Partners lists, for each cut I_i, the non-physical sheet index that pairs
+    # with m1 across that cut. Reorder non-physical sheets to follow cut order.
+    partners = infer_m1_partners_on_cuts(z, sheets, support)
+    ordered_nonphys = []
+    for k in partners:
+        if k not in ordered_nonphys:
+            ordered_nonphys.append(k)
+    for k in range(1, n_sheets):
+        if k not in ordered_nonphys:
+            ordered_nonphys.append(k)
+    sheets = [sheets[0]] + [sheets[k] for k in ordered_nonphys]
+    m1 = sheets[0]
+
+    # Remap partner indices after reordering.
+    old_to_new = {0: 0}
+    for new_k, old_k in enumerate(ordered_nonphys, start=1):
+        old_to_new[old_k] = new_k
+    partners = [old_to_new[k] for k in partners]
+
+    # For each non-physical sheet, list the cuts where it partners with m1.
+    partner_cuts = {k: [] for k in range(1, n_sheets)}
+    for i_cut, k in enumerate(partners, start=1):
+        partner_cuts[k].append(i_cut)
+
+    # Extent
+    x_min = numpy.min(z[0, :].real)
+    x_max = numpy.max(z[0, :].real)
+    y_min = numpy.min(z[:, 0].imag)
+    y_max = numpy.max(z[:, 0].imag)
+    extent = [x_min, x_max, y_min, y_max]
+
+    ncols = max(n_sheets, 2 * max(n_sheets - 1, 1))
+    width = max(9.0, 3.2 * ncols)
+    with texplot.theme(use_latex=latex):
+        fig, ax = plt.subplots(nrows=2, ncols=ncols, figsize=(width, 5.0),
+                               sharey=True)
+        if ncols == 1:
+            ax = numpy.asarray(ax).reshape(2, 1)
+
+        letters = 'abcdefghijklmnopqrstuvwxyz'
+
+        # Top row: all sheets on C
+        for k in range(n_sheets):
+            y_ax = (k == 0)
+            x_ax = False
+            if k == 0:
+                bc = list(range(1, n_cuts + 1))
+            else:
+                bc = partner_cuts[k]
+            letter = letters[k] if k < len(letters) else '?'
+            title = fr'({letter}) $m_{k+1}$ on $\mathbb{{C}}$'
+            _plot_branch(ax[0, k], sheets[k], extent, support, x_ax=x_ax,
+                         y_ax=y_ax, bc=bc, title=title, **kwargs)
+        for k in range(n_sheets, ncols):
+            ax[0, k].axis('off')
+
+        # Bottom row: glued sheets (m1+/mk-) and (m1-/mk+)
+        col = 0
+        label_idx = n_sheets
+        for k in range(1, n_sheets):
+            cuts_k = partner_cuts[k]
+            bc_comp = -cuts_k[0] if len(cuts_k) > 0 else 0
+            letter = letters[label_idx] if label_idx < len(letters) else '?'
+            title = (fr'({letter}) $m_1$ on $\mathbb{{C}}^+$ glued to '
+                     fr'$m_{k+1}$ on $\mathbb{{C}}^-$')
+
+            _plot_branch(ax[1, col], glue_branches(z, m1, sheets[k]), extent,
+                         support, x_ax=True, y_ax=(col == 0), bc=bc_comp,
+                         title=title, **kwargs)
+            col += 1
+            label_idx += 1
+
+            letter = letters[label_idx] if label_idx < len(letters) else '?'
+            title = (fr'({letter}) $m_1$ on $\mathbb{{C}}^-$ glued to '
+                     fr'$m_{k+1}$ on $\mathbb{{C}}^+$')
+
+            _plot_branch(ax[1, col], glue_branches(z, sheets[k], m1), extent,
+                         support, x_ax=True, y_ax=False, bc=bc_comp,
+                         title=title, **kwargs)
+            col += 1
+            label_idx += 1
+
+        for k in range(col, ncols):
+            ax[1, k].axis('off')
+
+        plt.tight_layout()
+
+        # Save
+        if save is False:
+            save_status = False
+            save_filename = ''
+        else:
+            save_status = True
+            if isinstance(save, str):
+                save_filename = save
+            else:
+                save_filename = 'branches.pdf'
+
+        texplot.show_or_save_plot(plt, default_filename=save_filename,
+                                  transparent_background=True, dpi=200,
                                   show_and_save=save_status, verbose=True)

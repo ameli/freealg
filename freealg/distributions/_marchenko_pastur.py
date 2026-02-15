@@ -352,7 +352,7 @@ class MarchenkoPastur(BaseDistribution):
     # =========
 
     def stieltjes(self, z=None, x=None, y=None, alt_branch='both', plot=False,
-                  on_disk=False, latex=False, save=False):
+                  on_disk=False, latex=False, save=False, **kwargs):
         """
         Stieltjes transform of distribution.
 
@@ -387,6 +387,10 @@ class MarchenkoPastur(BaseDistribution):
             If not `False`, the plot is saved. If a string is given, it is
             assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
+
+        **kwargs : dict
+            Parameters to pass to
+            :func:`freealg.visualization.domain_coloring`.
 
         Returns
         -------
@@ -444,7 +448,7 @@ class MarchenkoPastur(BaseDistribution):
             m12_D = glue_branches(z_H, m1_D, m2_D)
 
             plot_stieltjes_on_disk(r, t, m1_D, m12_D, support=self.supp,
-                                   latex=latex, save=save)
+                                   latex=latex, save=save, **kwargs)
 
             if alt_branch == 'both':
                 return m1_D, m2_D
@@ -480,7 +484,7 @@ class MarchenkoPastur(BaseDistribution):
         if plot:
             m12 = glue_branches(z, m1, m2)
             plot_stieltjes(x, y, m1, m12, support=self.supp, latex=latex,
-                           save=save)
+                           save=save, **kwargs)
 
         if alt_branch == 'both':
             return m1, m2

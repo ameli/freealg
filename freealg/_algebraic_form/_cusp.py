@@ -286,7 +286,7 @@ def solve_cusp(
 
     z0 = float(zeta_init)
 
-    # seed y: keep your provided seed; else pick a real-ish root at z0
+    # seed y: keep provided seed; else pick a real-ish root at z0
     if y_init is None:
         # build polynomial in y at fixed z0 and pick root with smallest imag
         zi = numpy.power(z0, numpy.arange(deg_z + 1, dtype=numpy.int64))

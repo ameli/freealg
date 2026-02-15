@@ -341,7 +341,7 @@ class Meixner(BaseDistribution):
     # =========
 
     def stieltjes(self, x=None, y=None, plot=False, on_disk=False, latex=False,
-                  save=False):
+                  save=False, **kwargs):
         """
         Stieltjes transform of distribution.
 
@@ -372,6 +372,10 @@ class Meixner(BaseDistribution):
             If not `False`, the plot is saved. If a string is given, it is
             assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
+
+        **kwargs : dict
+            Parameters to pass to
+            :func:`freealg.visualization.domain_coloring`.
 
         Returns
         -------
@@ -426,7 +430,7 @@ class Meixner(BaseDistribution):
             m2_D = self._m_mp_reflect(z_H, alt_branch=True)
 
             plot_stieltjes_on_disk(r, t, m1_D, m2_D, support=self.support,
-                                   latex=latex, save=save)
+                                   latex=latex, save=save, **kwargs)
 
             return m1_D, m2_D
 
@@ -451,7 +455,7 @@ class Meixner(BaseDistribution):
 
         if plot:
             plot_stieltjes(x, y, m1, m2, support=self.support, latex=latex,
-                           save=save)
+                           save=save, **kwargs)
 
         return m1, m2
 

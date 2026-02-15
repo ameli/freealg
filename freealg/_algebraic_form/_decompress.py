@@ -299,7 +299,7 @@ def decompress_newton(z_list, t_grid, coeffs, w0_list=None,
         cands = fd_candidates_w(z_list[iz], t, coeffs, w_min=w_min)
 
         if len(cands) == 0:
-            # fallback to your existing single-root solver
+            # fallback to existing single-root solver
             w, success = fd_solve_w(
                 z_list[iz], t, coeffs, w_prev[iz],
                 max_iter=max_iter, tol=tol, armijo=armijo,

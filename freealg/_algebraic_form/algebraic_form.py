@@ -167,9 +167,106 @@ class AlgebraicForm(BaseForm):
     Examples
     --------
 
+    **Generate a matrix:**
+
+    Before working with the :class:`freealg.AlgebraicForm`, we generate a
+    matrix. This matrix can be from your empirical data. Here, we generate it
+    from Levy distribution (see :class:`freealg.distributions.FreeLevy`):
+
+    .. code-block:: python
+
+        >>> # Create a distribution
+        >>> from freealg.distributions import FreeLevy
+        >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+        ...               sigma=0.0)
+
+        >>> # Generate a matrix realization of the distribution
+        >>> A = fl.matrix(size=6000, seed=0)
+
+        >>> # Sample from this matrix
+        >>> As = freealg.submatrix(A, size=1000, seed=0)
+
+    *Create AlgebraicForm object:**
+
+    We now use this sampled matrix ``As`` to create an algebraic form. The goal
+    is to predict the ESD of ``A`` (the larger matrix of size 6000) from the
+    ESD of ``As`` (the smaller matrix of size 1000).
+
+    Since the matrix is generated from the Levy distribution, we now its
+    algebraic structure :math:`P(z, m)` has degrees
+    :math:`d_z = \\deg_z(P) = 1` and :math:`d_m = \\deg_m(P) = 3` when
+    :math:`\\sigma = 0`.
+
     .. code-block:: python
 
         >>> from freealg import AlgebraicForm
+
+        >>> # Fit polynomial P with degrees 1 (in z) and 3 (in m)
+        >>> coeffs = af.fit(deg_m=3, deg_z=1, reg=0, verbose=True)
+        fit residual max  : 2.3763e-01
+        fit residual 99.9%: 1.7992e-02
+
+        Coefficients (real)
+        +0.99999637 +0.95497991 +0.12108988 +0.00000000
+        +0.00000000 +1.00020387 +1.24161671 +0.30272471
+
+        Coefficients (imag) norm: 0.0000e+00
+
+        Stieltjes sanity check: OK
+
+    **Find properties of the algebraic structure:**
+
+    Once fit, we can inquiry the coefficients of the polynomial, support,
+    branch points, etc, of the underlying distribution
+
+    .. code-block:: python
+
+        >>> # Coefficients of the fitted polynomial
+        >>> af.coeffs.real
+        array([[9.999963e-01, 9.5497991e-01, 1.21089884e-01, 4.76107138e-14],
+              [0.0000000e+00, 1.00020387e+00, 1.2416167e+00, 3.02724712e-01]])
+
+        # Support of the distribution of the ESD of As
+        >>> est_supp = af.support()
+        >>> print(est_supp)
+        [(0.019606029040223762, 1.9518480572571149)]
+
+        >>> # Atoms of distribution of the ESD of As
+        >>> # Output format is the tuple [(atom_location, atom_weight)]
+        >>> atoms = af.atoms()
+        >>> print(atoms)
+        [(-1.572739585567635e-13, 0.3999999986265035)]
+
+        >>> # Plot branch points
+        >>> bp = af.branch_points(tol=1e-16, real_tol=1e-16, plot=True)
+        >>> print(bp)
+        [ 1.95184806e+00+0.j          6.99218919e-01+0.08189017j
+          6.99218919e-01-0.08189017j  1.96060290e-02+0.j
+          -1.12675884e-13+0.j        ]
+
+    **Decompress:**
+
+    We now apply :func:`AlgebraicForm.decompress` to predict the ESD of the
+    larger matrix ``A`` of size 6000. Before this, we can check if this matrix
+    is decompressible:
+
+    .. code-block:: python
+
+        >>> status = af.is_decompressible()
+        >>> print(status)
+        True
+
+        >>> # Decompress from the size 1000 of As to 6000 of A with several
+        >>> # intermediate sizes
+        >>> x = numpy.linspace(-1, 8, 300)
+        >>> sizes = numpy.arange(As.shape[0], A.shape[0]+1, 500)
+        >>> rho, x, atoms = af.decompress(
+        ...     sizes, x=x, method='moc', min_n_times=100, newton_opt={},
+        ...     return_atoms=True, atom_eps=1e-2, verbose=False, plot=True)
+
+    **Evolve Edges:**
+
+
     """
 
     # ====

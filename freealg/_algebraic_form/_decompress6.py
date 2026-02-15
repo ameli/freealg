@@ -9,17 +9,17 @@ Keeps public API:
   - decompress_newton(z_list, t_grid, coeffs, w0_list=None, **newton_opt) -> (W, ok)
 
 IMPORTANT: This implements the characteristic transform consistent with:
-  τ(t)=e^t,  α(t)=1-τ^{-1},
-  P(z + α w^{-1}, τ w) = 0,
-where P(ζ,y)=0 is the algebraic relation for m0.
+  \\tau(t)=e^t,  \\alpha(t)=1-\\tau^{-1},
+  P(z + \\alpha w^{-1}, \\tau w) = 0,
+where P(\\zeta, y)=0 is the algebraic relation for m0.
 
 We construct a polynomial in w:
-  Q(w) := w^{deg_z} * P(z + α/w, τ w),
+  Q(w) := w^{deg_z} * P(z + \\alpha/w, \\tau w),
 which has degree deg_z + deg_m (no artificial extra zero roots).
 
 Root selection:
-  - Herglotz (your sign): Im(w) >= -herglotz_tol for Im(z)>0
-  - Homotopy anchor in η: start at η_hi, track down to η_lo
+  - Herglotz (sign): Im(w) >= -herglotz_tol for Im(z)>0
+  - Homotopy anchor in \\eta: start at \\eta_hi, track down to \\eta_lo
   - Filter roots near anchor, then Viterbi along x
 """
 
@@ -56,8 +56,8 @@ def _inside_support_mask(x: np.ndarray, edges_row: np.ndarray, pad: float) -> np
 def _poly_w_coeffs(z: complex, t: float, coeffs: np.ndarray) -> np.ndarray:
     """
     Build Q(w) coeffs (descending) for:
-      Q(w) = w^{deg_z} * P(z + α/w, τ w)
-    where τ=e^t, α=1-1/τ.
+      Q(w) = w^{deg_z} * P(z + \\alpha/w, \\tau w)
+    where \\tau=e^t, \\alpha=1-1/\\tau.
     """
     a = np.asarray(coeffs, dtype=np.complex128)
     deg_z = a.shape[0] - 1
@@ -346,7 +346,7 @@ def decompress_newton(
             if edge_support is None:
                 raise ValueError("edge_support must be provided when edge_use=True")
             complex_edges = evolve_edges(t_grid, coeffs, support=edge_support)
-            # merge_edges in your package expects edges array (nt, 2k) and returns (real_merged_edges, active_k)
+            # merge_edges in package expects edges array (nt, 2k) and returns (real_merged_edges, active_k)
             real_edges, _active_k = merge_edges(complex_edges, t_grid)
         except Exception:
             real_edges = None

@@ -25,7 +25,11 @@ __all__ = ['FreeLevy']
 
 class FreeLevy(BaseDistribution):
     """
-    Free Levy distribution
+    Free Levy distribution.
+
+    This class extends the compound free Poisson law (
+    :class:`freealg.distributions.CompoundFreePoisson`) by adding a drift and
+    semicircle parts.
 
     Parameters
     ----------
@@ -62,19 +66,22 @@ class FreeLevy(BaseDistribution):
         Roots of polynomial implicitly representing Stieltjes transform
 
     stieltjes
-        Stieltjes transform
+        Stieltjes transform of distribution
 
     support
         Support intervals of distribution
 
     sample
-        Sample from distribution.
+        Sample from distribution
 
     matrix
         Generate matrix with its empirical spectral density of distribution
 
     poly
-        Polynomial coefficients implicitly representing the Stieltjes
+        Polynomial coefficients of the spectral curve of Stieltjes transform
+
+    plot_branches
+        Plot branches of the spectral curve of Stieltjes transform.
 
     See Also
     --------
@@ -86,12 +93,8 @@ class FreeLevy(BaseDistribution):
 
     **General Free Levy Law:**
 
-    This class extends the compound free Poisson law (see
-    :class:`freealg.distributions.CompoundFreePoisson`) by adding a drift and
-    semicircle (free Gaussian) part.
-
     This model is constructed by the free additive convolution of the following
-    three laws (see Theorem 13.8 in [1]_):
+    three laws:
 
     .. math::
 
@@ -113,7 +116,8 @@ class FreeLevy(BaseDistribution):
           \\lambda \\int_{\\mathbb{R}} \\frac{x}{1 - wx} H(\\mathrm{d} x).
 
       Here, :math:`H > 0` is a positive measure. The free Levy distribution
-      represents all free infinitely divisible (FID) distributions.
+      represents all free infinitely divisible (FID) distributions (see
+      Theorem 13.8 in [1]_).
 
     **Algebraic Free Levy Law:**
 
@@ -130,6 +134,8 @@ class FreeLevy(BaseDistribution):
     assumption on :math:`H` restricts the free Levy class to *algebraic* FID
     distributions where its Stieltjes transform satisfies a polynomial
     constraint (see below).
+
+    **R transform:**
 
     The R transform the atomic free Levy law is the sum of all constituent laws
 
@@ -180,8 +186,6 @@ class FreeLevy(BaseDistribution):
       known as the Stieltjes transform. This physical root can be computed by
       :func:`stieltjes` function.
 
-    See examples below.
-
     References
     ----------
 
@@ -193,7 +197,8 @@ class FreeLevy(BaseDistribution):
     Examples
     --------
 
-    Here we create a distribution and plot is density and compute its support.
+    We create a free Levy distribution, plot is density and compute its
+    support.
 
     .. code-block:: python
         :emphasize-lines: 4,5
@@ -212,8 +217,8 @@ class FreeLevy(BaseDistribution):
         [(-1.9990360090022503, 3.7017366841710433),
          (4.170457614403601, 7.886856714178547)]
 
-    Here we sample from this distribution: either as a matrix realization, or
-    as an array of eigenavalues:
+    We can also sample from this distribution: either as a matrix realization,
+    or as an array of eigenvalues:
 
     .. code-block:: python
 
@@ -223,8 +228,8 @@ class FreeLevy(BaseDistribution):
         >>> # Sample from eigenvalues of this law
         >>> eig = fl.sample(size=2000)
 
-    Here, we compute the coefficents the polynomial :math:`P(z, m) = 0`, all
-    its roots at a given point :math:`z`, and its physical root (Stieltjes
+    Here, we compute the coefficients of the polynomial :math:`P(z, m) = 0`,
+    all its roots at a given point :math:`z`, and its physical root (Stieltjes
     transform):
 
     .. code-block:: python
@@ -301,6 +306,12 @@ class FreeLevy(BaseDistribution):
         sc_rad = 2.0 * numpy.sqrt(float(self.sc_var))
         self.lam_lb = float(self.lam_lb) + float(a) - float(sc_rad)
         self.lam_ub = float(self.lam_ub) + float(a) + float(sc_rad)
+
+        # Number of roots (branches)
+        if self.sigma > 0.0:
+            self.num_roots = 4
+        else:
+            self.num_roots = 3
 
     # ===================
     # roots poly m scalar
@@ -424,10 +435,56 @@ class FreeLevy(BaseDistribution):
 
     def stieltjes(self, z, max_iter=100, tol=1e-12):
         """
-        Stieltjes transform
+        Stieltjes transform of distribution.
 
-        Physical/Herglotz branch of m(z) for the compound Poisson law.
-        Fast masked Newton in m, keeping z's original shape.
+        Parameters
+        ----------
+
+        z : complex or numpy.ndarray
+            A complex scalar or a 1D or 2D array of query points.
+
+        max_iter : int, default=100
+            Maximum number of Newton iterations to solve for Stieltjes
+            transform.
+
+        tol : float, default=1e-12
+            The tolerance of Newton iterations.
+
+        Returns
+        -------
+
+        m : complex or numpy.ndarray
+            A complex scalar or array of the same size as the input ``z``, as
+            the Stieltjes transform :math:`m = m(z)`.
+
+        See Also
+        --------
+
+        density
+        roots
+
+        Notes
+        -----
+
+        Stieltjes transform is the physical (Herglotz) branch of of the
+        polynomial :math:`P(z, m)`.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 10
+
+            >>> import numpy
+            >>> from freealg.distributions import FreeLevy
+
+            >>> # Create an object of the class
+            >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+            ...               sigma=0.9)
+
+            >>> # Query at given locations
+            >>> z = numpy.linspace(-1, 1) + 1j
+            >>> m = fl.stieltjes(z)
         """
 
         # Unpack parameters
@@ -553,8 +610,9 @@ class FreeLevy(BaseDistribution):
     # density
     # =======
 
-    def density(self, x=None, eta=2e-4, max_iter=100, tol=1e-12, ac_only=True,
-                plot=False, latex=False, save=False, eig=None):
+    def density(self, x=None, eta=2e-4, max_iter=100, tol=1e-12,
+                return_atoms=False, plot=False, latex=False, save=False,
+                eig=None):
         """
         Density of distribution.
 
@@ -563,11 +621,8 @@ class FreeLevy(BaseDistribution):
 
         x : numpy.array, default=None
             The locations where density is evaluated at. If `None`, an interval
-            slightly larger than the supp interval of the spectral density
+            slightly larger than the support interval of the spectral density
             is used.
-
-        rho : numpy.array, default=None
-            Density. If `None`, it will be computed.
 
         eta : float, default=2e-4
             The offset :math:`\\eta` from the real axis where the density
@@ -580,8 +635,9 @@ class FreeLevy(BaseDistribution):
         tol : float, default=1e-12
             Tolerance for Newton iterations to solve for the Stieltjes root.
 
-        ac_only : bool, default=True
-            If `True`, it returns the absolutely-continuous part of density.
+        return_atoms : bool, default=False
+            If `True`,  the atoms (if any) of the distribution will also be
+            returned.
 
         plot : bool, default=False
             If `True`, density is plotted.
@@ -603,8 +659,35 @@ class FreeLevy(BaseDistribution):
         -------
 
         rho : numpy.array
-            Density.
+            Absolutely-continuous part of the spectral density.
 
+        if return_atoms is True:
+            atoms : list
+                A list of tuples ``(loc, wight)`` containing the location and
+                the weight of the atom.
+
+        See Also
+        --------
+
+        stieltjes
+        sample
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 10
+
+            >>> import numpy
+            >>> from freealg.distributions import FreeLevy
+
+            >>> # Create an object of the class
+            >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+            ...               sigma=0.9)
+
+            >>> # Plot density
+            >>> x = numpy.linspace(0, 2, 100)
+            >>> rho, atoms = fl.density(x, return_atoms=True, plot=True)
         """
 
         # Create x if not given
@@ -623,14 +706,14 @@ class FreeLevy(BaseDistribution):
         rho = numpy.imag(m) / numpy.pi
 
         # Atoms
-        atoms = None
+        atoms = []
         if (float(self.sigma) == 0.0) and (self.lam < 1.0):
             atom_loc = float(self.a)
             atom_w = 1.0 - self.lam
             atoms = [(atom_loc, atom_w)]
 
         # Optional: remove the atom at zero (only for visualization of AC part)
-        if (atoms is not None) and (ac_only is True):
+        if len(atoms) > 0:
             zr = z.real
             atom = atom_w * (float(eta) /
                              (numpy.pi * ((zr - atom_loc)**2 + float(eta)**2)))
@@ -643,44 +726,178 @@ class FreeLevy(BaseDistribution):
             plot_density(x, rho, atoms=atoms, label=label, latex=latex,
                          save=save, eig=eig)
 
-        return rho
+        if return_atoms:
+            return rho, atoms
+        else:
+            return rho
 
     # =====
     # roots
     # =====
 
-    def roots(self, z):
+    def roots(self, z, chunk_size=20000, eps=1e-14):
         """
         Roots of polynomial implicitly representing Stieltjes transform
 
-        If z is scalar, returns an array of roots of shape (r+1,).
-        If z is array-like, returns an array of shape z.shape + (r+1,).
+        Parameters
+        ----------
+        z : array_like of complex
+            A complex scalar or a 1D or 2D array of query points.
+
+        chunk_size : int
+            Solve in chunks to limit memory. For 200x200 grids, default is
+            fine.
+
+        eps : float
+            Tolerance for trimming leading zeros.
+
+        Returns
+        -------
+
+        roots : ndarray
+            Shape z.shape + (deg,), where deg is the polynomial degree in m.
+
+            * If ``z`` is scalar, returned array is of the shape ``(r+1,)``.
+            * If ``z`` is array-like, returned array if of shape
+              ``z.shape + (r+1,)``.
+
+        See Also
+        --------
+
+        stieltjes
+        poly
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 9
+
+            >>> import numpy
+            >>> from freealg.distributions import FreeLevy
+
+            >>> # Create an object of the class
+            >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+            ...               sigma=0.9)
+
+            >>> z = numpy.linspace(0, 2, 10) + 2.0j
+            >>> r = fl.roots(z)
         """
 
         z = numpy.asarray(z, dtype=numpy.complex128)
-
-        # scalar -> keep exact old behavior
         if z.ndim == 0:
+            # Keep your existing scalar behavior (exactly what you had)
             return self._roots_poly_m_scalar(z.reshape(()))
 
-        # array -> compute roots pointwise, preserve shape
         z_flat = z.ravel()
-        roots_list = [self._roots_poly_m_scalar(zi) for zi in z_flat]
+        n = z_flat.size
 
-        # r+1 roots per point
-        k = int(roots_list[0].size) if len(roots_list) > 0 else 0
-        out = numpy.empty((z_flat.size, k), dtype=numpy.complex128)
-        for i, ri in enumerate(roots_list):
-            out[i, :] = ri
+        t = numpy.asarray(self.t, dtype=float)
+        w = numpy.asarray(self.w, dtype=float)
+        lam = float(self.lam)
+        a = float(self.a)
+        sc = float(self.sc_var)
+        r = int(t.size)
 
-        return out.reshape(z.shape + (k,))
+        # Build coefficient templates:
+        # P(m; z) = base(m) + z * zpart(m)
+        # Coeffs are in ASCENDING powers of m: c[k] is coeff of m^k
+        # prod(m) = \prod (1 + t_i m)
+        prod = numpy.array([1.0], dtype=numpy.complex128)
+        for ti in t:
+            # length r+1
+            prod = numpy.convolve(prod, numpy.array(
+                [1.0, ti], dtype=numpy.complex128))
+
+        # s(m) = \sum w_i t_i \prod_{j \neq i}(1 + t_j m)  (degree r-1)
+        # We compute \prod_{j \neq i} by dividing prod by (1 + t_i m)
+        s = numpy.zeros(r, dtype=numpy.complex128)  # length r
+        for wi, ti in zip(w, t):
+            q, rem = numpy.polynomial.polynomial.polydiv(
+                prod, numpy.array([1.0, ti], dtype=numpy.complex128))
+            s += (wi * ti) * q[:r]
+
+        # term2(m) = lam * m * s(m), length r+1
+        term2 = numpy.concatenate(
+            [numpy.zeros(1, dtype=numpy.complex128), lam * s])
+
+        # term1(m; z) = (-1 + (a - z)m - sc m^2) * prod(m)
+        # m*prod, length r+2
+        m_prod = numpy.concatenate(
+            [numpy.zeros(1, dtype=numpy.complex128), prod])
+
+        # m^2*prod, length r+3
+        m2_prod = numpy.concatenate(
+            [numpy.zeros(2, dtype=numpy.complex128), prod])
+
+        # Pad prod to length r+3 to align
+        prod_pad = numpy.pad(prod, (0, 2))      # length r+3
+        m_prod_pad = numpy.pad(m_prod, (0, 1))  # length r+3
+
+        base = (-1.0) * prod_pad + (a) * m_prod_pad + (-sc) * m2_prod
+        zpart = (-1.0) * m_prod_pad
+
+        # add term2, aligned
+        base = base + numpy.pad(term2, (0, (base.size - term2.size)))
+
+        # Determine degree (same for all z)
+        deg = base.size - 1
+        while deg > 0 and abs(base[deg]) < eps:
+            deg -= 1
+        base = base[:deg + 1]
+        zpart = zpart[:deg + 1]
+
+        if deg < 1:
+            raise RuntimeError("Polynomial degree < 1 (unexpected parameter "
+                               "regime).")
+
+        lead = base[deg]
+        if abs(lead) < eps:
+            raise RuntimeError("Leading coefficient ~0 (degree detection "
+                               "failed).")
+
+        # Make monic: divide coefficients by leading coeff
+        base_m = base / lead
+        zpart_m = zpart / lead
+
+        # Solve roots in batch via companion matrices
+        out = numpy.empty((n, deg), dtype=numpy.complex128)
+
+        def solve_chunk(z_chunk, out_view):
+            # A has ascending monic coeffs:
+            # A[:,0] + A[:,1] m + ... + A[:,-2] m^{deg-1} + 1*m^{deg}
+            A = base_m[None, :] + z_chunk[:, None] * zpart_m[None, :]
+            A[:, -1] = 1.0 + 0.0j  # enforce monic numerically
+
+            Nc = z_chunk.size
+            C = numpy.zeros((Nc, deg, deg), dtype=numpy.complex128)
+
+            # Companion first row expects descending lower
+            # coeffs: [-a_{deg-1}, ..., -a0]
+            C[:, 0, :] = -A[:, :-1][:, ::-1]
+
+            # Subdiagonal ones
+            if deg > 1:
+                C[:, 1:, :-1] = \
+                    numpy.eye(deg - 1, dtype=numpy.complex128)[None, :, :]
+
+            out_view[:] = numpy.linalg.eigvals(C)
+
+        if n <= int(chunk_size):
+            solve_chunk(z_flat, out)
+        else:
+            cs = int(chunk_size)
+            for p in range(0, n, cs):
+                q = min(p + cs, n)
+                solve_chunk(z_flat[p:q], out[p:q])
+
+        return out.reshape(z.shape + (deg,))
 
     # =======
     # support
     # =======
 
-    def support(self, eta=2e-4, n_probe=4000, thr=5e-4, x_max=None,
-                x_pad=0.05):
+    def support(self, eta=2e-4, n_probe=4000, thr=5e-4, x_max=None):
         """
         Support intervals of distribution
 
@@ -688,13 +905,59 @@ class FreeLevy(BaseDistribution):
         ----------
 
         eta : float, default=2e-4
-            Small number for distinguishing atoms from absolutely-continuous
-            part of density.
+            Imaginary offset used in the Stieltjes inversion for density.
+
+        n_probe : int, default=4000
+            Number of grid points used to probe the density.
+
+        thr : float, default=5e-4
+            Density threshold used to detect nonzero regions.
+
+        x_max : float or None, default=None
+            Right endpoint of the probing grid. If None, a heuristic is used.
+
+        x_pad : float, default=0.0
+            Optional *search padding* fraction. If nonzero, it should only
+            expand the probing grid (x-range), not the returned intervals.
+
+        Returns
+        -------
+
+        intervals : list of tuple(float, float)
+            List of (left, right) support intervals estimated from the grid.
+
+        Notes
+        -----
+
+        The support is estimated on a real grid by thresholding the density
+        :math:`\\rho(x; \\eta)`.
+
+        See Also
+        --------
+
+        density
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 8
+
+            >>> import numpy
+            >>> from freealg.distributions import FreeLevy
+
+            >>> # Create an object of the class
+            >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+            ...               sigma=1.0)
+
+            >>> print(fl.support)
+            [(-1.938184546136533, 3.5198799699925),
+             (4.3766691672918245, 7.750937734433611)]
         """
 
         t = self.t
-        a = float(self.a)
         lam = float(self.lam)
+        a = float(self.a)
         sigma = float(self.sigma)
 
         if x_max is None:
@@ -714,7 +977,7 @@ class FreeLevy(BaseDistribution):
             x_min = a - 0.25 * abs(x_max)
 
         x = numpy.linspace(float(x_min), float(x_max), int(n_probe))
-        rho = self.density(x, eta=eta, ac_only=True)
+        rho = self.density(x, eta=eta)
 
         mask = rho > float(thr)
 
@@ -733,13 +996,12 @@ class FreeLevy(BaseDistribution):
         for s, e in zip(starts, ends):
             xa = x[int(s)]
             xb = x[int(e)]
-            pad = float(x_pad) * (xb - xa)
 
-            # When sigma = 0, law is PSD with a shift x-a, so clamp support
-            left = float(xa - pad)
+            left = float(xa)
             if float(self.sigma) == 0.0:
                 left = float(max(float(self.a), left))
-            intervals.append((left, float(xb + pad)))
+
+            intervals.append((left, float(xb)))
 
         return intervals
 

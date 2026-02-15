@@ -670,7 +670,8 @@ class FreeForm(BaseForm):
     # stieltjes
     # =========
 
-    def stieltjes(self, x=None, y=None, plot=False, latex=False, save=False):
+    def stieltjes(self, x=None, y=None, plot=False, latex=False, save=False,
+                  **kwargs):
         """
         Compute Stieltjes transform of the spectral density on a grid.
 
@@ -700,6 +701,10 @@ class FreeForm(BaseForm):
             If not `False`, the plot is saved. If a string is given, it is
             assumed to the save filename (with the file extension). This option
             is relevant only if ``plot=True``.
+
+        **kwargs : dict
+            Parameters to pass to
+            :func:`freealg.visualization.domain_coloring`.
 
         Returns
         -------
@@ -748,7 +753,8 @@ class FreeForm(BaseForm):
         m1, m2 = self._eval_stieltjes(z, branches=True)
 
         if plot:
-            plot_stieltjes(x, y, m1, m2, self.support, latex=latex, save=save)
+            plot_stieltjes(x, y, m1, m2, self.support, latex=latex, save=save,
+                           **kwargs)
 
         return m1, m2
 

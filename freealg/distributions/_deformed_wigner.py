@@ -296,9 +296,51 @@ class DeformedWigner(BaseDistribution):
     def roots(self, z):
         """
         Roots of polynomial implicitly representing Stieltjes transform
+
+        Parameters
+        ----------
+
+        z : complex or numpy.ndarray
+            A complex scalar or a 1D or 2D array of query points.
+
+        Returns
+        -------
+
+        r : numpy.ndarray
+            Roots of polynomial with the following array shape:
+
+            * If ``z`` is scalar, returned array is of the shape ``(r+1,)``.
+            * If ``z`` is array-like, returned array if of shape
+              ``z.shape + (r+1,)``.
+
+        See Also
+        --------
+
+        stieltjes
+        poly
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 8
+
+            >>> import numpy
+            >>> from freealg.distributions import DeformedWigner
+
+            >>> dwg = DeformedWigner(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...     sigma=1.0)
+
+            >>> z = numpy.linspace(0, 2, 10) + 2.0j
+            >>> r = dwg.roots(z)
         """
 
-        r = int(self.t.size)
+        t = numpy.asarray(self.t, dtype=float)
+        w = numpy.asarray(self.w, dtype=float)
+        sigma = float(self.sigma)
+        r = int(t.size)
+
+        s2 = sigma * sigma
 
         z = numpy.asarray(z, dtype=numpy.complex128)
         scalar = (z.ndim == 0)
@@ -307,8 +349,29 @@ class DeformedWigner(BaseDistribution):
 
         zf = z.ravel()
         out = numpy.empty((zf.size, r + 1), dtype=numpy.complex128)
-        for i in range(zf.size):
-            out[i, :] = self._roots_poly_scalar(zf[i])
+
+        for k in range(zf.size):
+
+            d = (t - zf[k]).astype(numpy.complex128)
+
+            prod = numpy.array([1.0 + 0.0j], dtype=numpy.complex128)
+            for di in d:
+                prod = numpy.convolve(
+                    prod, numpy.array([di, -s2], dtype=numpy.complex128))
+
+            s = numpy.zeros(r, dtype=numpy.complex128)
+            for wi, di in zip(w, d):
+                q, _ = numpy.polynomial.polynomial.polydiv(
+                    prod, numpy.array([di, -s2], dtype=numpy.complex128))
+                s = s + wi * q[:r]
+
+            term1 = numpy.concatenate(
+                [numpy.zeros(1, dtype=numpy.complex128), prod])
+
+            term2 = numpy.pad(s, (0, 2))
+            P = term1 - term2
+
+            out[k, :] = numpy.roots(P[::-1])
 
         out = out.reshape(z.shape + (r + 1,))
         if scalar:
@@ -319,9 +382,40 @@ class DeformedWigner(BaseDistribution):
     # support
     # =======
 
-    def support(self, y_probe=1e-6):
+    def support(self, eta=1e-6):
         """
         Support intervals of distribution
+
+        Parameters
+        ----------
+
+        eta : float, default=2e-4
+            Imaginary offset used in the Stieltjes inversion for density.
+
+        Returns
+        -------
+
+        intervals : list of tuple(float, float)
+            List of (left, right) support intervals.
+
+        See Also
+        --------
+
+        density
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 5
+
+            >>> from freealg.distributions import DeformedWigner
+            >>> dwg = DeformedWigner(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...     sigma=1.0)
+
+            >>> print(dmp.support)
+            [(-2.6664926899770567, -0.7147737555874724),
+             (0.8478632229082883, 4.283403222656241)]
         """
 
         r = int(self.t.size)
@@ -369,11 +463,11 @@ class DeformedWigner(BaseDistribution):
             if len(edges) < 2:
                 return []
 
-            thr = 100.0 * float(y_probe)
+            thr = 100.0 * float(eta)
             cuts = []
             for i in range(len(edges) - 1):
                 xm = 0.5 * (edges[i] + edges[i + 1])
-                z = xm + 1j * float(y_probe)
+                z = xm + 1j * float(eta)
                 rts = self._roots_poly_scalar(z)
                 m = _pick_physical_root_scalar(z, rts)
                 if numpy.imag(m) > thr:
@@ -383,9 +477,9 @@ class DeformedWigner(BaseDistribution):
 
         # For r != 2, use a probing method on a fine grid.
         x = numpy.linspace(self.lam_lb, self.lam_ub, 2000)
-        rho = self.density(x, eta=max(float(y_probe), 1e-8), plot=False)
+        rho = self.density(x, eta=max(float(eta), 1e-8), plot=False)
 
-        thr = 100.0 * float(y_probe)
+        thr = 100.0 * float(eta)
         mask = numpy.isfinite(rho) & (rho > thr)
 
         if not numpy.any(mask):

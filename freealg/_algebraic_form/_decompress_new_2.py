@@ -27,7 +27,7 @@ def fd_solve_w(z, t, coeffs, w_init, max_iter=50, tol=1e-12,
     """
     Damped Newton solve for w from F_t(z,w)=P(z+alpha/w, tau*w)=0.
 
-    Convention: m(z)=∫ rho(x)/(x-z) dx, so for z in C^+ we want Im(w)>0.
+    Convention: m(z)= \int rho(x)/(x-z) dx, so for z in C^+ we want Im(w)>0.
     """
     z = complex(z)
     w = complex(w_init)
@@ -207,7 +207,7 @@ def eval_row_by_z_homotopy(
     ok_out = numpy.zeros(z_targets.size, dtype=bool)
 
     def _pick(cands, z, w_ref):
-        # Filter Herglotz for your convention: Im(w)>0 on C^+
+        # Filter Herglotz for convention: Im(w)>0 on C^+
         cpos = [u for u in cands if u.imag > 0.0]
         if cpos:
             cands = cpos
@@ -334,7 +334,7 @@ def decompress_newton(
         raise ValueError("t_grid must be strictly increasing.")
 
     x_list = z_list.real
-    eta_target = float(z_list.imag.max())  # your z_query uses constant imag
+    eta_target = float(z_list.imag.max())  # z_query uses constant imag
     if eta_target <= 0.0:
         raise ValueError("This solver assumes z_list is in C^+ (imag>0).")
 
@@ -350,7 +350,7 @@ def decompress_newton(
         tau = float(numpy.exp(t))
         alpha = 1.0 - 1.0 / tau
 
-        # Herglotz for your convention: Im(w)>0 for z in C^+
+        # Herglotz for convention: Im(w)>0 for z in C^+
         if w.imag <= 0.0:
             w = complex(w.real, max(1e-15, abs(w.imag)))
 

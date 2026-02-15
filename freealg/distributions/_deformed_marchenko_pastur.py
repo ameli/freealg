@@ -434,11 +434,47 @@ class DeformedMarchenkoPastur(BaseDistribution):
     def roots(self, z):
         """
         Roots of polynomial implicitly representing Stieltjes transform
+
+        Parameters
+        ----------
+
+        z : complex or numpy.ndarray
+            A complex scalar or a 1D or 2D array of query points.
+
+        Returns
+        -------
+
+        r : numpy.ndarray
+            Roots of polynomial with the following array shape:
+
+            * If ``z`` is scalar, returned array is of the shape ``(r+1,)``.
+            * If ``z`` is array-like, returned array if of shape
+              ``z.shape + (r+1,)``.
+
+        See Also
+        --------
+
+        stieltjes
+        poly
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 8
+
+            >>> import numpy
+            >>> from freealg.distributions import DeformedMarchenkoPastur
+
+            >>> dmp = DeformedMarchenkoPastur(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...     c=0.1)
+
+            >>> z = numpy.linspace(0, 2, 10) + 2.0j
+            >>> r = dmp.roots(z)
         """
 
-        # Unpack parameters
-        t = self.t
-        w = self.w
+        t = numpy.asarray(self.t, dtype=float)
+        w = numpy.asarray(self.w, dtype=float)
         c = float(self.c)
         r = int(t.size)
 
@@ -459,8 +495,30 @@ class DeformedMarchenkoPastur(BaseDistribution):
                 mr = mr + (wi / (ti - zf))
             out[:, :] = mr[:, None]
         else:
+            prod = numpy.array([1.0], dtype=numpy.complex128)
+            for ti in t:
+                prod = numpy.convolve(
+                    prod, numpy.array([1.0, ti], dtype=numpy.complex128))
+
+            s = numpy.zeros(r, dtype=numpy.complex128)
+            for wi, ti in zip(w, t):
+                q, _ = numpy.polynomial.polynomial.polydiv(
+                    prod, numpy.array([1.0, ti], dtype=numpy.complex128))
+                s = s + (wi * ti) * q[:r]
+
+            prod_pad = numpy.pad(prod, (0, 1))
+            u_prod = numpy.concatenate(
+                [numpy.zeros(1, dtype=numpy.complex128), prod])
+
+            term2 = numpy.pad(c * numpy.concatenate(
+                [numpy.zeros(1, dtype=numpy.complex128), s]), (0, 1))
+
+            base = (-1.0) * prod_pad + term2
+            zpart = (-1.0) * u_prod
+
             for i in range(zf.size):
-                u_roots = self._roots_poly_u_scalar(zf[i])
+                P = base + zf[i] * zpart
+                u_roots = numpy.roots(P[::-1])
                 out[i, :] = (u_roots + (1.0 - c) / zf[i]) / c
 
         out = out.reshape(z.shape + (r + 1,))
@@ -477,33 +535,58 @@ class DeformedMarchenkoPastur(BaseDistribution):
         """
         Support intervals of distribution
 
-        Estimate support intervals of
-        :math:`\\mu = H \\boxtimes \\mathrm{MP}_c` where
-        :math:`H = \\sum_i w_i \\delta_{t_i}`.
-
         Parameters
         ----------
 
-        t : array_like
-            Atom locations (typically >=0).
+        eta : float, default=2e-4
+            Imaginary offset used in the Stieltjes inversion for density.
 
-        w : array_like
-            Atom weights (sum to 1).
+        n_probe : int, default=4000
+            Number of grid points used to probe the density (when applicable).
 
-        c : float
-            MP aspect ratio parameter.
+        thr : float, default=5e-4
+            Density threshold used to detect nonzero regions (when applicable).
 
-        method : {'quartic','probe'}
-            - 'quartic' (default): fast endpoint finder available only for two
-              atoms (r=2); otherwise falls back to 'probe'.
-            - 'probe': density probing using :func:`density` on a grid
-              (can miss tiny gaps due to finite-eta leakage).
+        x_max : float or None, default=None
+            Optional right endpoint for probing-based methods.
+
+        x_pad : float, default=0.05
+            Optional padding used for search/probing range.
+
+        method : {``'quartic'``, ``'probe'``}, default=``'quartic'``
+            Method used to estimate the support.
+
+        Returns
+        -------
+
+        intervals : list of tuple(float, float)
+            List of (left, right) support intervals.
+
+        See Also
+        --------
+
+        density
 
         Notes
         -----
 
-        For two atoms, the critical equation reduces to a quartic polynomial
-        in u, so endpoints can be obtained with a handful of root solves.
+        Estimate support intervals of
+        :math:`\\mu = H \\boxtimes \\mathrm{MP}_c` where
+        :math:`H = \\sum_i w_i \\delta_{t_i}`.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 5
+
+            >>> from freealg.distributions import DeformedMarchenkoPastur
+            >>> dmp = DeformedMarchenkoPastur(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...     c=0.1)
+
+            >>> print(dmp.support)
+            [(1.271942644768898, 2.796717409578293),
+             (4.465954791747979, 6.910028011047688)]
         """
 
         # Unpack parameters

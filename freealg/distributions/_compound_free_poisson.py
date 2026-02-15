@@ -54,19 +54,22 @@ class CompoundFreePoisson(BaseDistribution):
         Roots of polynomial implicitly representing Stieltjes transform
 
     stieltjes
-        Stieltjes transform
+        Stieltjes transform of distribution
 
     support
         Support intervals of distribution
 
     sample
-        Sample from distribution.
+        Sample from distribution
 
     matrix
         Generate matrix with its empirical spectral density of distribution
 
     poly
-        Polynomial coefficients implicitly representing the Stieltjes
+        Polynomial coefficients of the spectral curve of Stieltjes transform
+
+    plot_branches
+        Plot branches of the spectral curve of Stieltjes transform.
 
     See Also
     --------
@@ -100,12 +103,6 @@ class CompoundFreePoisson(BaseDistribution):
     .. math::
 
         a_3(z)m^3 + t_2(z)m^2 + t_1(z)m + a_0(z) = 0.
-
-    FD-closure (free decompression):
-        Under the FD rule that scales the argument of R, this family stays
-        closed by scaling the jump sizes: :math:`a_i(t) = e^{-t} a_i`
-        (keeping :math:`\\lambda,w` fixed). If your convention uses
-        :math:`R_t(w)=R_0(e^{+t}w)`, then use :math:`a_i(t)=e^{+t}a_i` instead.
     """
 
     # ====
@@ -151,6 +148,9 @@ class CompoundFreePoisson(BaseDistribution):
         else:
             self.lam_lb = numpy.min(t) * (1 - numpy.sqrt(lam))**2
         self.lam_ub = numpy.max(t) * (1 + numpy.sqrt(lam))**2
+
+        # Number of roots (branches)
+        self.num_roots = 3
 
     # ===================
     # roots poly m scalar
@@ -262,10 +262,56 @@ class CompoundFreePoisson(BaseDistribution):
 
     def stieltjes(self, z, max_iter=100, tol=1e-12):
         """
-        Stieltjes transform
+        Stieltjes transform of distribution.
 
-        Physical/Herglotz branch of m(z) for the compound Poisson law.
-        Fast masked Newton in m, keeping z's original shape.
+        Parameters
+        ----------
+
+        z : complex or numpy.ndarray
+            A complex scalar or a 1D or 2D array of query points.
+
+        max_iter : int, default=100
+            Maximum number of Newton iterations to solve for Stieltjes
+            transform.
+
+        tol : float, default=1e-12
+            The tolerance of Newton iterations.
+
+        Returns
+        -------
+
+        m : complex or numpy.ndarray
+            A complex scalar or array of the same size as the input ``z``, as
+            the Stieltjes transform :math:`m = m(z)`.
+
+        See Also
+        --------
+
+        density
+        roots
+
+        Notes
+        -----
+
+        Stieltjes transform is the physical (Herglotz) branch of of the
+        polynomial :math:`P(z, m)`.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 10
+
+            >>> import numpy
+            >>> from freealg.distributions import CompoundFreePoisson
+
+            >>> # Create an object of the class
+            >>> cfp = CompoundFreePoisson(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...    lam=0.1)
+
+            >>> # Query at given locations
+            >>> z = numpy.linspace(-1, 1) + 1j
+            >>> m = cfp.stieltjes(z)
         """
 
         # Unpack parameters
@@ -277,6 +323,37 @@ class CompoundFreePoisson(BaseDistribution):
         scalar = (z.ndim == 0)
         if scalar:
             z = z.reshape((1,))
+
+        # Warm-start along 1D horizontal lines z = x + i*eta (prevents isolated
+        # branch flips)
+        if (not scalar) and (z.ndim == 1) and (z.size >= 3):
+            zi = z
+            imz = numpy.imag(zi)
+            if float(numpy.max(imz) - numpy.min(imz)) < 1.0e-14:
+                # process in increasing Re(z) order but return original order
+                order = numpy.argsort(numpy.real(zi))
+                inv = numpy.empty_like(order)
+                inv[order] = numpy.arange(order.size)
+
+                ms = numpy.empty_like(zi)
+                m_prev = -1.0 / zi[order[0]]
+
+                for k in order:
+                    mk, ok = self._solve_m_newton(zi[k], m0=m_prev,
+                                                  max_iter=max_iter, tol=tol)
+                    if (not ok) or (not numpy.isfinite(mk)):
+                        # fallback to algebraic roots (physical sheet)
+                        rts = self._roots_poly_m_scalar(zi[k])
+                        mk = _pick_physical_root_scalar(zi[k], rts)
+
+                    ms[k] = mk
+                    # keep warm-start only if still safely Herglotz-ish
+                    if numpy.imag(mk) > 1.0e-14:
+                        m_prev = mk
+                    else:
+                        m_prev = -1.0 / zi[k]
+
+                return ms
 
         # m initial guess
         m = -1.0 / z
@@ -328,6 +405,28 @@ class CompoundFreePoisson(BaseDistribution):
                 mb[i] = _pick_physical_root_scalar(zi, m_roots)
             m = mb.reshape(z.shape)
 
+        # Repair isolated Newton "sheet glitches" where Im(m) nearly vanishes
+        # at a single interior grid point (common in density plots). Only for
+        # 1D grids at (approximately) constant imaginary offset.
+        if (not scalar) and (m.ndim == 1) and (m.size >= 3):
+            zi = numpy.imag(z.ravel())
+            if numpy.max(numpy.abs(zi - zi[0])) < 1.0e-14:
+                im = numpy.imag(m)
+                im_max = float(numpy.max(im)) if im.size else 0.0
+                if im_max > 0.0:
+                    eps = 1.0e-10 * im_max
+                    mid = (im[1:-1] < eps) & (im[:-2] > 10.0 * eps) & \
+                        (im[2:] > 10.0 * eps)
+                    if numpy.any(mid):
+                        zb = z.ravel()
+                        mb = m.ravel()
+                        fix_idx = numpy.flatnonzero(mid) + 1
+                        for ii in fix_idx:
+                            m_roots = self._roots_poly_m_scalar(zb[int(ii)])
+                            mb[int(ii)] = _pick_physical_root_scalar(
+                                zb[int(ii)], m_roots)
+                        m = mb.reshape(z.shape)
+
         if scalar:
             return m.reshape(())
         return m
@@ -336,8 +435,9 @@ class CompoundFreePoisson(BaseDistribution):
     # density
     # =======
 
-    def density(self, x=None, eta=2e-4, max_iter=100, tol=1e-12, ac_only=True,
-                plot=False, latex=False, save=False, eig=None):
+    def density(self, x=None, eta=2e-4, max_iter=100, tol=1e-12,
+                return_atoms=False, plot=False, latex=False, save=False,
+                eig=None):
         """
         Density of distribution.
 
@@ -346,11 +446,8 @@ class CompoundFreePoisson(BaseDistribution):
 
         x : numpy.array, default=None
             The locations where density is evaluated at. If `None`, an interval
-            slightly larger than the supp interval of the spectral density
+            slightly larger than the support interval of the spectral density
             is used.
-
-        rho : numpy.array, default=None
-            Density. If `None`, it will be computed.
 
         eta : float, default=2e-4
             The offset :math:`\\eta` from the real axis where the density
@@ -363,8 +460,9 @@ class CompoundFreePoisson(BaseDistribution):
         tol : float, default=1e-12
             Tolerance for Newton iterations to solve for the Stieltjes root.
 
-        ac_only : bool, default=True
-            If `True`, it returns the absolutely-continuous part of density.
+        return_atoms : bool, default=False
+            If `True`,  the atoms (if any) of the distribution will also be
+            returned.
 
         plot : bool, default=False
             If `True`, density is plotted.
@@ -386,8 +484,35 @@ class CompoundFreePoisson(BaseDistribution):
         -------
 
         rho : numpy.array
-            Density.
+            Absolutely-continuous part of the spectral density.
 
+        if return_atoms is True:
+            atoms : list
+                A list of tuples ``(loc, wight)`` containing the location and
+                the weight of the atom.
+
+        See Also
+        --------
+
+        stieltjes
+        sample
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 10
+
+            >>> import numpy
+            >>> from freealg.distributions import CompoundFreePoisson
+
+            >>> # Create an object of the class
+            >>> cfp = CompoubdFreePoisson(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...    lam=0.1)
+
+            >>> # Plot density
+            >>> x = numpy.linspace(0, 2, 100)
+            >>> rho, atoms = cfp.density(x, return_atoms=True, plot=True)
         """
 
         # Create x if not given
@@ -406,14 +531,14 @@ class CompoundFreePoisson(BaseDistribution):
         rho = numpy.imag(m) / numpy.pi
 
         # Atoms
-        atoms = None
+        atoms = []
         if self.lam < 1.0:
             atom_loc = 0.0
             atom_w = 1.0 - self.lam
             atoms = [(atom_loc, atom_w)]
 
         # Optional: remove the atom at zero (only for visualization of AC part)
-        if (atoms is not None) and (ac_only is True):
+        if len(atoms) > 0:
             zr = z.real
             atom = atom_w * (float(eta) / (numpy.pi * (zr*zr + float(eta)**2)))
             rho = rho - atom
@@ -424,7 +549,10 @@ class CompoundFreePoisson(BaseDistribution):
             plot_density(x, rho, atoms=atoms, label=label, latex=latex,
                          save=save, eig=eig)
 
-        return rho
+        if return_atoms:
+            return rho, atoms
+        else:
+            return rho
 
     # =====
     # roots
@@ -434,48 +562,147 @@ class CompoundFreePoisson(BaseDistribution):
         """
         Roots of polynomial implicitly representing Stieltjes transform
 
-        If z is scalar, returns an array of roots of shape (r+1,).
-        If z is array-like, returns an array of shape z.shape + (r+1,).
+        Parameters
+        ----------
+
+        z : complex or numpy.ndarray
+            A complex scalar or a 1D or 2D array of query points.
+
+        Returns
+        -------
+
+        r : numpy.ndarray
+            Roots of polynomial with the following array shape:
+
+            * If ``z`` is scalar, returned array is of the shape ``(r+1,)``.
+            * If ``z`` is array-like, returned array if of shape
+              ``z.shape + (r+1,)``.
+
+        See Also
+        --------
+
+        stieltjes
+        poly
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 9
+
+            >>> import numpy
+            >>> from freealg.distributions import CompoundFreePoisson
+
+            >>> # Create an object of the class
+            >>> cfp = CompoundFreePoisson(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...    lam=0.1)
+
+            >>> z = numpy.linspace(0, 2, 10) + 2.0j
+            >>> r = cfp.roots(z)
         """
 
         z = numpy.asarray(z, dtype=numpy.complex128)
 
-        # scalar -> keep exact old behavior
         if z.ndim == 0:
             return self._roots_poly_m_scalar(z.reshape(()))
 
-        # array -> compute roots pointwise, preserve shape
         z_flat = z.ravel()
-        roots_list = [self._roots_poly_m_scalar(zi) for zi in z_flat]
+        n = z_flat.size
 
-        # r+1 roots per point
-        k = int(roots_list[0].size) if len(roots_list) > 0 else 0
-        out = numpy.empty((z_flat.size, k), dtype=numpy.complex128)
-        for i, ri in enumerate(roots_list):
-            out[i, :] = ri
+        t = numpy.asarray(self.t, dtype=float)
+        w = numpy.asarray(self.w, dtype=float)
+        lam = float(self.lam)
+        r = int(t.size)
 
-        return out.reshape(z.shape + (k,))
+        prod = numpy.array([1.0], dtype=numpy.complex128)
+        for ti in t:
+            prod = numpy.convolve(prod, numpy.array([1.0, ti],
+                                                    dtype=numpy.complex128))
+
+        s = numpy.zeros(r, dtype=numpy.complex128)
+        for wi, ti in zip(w, t):
+            q, rem = numpy.polynomial.polynomial.polydiv(
+                prod, numpy.array([1.0, ti], dtype=numpy.complex128))
+            s += (wi * ti) * q[:r]
+
+        term0 = (-1.0) * prod + lam * numpy.concatenate(
+            [numpy.zeros(1, dtype=numpy.complex128), s])
+
+        base = numpy.pad(term0, (0, 1))
+        zpart = (-1.0) * numpy.concatenate(
+            [numpy.zeros(1, dtype=numpy.complex128), prod])
+
+        deg = int(base.size - 1)
+        out = numpy.empty((n, deg), dtype=numpy.complex128)
+
+        for i in range(n):
+            c = base + z_flat[i] * zpart
+            out[i, :] = numpy.roots(c[::-1])
+
+        return out.reshape(z.shape + (deg,))
 
     # =======
     # support
     # =======
 
-    def support(self, eta=2e-4, n_probe=4000, thr=5e-4, x_max=None,
-                x_pad=0.05):
+    def support(self, eta=2e-4, n_probe=4000, thr=5e-4, x_max=None):
         """
-        Support intervals of distribution
+        Support intervals of distribution.
 
         Parameters
         ----------
 
         eta : float, default=2e-4
-            Small number for distinguishing atoms from absolutely-continuous
-            part of density.
+            Imaginary offset used in the Stieltjes inversion for density.
+
+        n_probe : int, default=4000
+            Number of grid points used to probe the density.
+
+        thr : float, default=5e-4
+            Density threshold used to detect nonzero regions.
+
+        x_max : float or None, default=None
+            Right endpoint of the probing grid. If None, a heuristic is used.
+
+        Returns
+        -------
+
+        intervals : list of tuple(float, float)
+            List of (left, right) support intervals estimated from the grid.
+
+        Notes
+        -----
+
+        The support is estimated on a real grid by thresholding the density
+        :math:`\\rho(x; ``eta)`.
+
+        See Also
+        --------
+
+        density
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 8
+
+            >>> import numpy
+            >>> from freealg.distributions import CompoundFreePoisson
+
+            >>> # Create an object of the class
+            >>> cfp = CompoundFreePoisson(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...    lam=0.1)
+
+            >>> print(cfp.support)
+            [(0.9984996249062267, 3.13165791447862),
+             (4.157389347336835, 7.597674418604652)]
         """
 
         t = self.t
         lam = float(self.lam)
 
+        x_min = 0.0
         if x_max is None:
             # Heuristic: scale grows ~ O(lam * max(t))
             x_max = (1.0 + lam) * float(numpy.max(t)) * 6.0
@@ -483,10 +710,13 @@ class CompoundFreePoisson(BaseDistribution):
         if x_max <= 0.0:
             raise ValueError("x_max must be > 0.")
 
-        x = numpy.linspace(0.0, x_max, int(n_probe))
-        rho = self.density(x, eta=eta, ac_only=True)
+        x = numpy.linspace(x_min, float(x_max), int(n_probe))
+        rho = self.density(x, eta=eta)
 
         mask = rho > float(thr)
+
+        # Prevent one-point gap (due to numerical errors) to split the support
+        mask = mask | numpy.r_[False, mask[:-1]] | numpy.r_[mask[1:], False]
         if not numpy.any(mask):
             return []
 
@@ -500,8 +730,7 @@ class CompoundFreePoisson(BaseDistribution):
         for s, e in zip(starts, ends):
             xa = x[int(s)]
             xb = x[int(e)]
-            pad = float(x_pad) * (xb - xa)
-            intervals.append((float(max(0.0, xa - pad)), float(xb + pad)))
+            intervals.append((float(max(0.0, xa)), float(xb)))
 
         return intervals
 
