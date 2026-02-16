@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.DeformedMarchenkoPastur.stieltjes
-=======================================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: DeformedMarchenkoPastur.stieltjes

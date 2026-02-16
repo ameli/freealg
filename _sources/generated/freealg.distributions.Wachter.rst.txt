@@ -16,6 +16,7 @@
          Wachter.density
          Wachter.hilbert
          Wachter.matrix
+         Wachter.plot_branches
          Wachter.sample
          Wachter.stieltjes
       

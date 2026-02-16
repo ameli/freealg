@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.Wachter.plot_branches
+===========================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: Wachter.plot_branches

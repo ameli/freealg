@@ -20,6 +20,7 @@
          FreeForm.fit
          FreeForm.hilbert
          FreeForm.norm
+         FreeForm.plot_branches
          FreeForm.slogdet
          FreeForm.stieltjes
          FreeForm.trace

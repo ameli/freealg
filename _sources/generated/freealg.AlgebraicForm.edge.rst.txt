@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.edge
-==========================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.edge

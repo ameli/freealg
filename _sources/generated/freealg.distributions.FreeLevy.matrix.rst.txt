@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.FreeLevy.matrix
-=====================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: FreeLevy.matrix

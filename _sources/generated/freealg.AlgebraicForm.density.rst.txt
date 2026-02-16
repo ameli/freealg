@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.density
-=============================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.density

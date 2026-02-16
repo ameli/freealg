@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.DeformedWigner.support
-============================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: DeformedWigner.support

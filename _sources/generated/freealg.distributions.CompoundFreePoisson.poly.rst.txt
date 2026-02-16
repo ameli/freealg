@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.CompoundFreePoisson.poly
-==============================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: CompoundFreePoisson.poly

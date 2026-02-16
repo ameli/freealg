@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.DeformedWigner.sample
-===========================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: DeformedWigner.sample

@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.eigvalsh
-==============================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.eigvalsh

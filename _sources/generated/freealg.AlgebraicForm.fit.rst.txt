@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.fit
-=========================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.fit

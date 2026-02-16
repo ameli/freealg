@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.is_decompressible
-=======================================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.is_decompressible

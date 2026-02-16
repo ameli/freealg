@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.GeometricForm.slogdet
-=============================
-
-.. currentmodule:: freealg
-
-.. automethod:: GeometricForm.slogdet

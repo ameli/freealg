@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.DeformedMarchenkoPastur.roots
-===================================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: DeformedMarchenkoPastur.roots

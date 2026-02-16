@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.FussCatalan.stieltjes
-===========================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: FussCatalan.stieltjes

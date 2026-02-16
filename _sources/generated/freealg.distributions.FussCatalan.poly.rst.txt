@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.FussCatalan.poly
-======================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: FussCatalan.poly

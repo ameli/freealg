@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.MarchenkoPastur.plot_branches
+===================================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: MarchenkoPastur.plot_branches

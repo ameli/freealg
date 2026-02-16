@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.FreeForm.plot_branches
+==============================
+
+.. currentmodule:: freealg
+
+.. automethod:: FreeForm.plot_branches

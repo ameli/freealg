@@ -16,6 +16,7 @@
          MarchenkoPastur.density
          MarchenkoPastur.hilbert
          MarchenkoPastur.matrix
+         MarchenkoPastur.plot_branches
          MarchenkoPastur.sample
          MarchenkoPastur.stieltjes
          MarchenkoPastur.support

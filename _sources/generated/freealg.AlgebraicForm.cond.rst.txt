@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.cond
-==========================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.cond

@@ -16,6 +16,7 @@
          Wigner.density
          Wigner.hilbert
          Wigner.matrix
+         Wigner.plot_branches
          Wigner.sample
          Wigner.stieltjes
       

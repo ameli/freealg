@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.GeometricForm.fit
-=========================
-
-.. currentmodule:: freealg
-
-.. automethod:: GeometricForm.fit

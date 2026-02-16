@@ -16,6 +16,7 @@
          KestenMcKay.density
          KestenMcKay.hilbert
          KestenMcKay.matrix
+         KestenMcKay.plot_branches
          KestenMcKay.sample
          KestenMcKay.stieltjes
       

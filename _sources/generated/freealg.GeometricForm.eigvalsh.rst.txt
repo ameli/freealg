@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.GeometricForm.eigvalsh
-==============================
-
-.. currentmodule:: freealg
-
-.. automethod:: GeometricForm.eigvalsh

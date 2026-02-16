@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.GeometricForm.hilbert
-=============================
-
-.. currentmodule:: freealg
-
-.. automethod:: GeometricForm.hilbert

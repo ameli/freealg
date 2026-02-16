@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.hilbert
-=============================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.hilbert

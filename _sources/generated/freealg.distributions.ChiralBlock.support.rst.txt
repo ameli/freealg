@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.ChiralBlock.support
-=========================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: ChiralBlock.support

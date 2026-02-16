@@ -16,6 +16,7 @@
          Meixner.density
          Meixner.hilbert
          Meixner.matrix
+         Meixner.plot_branches
          Meixner.sample
          Meixner.stieltjes
       

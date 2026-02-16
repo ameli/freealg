@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.distributions.FreeLevy.support
-======================================
-
-.. currentmodule:: freealg.distributions
-
-.. automethod:: FreeLevy.support

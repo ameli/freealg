@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.GeometricForm.density
-=============================
-
-.. currentmodule:: freealg
-
-.. automethod:: GeometricForm.density

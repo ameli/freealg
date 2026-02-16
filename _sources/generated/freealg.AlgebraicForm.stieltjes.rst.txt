@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.stieltjes
-===============================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.stieltjes

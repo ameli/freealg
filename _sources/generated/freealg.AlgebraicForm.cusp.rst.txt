@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.cusp
-==========================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.cusp

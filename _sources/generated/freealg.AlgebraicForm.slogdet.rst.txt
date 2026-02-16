@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.AlgebraicForm.slogdet
-=============================
-
-.. currentmodule:: freealg
-
-.. automethod:: AlgebraicForm.slogdet

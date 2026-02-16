@@ -1,8 +1,0 @@
-:orphan:
-
-freealg.GeometricForm.stieltjes
-===============================
-
-.. currentmodule:: freealg
-
-.. automethod:: GeometricForm.stieltjes
