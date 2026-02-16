@@ -271,17 +271,48 @@ def build_sheets_from_roots(z, roots, m1, cuts=None, i0=None, j0=None):
     if s < 1:
         raise ValueError("s must be >= 1.")
 
+    # -----------
+    # TEST
+    # if i0 is None:
+    #     ycol = numpy.imag(z[:, 0])
+    #     pos = numpy.where(ycol > 0.0)[0]
+    #     i0 = int(pos[0]) if pos.size > 0 else (n_y // 2)
+    # -----------
+    # TEST
     if i0 is None:
         ycol = numpy.imag(z[:, 0])
         pos = numpy.where(ycol > 0.0)[0]
-        i0 = int(pos[0]) if pos.size > 0 else (n_y // 2)
+        if pos.size > 0:
+            i0 = int(pos[pos.size // 2])  # mid of upper half-plane
+        else:
+            i0 = (n_y // 2)
+    # -------------------
 
     if j0 is None:
         j0 = n_x // 2
 
     R = roots.reshape((n_y, n_x, s))
 
-    tracked = track_roots_on_grid(R, z=z, i0=0, j0=0)
+    # tracked = track_roots_on_grid(R, z=z, i0=0, j0=0)
+    # -----------------
+    # TEST
+    ycol = numpy.imag(z[:, 0])
+
+    pos = numpy.where(ycol > 0.0)[0]
+    neg = numpy.where(ycol < 0.0)[0]
+
+    if (pos.size == 0) or (neg.size == 0):
+        tracked = track_roots_on_grid(R, z=z, i0=0, j0=0)
+    else:
+        i_up = int(pos[pos.size // 2])
+        i_dn = int(neg[neg.size // 2])
+
+        tracked_up = track_roots_on_grid(R, z=z, i0=i_up, j0=j0)
+        tracked_dn = track_roots_on_grid(R, z=z, i0=i_dn, j0=j0)
+
+        tracked = tracked_dn
+        tracked[ycol > 0.0, :, :] = tracked_up[ycol > 0.0, :, :]
+    # -----------------
 
     k_phys = int(numpy.argmin(numpy.abs(tracked[i0, j0, :] - m1[i0, j0])))
     if k_phys != 0:

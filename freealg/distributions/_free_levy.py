@@ -840,10 +840,17 @@ class FreeLevy(BaseDistribution):
         # add term2, aligned
         base = base + numpy.pad(term2, (0, (base.size - term2.size)))
 
-        # Determine degree (same for all z)
-        deg = base.size - 1
-        while deg > 0 and abs(base[deg]) < eps:
-            deg -= 1
+        # Determine degree of P(m;z)=base(m)+z*zpart(m)
+        deg_base = base.size - 1
+        while deg_base > 0 and abs(base[deg_base]) < eps:
+            deg_base -= 1
+
+        deg_z = zpart.size - 1
+        while deg_z > 0 and abs(zpart[deg_z]) < eps:
+            deg_z -= 1
+
+        deg = max(deg_base, deg_z)
+
         base = base[:deg + 1]
         zpart = zpart[:deg + 1]
 
@@ -851,23 +858,19 @@ class FreeLevy(BaseDistribution):
             raise RuntimeError("Polynomial degree < 1 (unexpected parameter "
                                "regime).")
 
-        lead = base[deg]
-        if abs(lead) < eps:
-            raise RuntimeError("Leading coefficient ~0 (degree detection "
-                               "failed).")
-
-        # Make monic: divide coefficients by leading coeff
-        base_m = base / lead
-        zpart_m = zpart / lead
-
         # Solve roots in batch via companion matrices
         out = numpy.empty((n, deg), dtype=numpy.complex128)
 
         def solve_chunk(z_chunk, out_view):
             # A has ascending monic coeffs:
-            # A[:,0] + A[:,1] m + ... + A[:,-2] m^{deg-1} + 1*m^{deg}
-            A = base_m[None, :] + z_chunk[:, None] * zpart_m[None, :]
-            A[:, -1] = 1.0 + 0.0j  # enforce monic numerically
+            # like A[:,0] + A[:,1] m + ... + A[:,-2] m^{deg-1} + 1*m^{deg}
+            A = base[None, :] + z_chunk[:, None] * zpart[None, :]
+
+            # Normalize per row so leading coefficient is 1
+            lead = A[:, -1].copy()
+            lead[numpy.abs(lead) < eps] = eps
+            A = A / lead[:, None]
+            A[:, -1] = 1.0 + 0.0j
 
             Nc = z_chunk.size
             C = numpy.zeros((Nc, deg, deg), dtype=numpy.complex128)

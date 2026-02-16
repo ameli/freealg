@@ -536,7 +536,7 @@ def plot_samples(x, rho, x_min, x_max, samples, latex=False, save=False):
 # ===========
 
 def _plot_branch(ax, img, extent, support, x_ax=True, y_ax=True, bc=None,
-                 title='', **kwargs):
+                 bc_complement=False, title='', **kwargs):
     """
     Helper for plot_branches. This plots each branch on a given axis.
 
@@ -581,19 +581,49 @@ def _plot_branch(ax, img, extent, support, x_ax=True, y_ax=True, bc=None,
     x_min, x_max, y_min, y_max = extent
 
     bc_color = 'darkgray'
-    if isinstance(bc, list):
-        # Plot a line inside branch cut
-        for bc_ in bc:
-            a, b = support[bc_ - 1]
-            ax.plot([a, b], [eps, eps], '-', linewidth=1, color=bc_color)
-            ax.plot([a, b], [eps, eps], 'o', markersize=1.5, color=bc_color)
-    elif bc < 0:
-        # Plot lines out. These are not applicable for k-2, side of branch cut
-        # (complement of branch cut)
-        a, b = support[-bc - 1]
-        ax.plot([x_min, a], [eps, eps], '-', linewidth=1, color=bc_color)
-        ax.plot([b, x_max], [eps, eps], '-', linewidth=1, color=bc_color)
-        ax.plot([a, b], [eps, eps], 'o', markersize=1.5, color=bc_color)
+
+    if bc is None or bc == 0:
+        pass
+
+    elif isinstance(bc, list) and len(bc) > 0:
+
+        segs = [(float(a), float(b)) for a, b in bc]
+        segs = [(min(a, b), max(a, b)) for a, b in segs]
+
+        # clip + sort
+        segs = [(max(x_min, a), min(x_max, b)) for a, b in segs if b > a]
+        segs.sort(key=lambda t: t[0])
+
+        # merge overlaps
+        merged = []
+        for a, b in segs:
+            if len(merged) == 0 or a > merged[-1][1]:
+                merged.append([a, b])
+            else:
+                merged[-1][1] = max(merged[-1][1], b)
+
+        if bc_complement:
+            # draw complement of the UNION
+            cur = x_min
+            for a, b in merged:
+                if a > cur:
+                    ax.plot([cur, a], [eps, eps], '-', linewidth=1,
+                            color=bc_color)
+                cur = max(cur, b)
+            if cur < x_max:
+                ax.plot([cur, x_max], [eps, eps], '-', linewidth=1,
+                        color=bc_color)
+
+            # endpoints markers for the union (optional)
+            for a, b in merged:
+                ax.plot([a, b], [eps, eps], 'o', markersize=1.5,
+                        color=bc_color)
+
+        else:
+            for a, b in merged:
+                ax.plot([a, b], [eps, eps], '-', linewidth=1, color=bc_color)
+                ax.plot([a, b], [eps, eps], 'o', markersize=1.5,
+                        color=bc_color)
 
     ax.set_title(title)
 
@@ -656,7 +686,6 @@ def plot_branches(z, m1, roots, support, latex=False, save=False, **kwargs):
     sheets, _ = build_sheets_from_roots(z, roots, m1, cuts=support)
     m1 = sheets[0]
     n_sheets = len(sheets)
-    n_cuts = len(support)
 
     if n_sheets < 1:
         raise ValueError('No sheets were constructed from roots.')
@@ -680,6 +709,49 @@ def plot_branches(z, m1, roots, support, latex=False, save=False, **kwargs):
         old_to_new[old_k] = new_k
     partners = [old_to_new[k] for k in partners]
 
+    # Compute cut segments for each non-physical sheet on each support interval
+    xline = z[0, :].real
+
+    ycol = z[:, 0].imag
+    pos = numpy.where(ycol > 0.0)[0]
+    neg = numpy.where(ycol < 0.0)[0]
+    if pos.size == 0 or neg.size == 0:
+        raise ValueError('Grid must include both positive and negative Im(z).')
+
+    i_up = int(pos[0])     # closest row above real axis
+    i_dn = int(neg[-1])    # closest row below real axis
+
+    cut_segments = {k: [] for k in range(1, n_sheets)}
+
+    for (a, b) in support:
+        mask = (xline >= float(a)) & (xline <= float(b))
+        idx = numpy.where(mask)[0]
+        if idx.size == 0:
+            continue
+
+        # pick partner of m1 along this interval (piecewise)
+        D = []
+        for k in range(1, n_sheets):
+            Dk = (numpy.abs(sheets[0][i_up, idx] - sheets[k][i_dn, idx]) +
+                  numpy.abs(sheets[0][i_dn, idx] - sheets[k][i_up, idx]))
+            D.append(Dk)
+
+        D = numpy.vstack(D)  # (n_sheets-1, n_idx)
+        K = numpy.argmin(D, axis=0) + 1  # partner in {1..n_sheets-1}
+
+        # compress consecutive equal partners into segments
+        seg_start = idx[0]
+        for t in range(1, idx.size):
+            if K[t] != K[t - 1]:
+                k_partner = int(K[t - 1])
+                cut_segments[k_partner].append(
+                    (float(xline[seg_start]), float(xline[idx[t - 1]])))
+                seg_start = idx[t]
+
+        k_partner = int(K[-1])
+        cut_segments[k_partner].append(
+            (float(xline[seg_start]), float(xline[idx[-1]])))
+
     # For each non-physical sheet, list the cuts where it partners with m1.
     partner_cuts = {k: [] for k in range(1, n_sheets)}
     for i_cut, k in enumerate(partners, start=1):
@@ -692,61 +764,70 @@ def plot_branches(z, m1, roots, support, latex=False, save=False, **kwargs):
     y_max = numpy.max(z[:, 0].imag)
     extent = [x_min, x_max, y_min, y_max]
 
-    ncols = max(n_sheets, 2 * max(n_sheets - 1, 1))
+    letters = 'abcdefghijklmnopqrstuvwxyz'
+    sheet_letters = letters[:n_sheets]  # a,b,c,...
+
+    ncols = n_sheets
     width = max(9.0, 3.2 * ncols)
+
     with texplot.theme(use_latex=latex):
-        fig, ax = plt.subplots(nrows=2, ncols=ncols, figsize=(width, 5.0),
+        fig, ax = plt.subplots(nrows=3, ncols=ncols, figsize=(width, 7.2),
                                sharey=True)
+
         if ncols == 1:
-            ax = numpy.asarray(ax).reshape(2, 1)
+            ax = numpy.asarray(ax).reshape(3, 1)
 
-        letters = 'abcdefghijklmnopqrstuvwxyz'
-
-        # Top row: all sheets on C
+        # Row 1: (a) m1, (b) m2, ..., (s) m_s
         for k in range(n_sheets):
-            y_ax = (k == 0)
-            x_ax = False
             if k == 0:
-                bc = list(range(1, n_cuts + 1))
+                bc = [(float(a), float(b)) for (a, b) in support]
             else:
-                bc = partner_cuts[k]
-            letter = letters[k] if k < len(letters) else '?'
-            title = fr'({letter}) $m_{k+1}$ on $\mathbb{{C}}$'
-            _plot_branch(ax[0, k], sheets[k], extent, support, x_ax=x_ax,
-                         y_ax=y_ax, bc=bc, title=title, **kwargs)
-        for k in range(n_sheets, ncols):
-            ax[0, k].axis('off')
+                bc = cut_segments[k]
 
-        # Bottom row: glued sheets (m1+/mk-) and (m1-/mk+)
-        col = 0
-        label_idx = n_sheets
+            title = fr'({sheet_letters[k]}) $m_{k+1}$ on $\mathbb{{C}}$'
+            _plot_branch(ax[0, k], sheets[k], extent, support, x_ax=(k == 0),
+                         y_ax=(k == 0), bc=bc, bc_complement=False,
+                         title=title, **kwargs)
+
+        # Row 2: NONE, (ab) m1/m2, (ac) m1/m3, ...
+        ax[1, 0].axis('off')
         for k in range(1, n_sheets):
-            cuts_k = partner_cuts[k]
-            bc_comp = -cuts_k[0] if len(cuts_k) > 0 else 0
-            letter = letters[label_idx] if label_idx < len(letters) else '?'
-            title = (fr'({letter}) $m_1$ on $\mathbb{{C}}^+$ glued to '
+            bc_comp = cut_segments[k]
+            title = (fr'({sheet_letters[0]}{sheet_letters[k]}) '
+                     fr'$m_1$ on $\mathbb{{C}}^+$ glued to '
                      fr'$m_{k+1}$ on $\mathbb{{C}}^-$')
 
-            _plot_branch(ax[1, col], glue_branches(z, m1, sheets[k]), extent,
-                         support, x_ax=True, y_ax=(col == 0), bc=bc_comp,
-                         title=title, **kwargs)
-            col += 1
-            label_idx += 1
+            _plot_branch(ax[1, k], glue_branches(z, m1, sheets[k]), extent,
+                         support, x_ax=False, y_ax=(k == 1), bc=bc_comp,
+                         bc_complement=True, title=title, **kwargs)
 
-            letter = letters[label_idx] if label_idx < len(letters) else '?'
-            title = (fr'({letter}) $m_1$ on $\mathbb{{C}}^-$ glued to '
+        # Row 3: NONE, (ba) m2/m1, (ca) m3/m1, ...
+        ax[2, 0].axis('off')
+        for k in range(1, n_sheets):
+            bc_comp = cut_segments[k]
+            title = (fr'({sheet_letters[k]}{sheet_letters[0]}) '
+                     fr'$m_1$ on $\mathbb{{C}}^-$ glued to '
                      fr'$m_{k+1}$ on $\mathbb{{C}}^+$')
 
-            _plot_branch(ax[1, col], glue_branches(z, sheets[k], m1), extent,
-                         support, x_ax=True, y_ax=False, bc=bc_comp,
-                         title=title, **kwargs)
-            col += 1
-            label_idx += 1
+            _plot_branch(ax[2, k], glue_branches(z, sheets[k], m1), extent,
+                         support, x_ax=True, y_ax=(k == 1), bc=bc_comp,
+                         bc_complement=True, title=title, **kwargs)
 
-        for k in range(col, ncols):
-            ax[1, k].axis('off')
+        # Fixing sharey=True and axis('off') that hides y tick labels on col=1
+        for r in (1, 2):
+            a = ax[r, 1]  # the first visible axis in that row
+            a.tick_params(axis='y', left=True, labelleft=True)
+
+            # also copy formatter/locator from the main y-axis owner (ax[0,0])
+            a.yaxis.set_major_locator(ax[0, 0].yaxis.get_major_locator())
+            a.yaxis.set_major_formatter(ax[0, 0].yaxis.get_major_formatter())
+
+            # sometimes matplotlib keeps them invisible; force visible
+            for lab in a.get_yticklabels():
+                lab.set_visible(True)
 
         plt.tight_layout()
+        fig.subplots_adjust(wspace=0.05, hspace=0.05)
 
         # Save
         if save is False:

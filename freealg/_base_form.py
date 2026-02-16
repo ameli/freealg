@@ -14,6 +14,7 @@
 import numpy
 from ._util import resolve_complex_dtype
 from ._sample import sample
+from .visualization._plot_util import plot_branches
 
 __all__ = ['BaseForm']
 

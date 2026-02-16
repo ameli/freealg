@@ -15,7 +15,6 @@ import numpy
 from scipy.interpolate import interp1d
 from ..visualization._plot_util import plot_samples, plot_branches
 
-
 try:
     from scipy.integrate import cumtrapz
 except ImportError:
