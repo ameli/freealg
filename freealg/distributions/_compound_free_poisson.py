@@ -13,7 +13,7 @@
 
 import numpy
 from ..visualization._plot_util import plot_density
-from .._algebraic_form._sheets_util import _pick_physical_root_scalar
+from ..visualization._sheets_util import _pick_physical_root_scalar
 from ._base_distribution import BaseDistribution
 
 __all__ = ['CompoundFreePoisson']
