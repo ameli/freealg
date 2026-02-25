@@ -68,6 +68,9 @@ class DeformedMarchenkoPastur(BaseDistribution):
     poly
         Polynomial coefficients implicitly representing the Stieltjes
 
+    plot_branches
+        Plot branches of the spectral curve of Stieltjes transform.
+
     See Also
     --------
 
@@ -157,6 +160,9 @@ class DeformedMarchenkoPastur(BaseDistribution):
         else:
             self.lam_lb = float(numpy.min(t)) * (1 - numpy.sqrt(c))**2
         self.lam_ub = float(numpy.max(t)) * (1 + numpy.sqrt(c))**2
+
+        # Aspect ratio parameter of the corresponding Gram matrix
+        self.ratio = c
 
     # ===================
     # roots poly u scalar

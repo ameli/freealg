@@ -79,30 +79,117 @@ class CompoundFreePoisson(BaseDistribution):
     Notes
     -----
 
-    This model has atom at zero with mass :math:`\\max(1-\\lambda, 0)`.
+    The compound free Poisson law with the rate :math:`\\lambda` and jump
+    :math:`H`, given by the R transform
 
-    This model is the additive free compound Poisson law whose R-transform is
+      .. math::
+
+          R_{\\mathrm{CFP}(\\lambda, H)} =
+          \\lambda \\int_{\\mathbb{R}} \\frac{x}{1 - wx} H(\\mathrm{d} x).
+
+      Here, :math:`H > 0` is a positive measure. We assume :math:`H` is
+      discrete atomic distribution given by
 
     .. math::
 
-        R(w) = \\lambda \\sum_{i=1}^r w_i \\frac{t_i}{1-t_i w},
+        H = \\sum_{i=1}^r w_i \\delta_{t_i},
 
-    where :math:`\\lambda>0` is the total rate (intensity),
-    :math:`t_i>0` are jump sizes, and :math:`w_i>0` are weights with
-    :math:`\\sum_i w_i = 1`.
+    where :math:`t_i>0` are jump sizes (given by the parameter ``t`` as a
+    list), and :math:`w_i>0` are weights with
+    :math:`\\sum_i w_i = 1` (given by the parameter ``w`` as a list). In this
+    case, the R transform becomes:
+
+    .. math::
+
+        R(w) = \\lambda \\sum_{i=1}^r w_i \\frac{t_i}{1-t_i w}.
+
+    **Stieltjes Transform:**
 
     The Stieltjes transform :math:`m(z)` satisfies
 
     .. math::
 
-        R(-m(z)) = z + 1/m(z).
+        R(-m(z)) = z + \\frac{1}{m(z)}.
 
-    For two atoms, clearing denominators yields a cubic polynomial in
-    :math:`m`:
+    Solving for :math:`m` and clearing the common denominators for the rational
+    function representation, we get a polynomial :math:`P(z, m) = 0` with
 
     .. math::
 
-        a_3(z)m^3 + t_2(z)m^2 + t_1(z)m + a_0(z) = 0.
+        P(z, m) = \\sum_{i=1}^{d_z} \\sum_{j=1}^{d_m} c_{ij} z^i m^j = 0,
+
+    where :math:`d_z` and :math:`d_m` are the degrees of :math:`P` in :math:`z`
+    and :math:`m`, respectively. The degree :math:`d_z` is always 1.
+
+    For :math:`r` atoms in :math:`H`, this yields a polynomial with degree
+    :math:`d_m = r+1` in :math:`m`.
+
+    This model has an atom at :math:`x = a` with mass
+    :math:`\\max(1-\\lambda, 0)`.
+
+    **Functions:**
+
+    * The coefficients :math:`c_{ij}` can be obtained from :func:`poly`
+      function.
+    * For a given :math:`z`, all :math:`d_m` roots (in :math:`m`) of the
+      polynomial :math:`P(z, m) = 0` can be computed by :func:`roots`.
+    * Among all roots, only one root corresponds to the *physical* branch,
+      known as the Stieltjes transform. This physical root can be computed by
+      :func:`stieltjes` function.
+
+    Examples
+    --------
+
+    We create a compound free Poisson distribution, plot is density and compute
+    its support.
+
+    .. code-block:: python
+        :emphasize-lines: 4,5
+
+        >>> from freealg.distributions import CompoundFreePoisson
+
+        >>> # Create an object of the class
+        >>> cfp = CompoundFreePoisson(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1)
+
+        >>> # Plot density
+        >>> rho = cfp.density(plot=True)
+
+        >>> # Get the support intervals
+        >>> supp = cfp.support()
+        [(0.9984996249062267, 3.13165791447862),
+         (4.157389347336835, 7.597674418604652)]
+
+    We can also sample from this distribution: either as a matrix realization,
+    or as an array of eigenvalues:
+
+    .. code-block:: python
+
+        >>> # Generate a random matrix realization of this law
+        >>> A = cfp.matrix(size=2000, seed=0)
+
+        >>> # Sample from eigenvalues of this law
+        >>> eig = cfp.sample(size=2000)
+
+    Here, we compute the coefficients of the polynomial :math:`P(z, m) = 0`,
+    all its roots at a given point :math:`z`, and its physical root (Stieltjes
+    transform):
+
+    .. code-block:: python
+
+        >>> # Get the coefficients of the polynomial P(z, m) = 0
+        >>> coeffs = cfp.poly().real
+        [[ 1.      7.2125  9.9    -0.    ]
+         [ 0.      1.      7.5    11.    ]]
+
+        >>> # Compute all roots of the polynomial at a given z
+        >>> z = 2.0 + 3.0j
+        >>> roots = cfp.roots(z)
+        array([-0.49936889-0.02424734j, -0.13510408+0.23535224j,
+               -0.18580675-0.0034126j ])
+
+        >>> # Compute the Stieltjes transform at z (the physical root)
+        >>> m = cfp.stieltjes(z)
+        array(-0.13510408+0.23535224j)
     """
 
     # ====
@@ -685,9 +772,8 @@ class CompoundFreePoisson(BaseDistribution):
         --------
 
         .. code-block:: python
-            :emphasize-lines: 8
+            :emphasize-lines: 7
 
-            >>> import numpy
             >>> from freealg.distributions import CompoundFreePoisson
 
             >>> # Create an object of the class
@@ -756,6 +842,11 @@ class CompoundFreePoisson(BaseDistribution):
         A : numpy.ndarray
             Symmetric matrix (n x n).
 
+        See Also
+        --------
+
+        sample
+
         Notes
         -----
 
@@ -781,6 +872,20 @@ class CompoundFreePoisson(BaseDistribution):
 
             c_i = 1 / \\lambda_i,
             s_i = t_i \\lambda_i.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 7
+
+            >>> from freealg.distributions import CompoundFreePoisson
+
+            >>> # Create an object of the class
+            >>> cfp = CompoundFreePoisson(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...    lam=0.1)
+
+            >>> A = cfp.matrix(size=2000)
         """
 
         n = int(size)
@@ -815,7 +920,34 @@ class CompoundFreePoisson(BaseDistribution):
         """
         Polynomial coefficients implicitly representing the Stieltjes
 
-        coeffs[i, j] is the coefficient of z^i m^j.
+        Returns
+        -------
+
+        coeffs : numpy.ndarray
+            A 2D array of size :math:`(d_z + 1) \\times (d_m + 1)` where
+            :math:`d_z = \\deg_z(P)` and :math:`d_m = \\deg_m(P)`.
+
+        Notes
+        -----
+
+        ``coeffs[i, j]`` is the coefficient of :math:`z^i m^j`.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 7
+
+            >>> from freealg.distributions import CompoundFreePoisson
+
+            >>> # Create an object of the class
+            >>> cfp = CompoundFreePoisson(t=[2.0, 5.5], w=[0.75, 1-0.75],
+            ...    lam=0.1)
+
+            >>> coeffs = fl.poly()
+            >>> print(coeffs.real)
+            [[ 1.      7.2125  9.9    -0.    ]
+             [ 0.      1.      7.5    11.    ]]
         """
 
         t = self.t

@@ -38,12 +38,20 @@ from ._decompress import decompress_newton
 # from ._decompress8 import decompress_newton
 # from ._decompress9 import decompress_newton  # With Predictor/Corrector
 
+# Deform
+# from ._deform import deform_newton
+# from ._deform2 import deform_newton
+# from ._deform3 import deform_newton
+# from ._deform4 import deform_newton
+from ._deform5 import deform_newton  # predictor-corrector
+
 # Homotopy
 # from ._homotopy import StieltjesPoly
 # from ._homotopy2 import StieltjesPoly
 # from ._homotopy3 import StieltjesPoly  # Viterbi
 # from ._homotopy4 import StieltjesPoly
-from ._homotopy5 import StieltjesPoly
+# from ._homotopy5 import StieltjesPoly
+from ._homotopy6 import StieltjesPoly
 
 from ._moments import Moments, AlgebraicStieltjesMoments
 from ..visualization._plot_util import plot_density, plot_hilbert, \
@@ -71,6 +79,14 @@ class AlgebraicForm(BaseForm):
         The 2D symmetric :math:`\\mathbf{A}`. The eigenvalues of this will be
         computed upon calling this class. If a 1D array provided, it is
         assumed to be the eigenvalues of :math:`\\mathbf{A}`.
+
+    ratio : float, default=None
+        If ``A`` is a Gram (covariance) matrix that is formed by
+        :math:`\\mathbf{A} = \\mathbf{X} \\mathbf{X}^{\\intercal}` with
+        the rectangular matrix
+        :math:`\\mathbb{X} \\in \\mathbb{R}^{p \\times n}`, then this
+        argument is the aspect ratio :math:`c = p / n \\in (0, \\infty)`.
+        The argument is only used for free deformation in :func:`deform`.
 
     support : tuple, default=None
         The support of the density of :math:`\\mathbf{A}`. If `None`, it is
@@ -107,6 +123,9 @@ class AlgebraicForm(BaseForm):
       Initial array size (assuming a square matrix when :math:`\\mathbf{A}` is
       2D).
 
+    ratio : float
+        The aspect ratio of Gram matrix
+
     coeffs : numpy.ndarray
         The coefficients of the fitted polynomial
 
@@ -136,6 +155,9 @@ class AlgebraicForm(BaseForm):
 
     decompress
         Free decompression of spectral density
+
+    deform
+        Free deformation of spectral density
 
     candidate
         Candidate densities of free decompression from all possible roots
@@ -263,24 +285,24 @@ class AlgebraicForm(BaseForm):
         >>> rho, x, atoms = af.decompress(
         ...     sizes, x=x, method='moc', min_n_times=100, newton_opt={},
         ...     return_atoms=True, atom_eps=1e-2, verbose=False, plot=True)
-
-    **Evolve Edges:**
-
-
     """
 
     # ====
     # init
     # ====
 
-    def __init__(self, A, support=None, delta=1e-5, dtype='complex128',
-                 **kwargs):
+    def __init__(self, A, support=None, ratio=None, delta=1e-5,
+                 dtype='complex128', **kwargs):
         """
         Initialization.
         """
 
         super().__init__(delta, dtype)
 
+        if ratio is not None:
+            self.ratio = float(ratio)
+        else:
+            self.ratio = None
         self._stieltjes = None
         self._moments = None
         self.supp = support
@@ -1078,7 +1100,7 @@ class AlgebraicForm(BaseForm):
         --------
 
         density
-        stieltjes
+        deform
 
         Examples
         --------
@@ -1086,12 +1108,11 @@ class AlgebraicForm(BaseForm):
         .. code-block:: python
 
             >>> from freealg import AlgebraicForm
-
         """
 
         # Create x if not given
-        if x is None:
-            x = self._generate_grid(1.25)
+        # if x is None:
+        #     x = self._generate_grid(1.25)
 
         # Check size argument
         if numpy.isscalar(size):
@@ -1128,15 +1149,15 @@ class AlgebraicForm(BaseForm):
         if atom_eps is None:
             atom_eps = 50.0 * float(self.delta)
 
-        # Remove points too close to atoms to avoid Newton stall at poles
+        # Evolve atoms
         atoms0 = self.atoms()
+        atoms_t = evolve_atoms(atoms0, alpha)
+
+        # Remove points too close to atoms to avoid Newton stall at poles
+        near_atom = numpy.zeros(x.size, dtype=bool)
         if len(atoms0) > 0:
 
-            # Evolve atoms
-            atoms_t = evolve_atoms(atoms0, alpha)
-
             # Exclude x grid near atoms
-            near_atom = numpy.zeros(x.size, dtype=bool)
             for x0, _w0 in (atoms0 or []):
                 near_atom |= (numpy.abs(x - float(x0)) <= float(atom_eps))
 
@@ -1149,10 +1170,10 @@ class AlgebraicForm(BaseForm):
             # Initial condition at t = 0 (physical branch)
             w0_list = self._stieltjes(z_query)
 
-            # TEST
-            if len(atoms0) > 0:
-                for x0, w0 in atoms0:
-                    w0_list = w0_list - (float(w0) / (float(x0) - z_query))
+            # Remove atom from Stieltjes transform (Experimental)
+            # if len(atoms0) > 0:
+            #     for x0, w0 in atoms0:
+            #         w0_list = w0_list - (float(w0) / (float(x0) - z_query))
 
             # Ensure there are at least min_n_times time t, including requested
             # times, and especially time t = 0
@@ -1203,7 +1224,7 @@ class AlgebraicForm(BaseForm):
         # Plot only the last size
         if plot:
 
-            # Density (absolutely-continuois part) at the last time
+            # Density (absolutely-continuous part) at the last time
             if numpy.isscalar(size):
                 rho_last = rho
             else:
@@ -1212,6 +1233,8 @@ class AlgebraicForm(BaseForm):
             # Atoms at the last time
             if len(atoms0) > 0:
                 atoms_last = [(loc, w[-1]) for loc, w in atoms_t]
+            else:
+                atoms_last = None
 
             # Plot only the last time of atoms and density
             plot_density(x, rho_last, atoms=atoms_last, support=(lb, ub),
@@ -1226,9 +1249,66 @@ class AlgebraicForm(BaseForm):
     # candidates
     # ==========
 
-    def candidates(self, size, x=None, verbose=False):
+    def candidates(self, size, x=None, delta=1e-4, log=False, markersize=3,
+                   latex=False, verbose=False):
         """
         Candidate densities of free decompression from all possible roots
+
+        Parameters
+        ----------
+
+        a : array_like of complex or float, shape (I+1, J+1)
+            Coefficients defining P(z, m) in the monomial basis:
+                P(z, m) = sum_{i=0..I} sum_{j=0..J} a[i, j] z^i m^j.
+
+        x : array_like of float, shape (N,)
+            1D array of real x-values (evaluation grid).
+
+        delta : float, optional
+            Small positive imaginary offset used to evaluate m(x + i * delta).
+
+        size : integer, optional
+            For labelling purposes, the size of the corresponding matrix can
+            be provided.
+
+        log : bool, default=False
+            If `True`, both x and y axes are shown in logarithmic scale.
+
+        markersize : float, default=3
+            Marker size of scatter plot.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX.
+
+        verbose : bool, default=False
+            If `True`, it prints verbose be bugging information.
+
+        See Also
+        --------
+
+        stieltjes
+
+        Notes
+        -----
+
+        Roots are solved from the relation:
+
+        .. math::
+
+            P(z, m) = \\sum_{i=0}^I \\sum_{j=0}^J a_{i, j} z^i m^j,
+
+        where :math:`m(z)` is defined implicitly by :math:`P(z, m(z)) = 0`.
+
+        For each grid point :math:`x_k`, set :math:`z = x_k + i * \\delta`,
+        form the polynomial in :math:`m` given by :math:`P(z, m) = 0`, solve
+        for its roots, and plot the cloud of candidate densities:
+
+        .. math::
+
+            \\frac{1}{\\pi} \\Im(m_{root}),
+
+        keeping only roots with Im(m_root) > 0 (roots are not tracked/paired
+        across x-values).
         """
 
         # Check size argument
@@ -1265,7 +1345,9 @@ class AlgebraicForm(BaseForm):
         for i in range(alpha.size):
             t_i = numpy.log(alpha[i])
             coeffs_i = decompress_coeffs(self.coeffs, t_i)
-            plot_candidates(coeffs_i, x, size=int(alpha[i]*self.n),
+            plot_candidates(coeffs_i, x, delta=delta,
+                            size=int(alpha[i]*self.n), log=log,
+                            markersize=markersize, latex=latex,
                             verbose=verbose)
 
     # =================
@@ -1516,3 +1598,194 @@ class AlgebraicForm(BaseForm):
 
         return cusp_wrap(self.coeffs, t_grid, support=known_supp, max_iter=50,
                          tol=1.0e-12)
+
+    # ======
+    # deform
+    # ======
+
+    def deform(self, size, x=None, method='moc', atom_eps=None,
+               return_atoms=False, min_n_times=10, newton_opt={}, plot=False,
+               latex=False, save=False, verbose=False):
+        """
+        Free deformation of spectral density.
+
+        Parameters
+        ----------
+
+        size : int or array_like
+            Size(s) of the decompressed matrix. This can be a scalar or an
+            array of sizes. For each matrix size in ``size`` array, a density
+            is produced.
+
+        x : numpy.array, default=None
+            Positions where density to be evaluated at. If `None`, an interval
+            slightly larger than the support interval will be used.
+
+        method : {``'moc'``, ``'coeffs'`}, default= ``'moc'``
+            Method of decompression:
+
+            * ``'moc'``: Method of characteristics with Newton iterations.
+            * ``'coeffs'``: Evolving polynomial coefficients directly.
+
+        min_n_times : int, default=10
+            Minimum number of inner sizes to evolve.
+
+        newton_opt : dict
+            A dictionary of settings to pass to Newton iteration solver.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
+
+        verbose : bool, default=False
+            If `True`, it prints verbose be bugging information.
+
+        Returns
+        -------
+
+        rho : numpy.array or numpy.ndarray
+            Estimated spectral density at locations x. ``rho`` can be a 1D or
+            2D array output:
+
+            * If ``size`` is a scalar, ``rho`` is a 1D array of the same size
+              as ``x``.
+            * If ``size`` is an array of size `n`, ``rho`` is a 2D array with
+              `n` rows, where each row corresponds to decompression to a size.
+              Number of columns of ``rho`` is the same as the size of ``x``.
+
+        x : numpy.array
+            Locations where the spectral density is estimated
+
+        See Also
+        --------
+
+        density
+        decompress
+
+        Notes
+        -----
+
+        Deformation solver for sample-covariance / Silverstein-type scaling.
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            >>> from freealg import AlgebraicForm
+        """
+
+        # Create x if not given
+        if x is None:
+            x = self._generate_grid(1.25)
+
+        # Check size argument
+        if numpy.isscalar(size):
+            size = int(size)
+        else:
+            # Check monotonic increment (either all increasing or decreasing)
+            diff = numpy.diff(size)
+            if not (numpy.all(diff >= 0) or numpy.all(diff <= 0)):
+                raise ValueError('"size" increment should be monotonic.')
+
+        # Decompression ratio
+        alpha = numpy.atleast_1d(size) / self.n
+
+        # Epsilon-neighborhood to exclude atoms from x
+        if atom_eps is None:
+            atom_eps = 50.0 * float(self.delta)
+
+        # Evolve atoms
+        atoms0 = self.atoms()
+        atoms_t = evolve_atoms(atoms0, alpha)
+
+        # Remove points too close to atoms to avoid Newton stall at poles
+        near_atom = numpy.zeros(x.size, dtype=bool)
+        if len(atoms0) > 0:
+
+            # Exclude x grid near atoms
+            for x0, _w0 in (atoms0 or []):
+                near_atom |= (numpy.abs(x - float(x0)) <= float(atom_eps))
+
+        # The companion Stieltjes introduces a fake pole at zero, which should
+        # theoretically cancel perfectly, nut numerically, it wont.
+        zero_eps = 50.0 * float(self.delta)
+        near_atom |= (numpy.abs(x) <= zero_eps)
+
+        if method == 'moc':
+
+            # Query grid on the real axis + a small imaginary buffer
+            x_safe = x[~near_atom]
+            z_query = x_safe + 1j * self.delta
+
+            # Initial condition at t = 0 (physical branch)
+            w0_list = self._stieltjes(z_query)
+
+            # Remove atom from Stieltjes transform (Experimental)
+            # if len(atoms0) > 0:
+            #     for x0, w0 in atoms0:
+            #         w0_list = w0_list - (float(w0) / (float(x0) - z_query))
+
+            # Ensure there are at least min_n_times time t, including requested
+            # times, and especially time t = 0
+            t_all, idx_req = build_time_grid(
+                size, self.n, min_n_times=min_n_times)
+
+            # Evolve
+            W, ok = deform_newton(
+                z_query, t_all, self.coeffs, self.ratio, w0_list=w0_list,
+                **newton_opt)
+
+            rho_all_safe = W.imag / numpy.pi
+
+            # Back into full grid (fill with zero, may not be a good idea)
+            rho_all = numpy.full((t_all.size, x.size), 0.0, dtype=float)
+            rho_all[:, ~near_atom] = rho_all_safe
+
+            # return only the user-requested ones
+            rho = rho_all[idx_req]
+
+            if verbose:
+                print("success rate per t:", ok.mean(axis=1))
+
+        elif method == 'coeffs':
+            raise NotImplementedError('"coeff" method is not implemented.')
+
+        else:
+            raise ValueError('"method" is invalid.')
+
+        # If the input size was only a scalar, return a 1D rho, otherwise 2D.
+        if numpy.isscalar(size):
+            rho = numpy.squeeze(rho)
+
+        # Plot only the last size
+        if plot:
+
+            # Density (absolutely-continuous part) at the last time
+            if numpy.isscalar(size):
+                rho_last = rho
+            else:
+                rho_last = rho[-1, :]
+
+            # Atoms at the last time
+            if len(atoms0) > 0:
+                atoms_last = [(loc, w[-1]) for loc, w in atoms_t]
+            else:
+                atoms_last = None
+
+            # Plot only the last time of atoms and density
+            plot_density(x, rho_last, atoms=atoms_last, support=None,
+                         label='Decompression', latex=latex, save=save)
+
+        if return_atoms:
+            return rho, x, atoms_t
+        else:
+            return rho, x

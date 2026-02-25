@@ -744,11 +744,11 @@ class FreeLevy(BaseDistribution):
         z : array_like of complex
             A complex scalar or a 1D or 2D array of query points.
 
-        chunk_size : int
+        chunk_size : int, default=20000
             Solve in chunks to limit memory. For 200x200 grids, default is
             fine.
 
-        eps : float
+        eps : float, default=1e-14
             Tolerance for trimming leading zeros.
 
         Returns
@@ -944,9 +944,8 @@ class FreeLevy(BaseDistribution):
         --------
 
         .. code-block:: python
-            :emphasize-lines: 8
+            :emphasize-lines: 7
 
-            >>> import numpy
             >>> from freealg.distributions import FreeLevy
 
             >>> # Create an object of the class
@@ -1030,6 +1029,11 @@ class FreeLevy(BaseDistribution):
         A : numpy.ndarray
             Symmetric matrix (n x n).
 
+        See Also
+        --------
+
+        sample
+
         Notes
         -----
 
@@ -1055,6 +1059,20 @@ class FreeLevy(BaseDistribution):
 
             c_i = 1 / \\lambda_i,
             s_i = t_i \\lambda_i.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 7
+
+            >>> from freealg.distributions import FreeLevy
+
+            >>> # Create an object of the class
+            >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+            ...               sigma=1.0)
+
+            >>> A = fl.matrix(size=2000)
         """
 
         n = int(size)
@@ -1099,7 +1117,34 @@ class FreeLevy(BaseDistribution):
         """
         Polynomial coefficients implicitly representing the Stieltjes
 
-        coeffs[i, j] is the coefficient of z^i m^j.
+        Returns
+        -------
+
+        coeffs : numpy.ndarray
+            A 2D array of size :math:`(d_z + 1) \\times (d_m + 1)` where
+            :math:`d_z = \\deg_z(P)` and :math:`d_m = \\deg_m(P)`.
+
+        Notes
+        -----
+
+        ``coeffs[i, j]`` is the coefficient of :math:`z^i m^j`.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 7
+
+            >>> from freealg.distributions import FreeLevy
+
+            >>> # Create an object of the class
+            >>> fl = FreeLevy(t=[2.0, 5.5], w=[0.75, 1-0.75], lam=0.1, a=0,
+            ...               sigma=1.0)
+
+            >>> coeffs = fl.poly()
+            >>> print(coeffs.real)
+            [[ 1.      7.2125 10.9     7.5    11.    ]
+             [ 0.      1.      7.5    11.     -0.    ]]
         """
 
         t = self.t

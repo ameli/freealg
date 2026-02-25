@@ -94,39 +94,10 @@ def decompress_coeffs(a, t, normalize=True):
 # plot candidates
 # ===============
 
-def plot_candidates(a, x, delta=1e-4, size=None, latex=False, verbose=False):
+def plot_candidates(a, x, delta=1e-4, size=None, log=False, markersize=3,
+                    latex=False, verbose=False):
     """
-    Visualize candidate densities implied by an algebraic Stieltjes-transform
-    relation:
-        P(z, m) = sum_{i=0..I} sum_{j=0..J} a[i, j] z^i m^j,
-    where m(z) is defined implicitly by P(z, m(z)) = 0.
-
-    For each grid point x_k, set z = x_k + i * delta, form the polynomial in m
-    given by P(z, m) = 0, solve for its roots, and plot the cloud of candidate
-    densities:
-        (1 / pi) * Im(m_root),
-    keeping only roots with Im(m_root) > 0 (roots are not tracked/paired across
-    x-values).
-
-    Parameters
-    ----------
-    a : array_like of complex or float, shape (I+1, J+1)
-        Coefficients defining P(z, m) in the monomial basis:
-            P(z, m) = sum_{i=0..I} sum_{j=0..J} a[i, j] z^i m^j.
-    x : array_like of float, shape (N,)
-        1D array of real x-values (evaluation grid).
-    delta : float, optional
-        Small positive imaginary offset used to evaluate m(x + i * delta).
-    size : integer, optional
-        For labelling purposes, the size of the corresponding matrix can
-        be provided.
-
-    Returns
-    -------
-    fig : matplotlib.figure.Figure
-        The created figure.
-    ax : matplotlib.axes.Axes
-        The axes the scatter plot was drawn on.
+    Plot candicate roots.
     """
 
     if not (isinstance(delta, (float, int)) and delta > 0):
@@ -195,15 +166,25 @@ def plot_candidates(a, x, delta=1e-4, size=None, latex=False, verbose=False):
 
     with texplot.theme(use_latex=latex):
         fig, ax = plt.subplots(figsize=(6, 2.7))
-        ax.scatter(xs, ys, s=3, alpha=1, linewidths=0, c='k')
+        ax.scatter(xs, ys, s=markersize, alpha=1, linewidths=0, c='k')
 
         ax.set_xlim([x[0], x[-1]])
-        ax.set_ylim([0, 1.1 * numpy.quantile(ys, 0.99)])
+
+        if not log:
+            ax.set_ylim([0, 1.1 * numpy.quantile(ys, 0.99)])
+
         ax.set_xlabel(r'$\lambda$')
         ax.set_ylabel(r'$\rho(\lambda)$''')
         ax.set_title("Candidate Density Cloud")
+
+        if log:
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+            ax.grid(which='both', axis='x')
+
         if size is not None:
-            ax.set_title("Candidate Density Cloud (size = {})".format(size))
+            ax.set_title(
+                "Candidate Density Cloud (size = {})".format(size))
         save_status = False
         save_filename = ''
         texplot.show_or_save_plot(plt, default_filename=save_filename,

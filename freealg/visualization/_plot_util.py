@@ -20,7 +20,8 @@ import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.legend_handler import HandlerLine2D
 from ._domain_coloring import domain_coloring
-from ._hist_util import auto_bins, hist
+from ._hist_util import auto_bins
+# from ._hist_util import hist
 from ._glue_util import glue_branches
 from ._sheets_util import infer_m1_partners_on_cuts, build_sheets_from_roots
 
@@ -102,20 +103,23 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
                     # Multi-interval support in format [(a1, b1),..., (ak, bk)]
                     support = [(float(a), float(b)) for a, b in support]
 
-            #     lam_m, lam_p = support
+            #     lam_m = support[0][0]
+            #     lam_p = support[-1][1]
             # else:
             #     lam_m, lam_p = min(eig), max(eig)
 
-            # bins = numpy.linspace(lam_m, lam_p, auto_bins(eig))
-            # _ = ax.hist(eig, bins, density=True, color='silver',
-            #             edgecolor='none', label='Empirical Histogram')
+            # Option 1: Use matplotlib's hist
+            lam_m, lam_p = min(eig), max(eig)
+            bins = numpy.linspace(lam_m, lam_p, auto_bins(eig))
+            _ = ax.hist(eig, bins, density=True, color='silver',
+                        edgecolor='none', label='Empirical Histogram')
 
-            nbins = auto_bins(eig, factor=2)
-            edges, vals = hist(eig, bins=nbins, m=8, density=True,
-                               support=support, atoms=atoms)
-
-            ax.stairs(vals, edges, fill=True, color='silver', alpha=1.0,
-                      label='Empirical Histogram')
+            # Option 2: Use freealg.visualization.hist
+            # nbins = auto_bins(eig, factor=2)
+            # edges, vals = hist(eig, bins=nbins, m=8, density=True,
+            #                    support=support, atoms=atoms)
+            # ax.stairs(vals, edges, fill=True, color='silver', alpha=1.0,
+            #           label='Empirical Histogram')
         else:
             plt.fill_between(x, y1=rho, y2=0, color='silver', zorder=-1)
 

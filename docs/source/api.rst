@@ -15,8 +15,8 @@ The following classes core implementations defining the free objects.
     :template: autosummary/class.rst
 
     freealg.FreeForm
-    .. freealg.AlgebraicForm
-    .. freealg.GeometricForm
+    freealg.AlgebraicForm
+    freealg.GeometricForm
 
 Linear Algebra
 --------------
@@ -67,25 +67,25 @@ The following classes define classical random ensembles.
     freealg.distributions.KestenMcKay
     freealg.distributions.Wachter
     freealg.distributions.Meixner
-    .. freealg.distributions.ChiralBlock
-    .. freealg.distributions.DeformedWigner
-    .. freealg.distributions.DeformedMarchenkoPastur
-    .. freealg.distributions.CompoundFreePoisson
-    .. freealg.distributions.FreeLevy
-    .. freealg.distributions.FussCatalan
+    freealg.distributions.ChiralBlock
+    freealg.distributions.DeformedWigner
+    freealg.distributions.DeformedMarchenkoPastur
+    freealg.distributions.CompoundFreePoisson
+    freealg.distributions.FreeLevy
+    freealg.distributions.FussCatalan
 
-.. Visualization
-.. -------------
-..
-.. Function utilities for visualizing of real and complex functions.
-..
-.. .. autosummary::
-..     :toctree: generated
-..     :caption: Visualization
-..     :recursive:
-..     :template: autosummary/member.rst
-..
-..     freealg.visualization.domain_coloring
-..     freealg.visualization.glue_branches
-..     freealg.visualization.hist
-..     freealg.visualization.auto_bins
+Visualization
+-------------
+
+Function utilities for visualizing of real and complex functions.
+
+.. autosummary::
+    :toctree: generated
+    :caption: Visualization
+    :recursive:
+    :template: autosummary/member.rst
+
+    freealg.visualization.domain_coloring
+    freealg.visualization.glue_branches
+    freealg.visualization.hist
+    freealg.visualization.auto_bins

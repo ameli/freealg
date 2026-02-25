@@ -17,9 +17,9 @@ from ._poly_util import poly_trim
 __all__ = ['detect_atoms', 'evolve_atoms']
 
 
-# =============
+# ============
 # detect atoms
-# =============
+# ============
 
 def detect_atoms(coeffs, m_eval, eta=1e-6, tol=1e-12, real_tol=None,
                  w_tol=1e-10, merge_tol=1e-8):
@@ -67,13 +67,13 @@ def detect_atoms(coeffs, m_eval, eta=1e-6, tol=1e-12, real_tol=None,
 
     atoms : list of (float, float)
         List of (atom_loc, atom_w). Locations are real numbers and weights are
-        nonnegative.
+        non-negative.
 
     Notes
     -----
 
     - This is intended for plotting/diagnostics. For fitted polynomials, a_s(z)
-      roots can include spurious candidates; the weight filter w_tol is a
+      roots can include spurious candidates. The weight filter w_tol is a
       practical guard.
     - If the physical branch selection in m_eval is wrong near z0, the weight
       estimate may be unreliable.
@@ -111,18 +111,30 @@ def detect_atoms(coeffs, m_eval, eta=1e-6, tol=1e-12, real_tol=None,
             merged.append(float(v))
 
     atoms = []
+
+    # Multi-eta residue estimate (robust against spurious tiny poles)
+    eta_list = float(eta) * numpy.array([1.0, 0.3, 0.1, 0.03, 0.01])
+
     for x in merged:
-        z = complex(x, float(eta))
+        w_samples = []
+        for eta_k in eta_list:
+            z_k = complex(x, float(eta_k))
 
-        # Weight estimate: w ~= eta * Im(m(z))
-        try:
-            m = complex(m_eval(z))
-        except Exception:
-            continue
+            # Weight estimate: w ~= eta * Im(m(z))
+            try:
+                m_k = complex(m_eval(z_k))
+            except Exception:
+                continue
 
-        w = float(eta) * float(m.imag)
-        if w < 0.0 and abs(w) <= 10.0 * w_tol:
+            w_k = float(eta_k) * float(m_k.imag)
+            if w_k < 0.0:
+                w_k = 0.0
+            w_samples.append(w_k)
+
+        if len(w_samples) == 0:
             w = 0.0
+        else:
+            w = float(numpy.median(numpy.asarray(w_samples)))
 
         if w > w_tol:
             atoms.append((float(x), float(w)))
