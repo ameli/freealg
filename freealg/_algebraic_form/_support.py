@@ -13,7 +13,7 @@
 
 import numpy
 import numpy.polynomial.polynomial as poly
-from ._homotopy5 import StieltjesPoly
+from ._homotopy6 import StieltjesPoly
 
 __all__ = ['estimate_support']
 
@@ -118,9 +118,9 @@ def _cluster_edges(edges, x_tol):
 # bisect edge
 # ===========
 
-def _bisect_edge(stieltjes_poly, x_lo, x_hi, eta, im_thr, max_iter=60):
-    z_lo = x_lo + 1j * eta
-    z_hi = x_hi + 1j * eta
+def _bisect_edge(stieltjes_poly, x_lo, x_hi, delta, im_thr, max_iter=60):
+    z_lo = x_lo + 1j * delta
+    z_hi = x_hi + 1j * delta
     f_lo = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_lo)) - im_thr)
     f_hi = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_hi)) - im_thr)
 
@@ -140,7 +140,7 @@ def _bisect_edge(stieltjes_poly, x_lo, x_hi, eta, im_thr, max_iter=60):
 
     for _ in range(max_iter):
         c = 0.5 * (a + b)
-        z_c = c + 1j * eta
+        z_c = c + 1j * delta
         fc = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_c)) - im_thr)
         if not numpy.isfinite(fc):
             return c
@@ -160,7 +160,8 @@ def _bisect_edge(stieltjes_poly, x_lo, x_hi, eta, im_thr, max_iter=60):
 # estimate support
 # ===============
 
-def estimate_support(coeffs, x_min, x_max, n_scan=4000, **kwargs):
+def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
+                     **kwargs):
 
     coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
 
@@ -169,38 +170,75 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, **kwargs):
     n_scan = int(n_scan)
 
     scale = max(1.0, abs(x_max - x_min), abs(x_min), abs(x_max))
-    eta = kwargs.get('eta', None)
-    if eta is None:
-        eta = 1e-6 * scale
-    eta = float(eta)
+    if delta is None:
+        delta = 1e-6 * scale
+    delta = float(delta)
 
     vopt = {
         'lam_space': 1.0,
         'lam_asym': 1.0,
         'lam_tiny_im': 200.0,
-        'tiny_im': 0.5 * eta,
+        'tiny_im': 0.5 * delta,
         'tol_im': 1e-14,
     }
     vopt.update(kwargs.get('viterbi_opt', {}) or {})
     stieltjes = StieltjesPoly(coeffs, viterbi_opt=vopt)
 
-    x_grid = numpy.linspace(x_min, x_max, n_scan)
-    z_grid = x_grid + 1j * eta
+    if log:
+        x_grid = numpy.geomspace(x_min, x_max, n_scan)
+    else:
+        x_grid = numpy.linspace(x_min, x_max, n_scan)
+
+    z_grid = x_grid + 1j * delta
     m_grid = stieltjes(z_grid)
     im_grid = numpy.imag(m_grid)
 
     max_im = float(numpy.nanmax(im_grid)) \
         if numpy.any(numpy.isfinite(im_grid)) else 0.0
 
-    thr_rel = float(kwargs.get('thr_rel', 1e-4))
+    if log:
+        thr_rel = float(kwargs.get('thr_rel', 1e-5))
+    else:
+        thr_rel = float(kwargs.get('thr_rel', 1e-4))
+
     thr_abs = kwargs.get('thr_abs', None)
 
     im_thr = thr_rel * max_im
-    im_thr = max(im_thr, 10.0 * eta)
+    im_thr = max(im_thr, 10.0 * delta)
     if thr_abs is not None:
         im_thr = max(im_thr, float(thr_abs))
 
     mask = numpy.isfinite(im_grid) & (im_grid > im_thr)
+
+    # In log mode only, we add a second weaker threshold pass to recover wide
+    # but low-amplitude bulks at large x. We keep only runs that are wide
+    # enough in log-space, so linear-mode behavior stays unchanged.
+    if log:
+        dlogx = abs(numpy.log(x_grid[1]) - numpy.log(x_grid[0]))
+        im_thr_lo = max(0.1 * im_thr, 10.0 * delta)
+        mask_lo = numpy.isfinite(im_grid) & (im_grid > im_thr_lo)
+
+        runs_lo = []
+        i = 0
+        while i < mask_lo.size:
+            if not mask_lo[i]:
+                i += 1
+                continue
+            j = i
+            while j + 1 < mask_lo.size and mask_lo[j + 1]:
+                j += 1
+            runs_lo.append((i, j))
+            i = j + 1
+
+        # Keep only broad runs from the weaker mask.
+        min_log_width = 8.0 * dlogx
+        for i0, i1 in runs_lo:
+            if i0 == 0 or i1 == mask_lo.size - 1:
+                continue
+            log_width = \
+                numpy.log(float(x_grid[i1])) - numpy.log(float(x_grid[i0]))
+            if log_width >= min_log_width:
+                mask[i0:i1 + 1] = True
 
     runs = []
     i = 0
@@ -219,8 +257,8 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, **kwargs):
         if i0 == 0 or i1 == mask.size - 1:
             continue
 
-        xL = _bisect_edge(stieltjes, x_grid[i0 - 1], x_grid[i0], eta, im_thr)
-        xR = _bisect_edge(stieltjes, x_grid[i1], x_grid[i1 + 1], eta, im_thr)
+        xL = _bisect_edge(stieltjes, x_grid[i0 - 1], x_grid[i0], delta, im_thr)
+        xR = _bisect_edge(stieltjes, x_grid[i1], x_grid[i1 + 1], delta, im_thr)
 
         edges.append(float(xL))
         edges.append(float(xR))
@@ -233,7 +271,7 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, **kwargs):
         newton_tol = float(kwargs.get('newton_tol', 1e-12))
         edges_ref = []
         for x0 in edges:
-            m0 = float(numpy.real(stieltjes.evaluate_scalar(x0 + 1j * eta)))
+            m0 = float(numpy.real(stieltjes.evaluate_scalar(x0 + 1j * delta)))
             xe, _, ok = _newton_edge(coeffs, x0, m0, tol=newton_tol)
             edges_ref.append(float(xe)
                              if ok and numpy.isfinite(xe) else float(x0))
@@ -251,24 +289,34 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, **kwargs):
     # resolution. Otherwise a 1-2 point dip below the Im-threshold can create
     # a fake micro-gap and split a single bulk into two intervals.
     if len(est_supp) >= 2 and x_grid.size >= 2:
-        dx = float(x_grid[1] - x_grid[0])
-        gap_tol = 2.0 * dx
         merged = []
         a0, b0 = est_supp[0]
 
-        for a1, b1 in est_supp[1:]:
-            if float(a1) - float(b0) <= gap_tol:
-                b0 = max(float(b0), float(b1))
-            else:
-                merged.append((float(a0), float(b0)))
-                a0, b0 = float(a1), float(b1)
+        if log:
+            log_gap_tol = \
+                2.0 * abs(numpy.log(x_grid[1]) - numpy.log(x_grid[0]))
+            for a1, b1 in est_supp[1:]:
+                gap = numpy.log(float(a1)) - numpy.log(float(b0))
+                if gap <= log_gap_tol:
+                    b0 = max(float(b0), float(b1))
+                else:
+                    merged.append((float(a0), float(b0)))
+                    a0, b0 = float(a1), float(b1)
+        else:
+            dx = float(x_grid[1] - x_grid[0])
+            gap_tol = 2.0 * dx
+            for a1, b1 in est_supp[1:]:
+                if float(a1) - float(b0) <= gap_tol:
+                    b0 = max(float(b0), float(b1))
+                else:
+                    merged.append((float(a0), float(b0)))
+                    a0, b0 = float(a1), float(b1)
 
         merged.append((float(a0), float(b0)))
         est_supp = merged
 
     info = {
         'x_grid': x_grid,
-        'eta': eta,
         'm_grid': m_grid,
         'im_grid': im_grid,
         'im_thr': float(im_thr),

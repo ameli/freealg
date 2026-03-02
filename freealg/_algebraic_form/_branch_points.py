@@ -276,7 +276,7 @@ def estimate_branch_points(coeffs, tol=1e-12, real_tol=None):
 # plot branch points
 # ==================
 
-def plot_branch_points(bp, atoms, support, latex=False, save=False):
+def plot_branch_points(bp, atoms, support, log=False, latex=False, save=False):
     """
     Plots branch points, atom locations, and spectral edges.
     """
@@ -294,7 +294,7 @@ def plot_branch_points(bp, atoms, support, latex=False, save=False):
 
     with texplot.theme(use_latex=latex):
 
-        fig, ax = plt.subplots(figsize=(5.5, 3.2))
+        fig, ax = plt.subplots(figsize=(5.8, 3.2))
 
         ax.plot(bp.real, bp.imag, 'o', color='black', markersize=6,
                 markeredgewidth=1, markerfacecolor='white',
@@ -312,6 +312,15 @@ def plot_branch_points(bp, atoms, support, latex=False, save=False):
         ax.set_ylabel(r'$\mathrm{Im}(z)$')
         ax.set_title('Spectral Curve Features')
         ax.legend(fontsize='small')
+
+    if log:
+        all_data = numpy.concatenate((bp.real, sp_edges.real, atoms_loc.real))
+        if numpy.any(all_data <= 0.0):
+            linthresh = numpy.min(numpy.abs(all_data))
+            ax.set_xscale('symlog', linthresh=linthresh)
+            ax.axvline(0.0, color='gray', linewidth=0.5, zorder=-2)
+        else:
+            ax.set_xscale('log')
 
     # Save
     if save is False:

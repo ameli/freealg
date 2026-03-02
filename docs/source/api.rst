@@ -89,3 +89,6 @@ Function utilities for visualizing of real and complex functions.
     freealg.visualization.glue_branches
     freealg.visualization.hist
     freealg.visualization.auto_bins
+    freealg.visualization.plot_flow
+    freealg.visualization.plot_mass
+    freealg.visualization.ridgeplot

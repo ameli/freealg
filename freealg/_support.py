@@ -103,7 +103,7 @@ def support_from_density(dx, density):
 # supp
 # ====
 
-def supp(eigs, method='asymp', k=None, p=0.001):
+def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False):
     """
     Estimates the support of the eigenvalue density.
 
@@ -127,6 +127,8 @@ def supp(eigs, method='asymp', k=None, p=0.001):
           uses quantiles :math:`(p, 1-p)`.
         * ``'interior_smooth'``: same as ``'interior'`` but using kernel
           density estimation, from [2]_.
+        * ``'hist'`` : Using histogram. Currently, this is the only method that
+          can detect multiple intervals.
 
     k : int, default = None
         Number of extreme order statistics to use for ``method='regression'``.
@@ -134,18 +136,24 @@ def supp(eigs, method='asymp', k=None, p=0.001):
     p : float, default=0.001
         The edges of the support of the distribution is detected by the
         :math:`p`-quantile on the left and :math:`(1-p)`-quantile on the right
-        where ``method='interior'`` or ``method='interior_smooth'``.
-        This value should be between 0 and 1, ideally a small number close to
-        zero.
+        where ``method='interior'`` or ``method='interior_smooth'``. This value
+        should be between 0 and 1, ideally a small number close to zero.
+
+    tol : float, default=False
+        Treats values less than the tolerance as zero.
+
+    nbins : int, default=150
+        Number of histogram bins in ``'hist'`` method.
+
+    log : bool, default=False
+        If  `True`, the data is assumed to span on logarithmic scale.
 
     Returns
     -------
 
-    lam_m : float
-        Lower end of support interval :math:`[\\lambda_{-}, \\lambda_{+}]`.
-
-    lam_p : float
-        Upper end of support interval :math:`[\\lambda_{-}, \\lambda_{+}]`.
+    support : list
+        List of tuples :math:`(\\lambda_{-}, \\lambda_{+})` representing the
+        edges of support intervals.
 
     See Also
     --------
@@ -168,15 +176,18 @@ def supp(eigs, method='asymp', k=None, p=0.001):
     if method == 'range':
         lam_m = eigs.min()
         lam_p = eigs.max()
+        support = [(lam_m, lam_p)]
 
     elif method == 'asymp':
         lam_m = eigs.min() - abs(eigs.min()) / len(eigs)
         lam_p = eigs.max() + abs(eigs.max()) / len(eigs)
+        support = [(lam_m, lam_p)]
 
     elif method == 'jackknife':
         x, n = numpy.sort(eigs), len(eigs)
         lam_m = x[0] - (n - 1)/n * (x[1] - x[0])
         lam_p = x[-1] + (n - 1)/n * (x[-1] - x[-2])
+        support = [(lam_m, lam_p)]
 
     elif method == 'regression':
         x, n = numpy.sort(eigs), len(eigs)
@@ -194,8 +205,11 @@ def supp(eigs, method='asymp', k=None, p=0.001):
         # Right edge: regress x_{(n-i+1)} on y
         _, lam_p = numpy.polyfit(y, x[-k:][::-1], 1)
 
+        support = [(lam_m, lam_p)]
+
     elif method == 'interior':
         lam_m, lam_p = numpy.quantile(eigs, [p, 1-p])
+        support = [(lam_m, lam_p)]
 
     elif method == 'interior_smooth':
         kde = gaussian_kde(eigs)
@@ -207,8 +221,42 @@ def supp(eigs, method='asymp', k=None, p=0.001):
 
         lam_m = numpy.interp(p, cdf, xs)
         lam_p = numpy.interp(1-p, cdf, xs)
+        support = [(lam_m, lam_p)]
+
+    elif method == 'hist':
+
+        x_min = numpy.min(eigs)
+        x_max = numpy.max(eigs)
+
+        if log:
+            x = numpy.geomspace(x_min, x_max, nbins)
+        else:
+            x = numpy.geomspace(x_min, x_max, nbins)
+
+        bins = numpy.geomspace(x_min, x_max, nbins)
+        vals, edges = numpy.histogram(eigs, bins=bins, density=True)
+
+        nz = vals > tol
+        if not numpy.any(nz):
+            return []
+
+        # Find starts/ends of contiguous True blocks
+        d = numpy.diff(nz.astype(int))
+
+        if nz[0]:
+            starts = numpy.r_[0, numpy.where(d == 1)[0] + 1]
+        else:
+            starts = numpy.where(d == 1)[0] + 1
+
+        if nz[-1]:
+            ends = numpy.r_[numpy.where(d == -1)[0] + 1, len(nz)]
+        else:
+            ends = numpy.where(d == -1)[0] + 1
+
+        support = [(float(edges[s]), float(edges[e]))
+                   for s, e in zip(starts, ends)]
 
     else:
         raise NotImplementedError("Unknown method")
 
-    return lam_m, lam_p
+    return support

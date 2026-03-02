@@ -145,7 +145,7 @@ class FreeForm(BaseForm):
         Initialization.
         """
 
-        super().__init__(delta, dtype)
+        super().__init__(delta, dtype=dtype)
 
         # Eigenvalues
         if A.ndim == 1:
@@ -164,7 +164,7 @@ class FreeForm(BaseForm):
         # Support
         if support is None:
             # Detect support
-            self.lam_m, self.lam_p = supp(self.eig, **kwargs)
+            self.lam_m, self.lam_p = supp(self.eig, **kwargs)[0]
         else:
             self.lam_m = float(support[0])
             self.lam_p = float(support[1])

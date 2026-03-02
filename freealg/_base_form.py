@@ -33,14 +33,16 @@ class BaseForm(object):
     # init
     # ====
 
-    def __init__(self, delta, dtype='complex128'):
+    def __init__(self, delta, log=False, dtype='complex128'):
 
         self.A = None
         self.eig = None
         self.delta = delta    # Offset above real axis to apply Plemelj formula
+        self._log = log
         self.n = None
         self.lam_m = None
         self.lam_p = None
+        self.broad_supp = None
 
         # Data type for complex arrays
         self.dtype = resolve_complex_dtype(dtype)
@@ -49,7 +51,7 @@ class BaseForm(object):
     # generate grid
     # =============
 
-    def _generate_grid(self, scale, extend=1.0, N=500):
+    def _generate_grid(self, scale, extend=1.0, N=500, log=False):
         """
         Generate a grid of points to evaluate density / Hilbert / Stieltjes
         transforms.
@@ -64,7 +66,49 @@ class BaseForm(object):
         x_min /= extend
         x_max /= extend
 
-        return numpy.linspace(x_min, x_max, N)
+        if log:
+            x = numpy.geomspace(x_min, x_max, N)
+        else:
+            x = numpy.linspace(x_min, x_max, N)
+
+        return x
+
+    # ==================
+    # inflate broad supp
+    # ==================
+
+    def _inflate_broad_supp(self, inflate=0.0):
+        """
+        Inflate the broad support for better post-processing, such as detecting
+        branch points, spectral edges, etc.
+        """
+
+        if inflate < 0:
+            raise ValueError('"inflate" should be non-negative.')
+
+        min_supp, max_supp = self.broad_supp
+
+        if self._log:
+
+            if (min_supp <= 0) or (max_supp <= 0):
+                raise ValueError('Log-scale support requires positive broad '
+                                 'support.')
+
+            # Geometric mean in log scale
+            c_supp = numpy.sqrt(max_supp * min_supp)
+            r_supp = numpy.sqrt(max_supp / min_supp)
+
+            x_min = c_supp / (r_supp * (1.0 + inflate))
+            x_max = c_supp * (r_supp * (1.0 + inflate))
+        else:
+            # Arithmetic mean in linear space
+            c_supp = 0.5 * (max_supp + min_supp)
+            r_supp = 0.5 * (max_supp - min_supp)
+
+            x_min = c_supp - r_supp * (1.0 + inflate)
+            x_max = c_supp + r_supp * (1.0 + inflate)
+
+        return x_min, x_max
 
     # ========
     # eigvalsh

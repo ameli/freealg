@@ -96,6 +96,10 @@ class AlgebraicForm(BaseForm):
         Size of perturbations into the upper half plane for Plemelj's
         formula.
 
+    log : bool, default=False
+        If `True`, it is assumed the spectral density is positive-definite and
+        its support is best represented in logarithmic scale.
+
     dtype : {``'complex128'``, ``'complex256'``}, default = ``'complex128'``
         Data type for inner computations of complex variables:
 
@@ -145,7 +149,7 @@ class AlgebraicForm(BaseForm):
         Detect atom locations and weights of distribution
 
     density
-        Evaluate spectral density
+        Evaluate spectral density of the fitted spectral curve.
 
     hilbert
         Compute Hilbert transform of the spectral density
@@ -159,7 +163,7 @@ class AlgebraicForm(BaseForm):
     deform
         Free deformation of spectral density
 
-    candidate
+    candidates
         Candidate densities of free decompression from all possible roots
 
     is_decompressible
@@ -291,19 +295,20 @@ class AlgebraicForm(BaseForm):
     # init
     # ====
 
-    def __init__(self, A, support=None, ratio=None, delta=1e-5,
+    def __init__(self, A, support=None, ratio=None, delta=1e-5, log=False,
                  dtype='complex128', **kwargs):
         """
         Initialization.
         """
 
-        super().__init__(delta, dtype)
+        super().__init__(delta, log=log, dtype=dtype)
 
         if ratio is not None:
             self.ratio = float(ratio)
         else:
             self.ratio = None
         self._stieltjes = None
+        self.eig = None
         self._moments = None
         self.supp = support
         self.est_supp = None  # Estimated from polynomial after fitting
@@ -339,13 +344,19 @@ class AlgebraicForm(BaseForm):
                 numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
             self._moments = Moments(self.eig)  # NOTE (never used)
 
+        # Check eigenavlues to be positive when log is True
+        if (self.eig is not None) and (self._log is True):
+            if numpy.any(self.eig <= 0):
+                raise ValueError('Eigenvalues are not all positive. This '
+                                 'conflicts with setting "log=True".')
+
         # broad support
         if self.supp is None:
             if self.eig is None:
                 raise RuntimeError("Support must be provided without data")
 
             # Detect support
-            self.lam_m, self.lam_p = estimate_broad_supp(self.eig, **kwargs)
+            self.lam_m, self.lam_p = estimate_broad_supp(self.eig, **kwargs)[0]
             self.broad_supp = (float(self.lam_m), float(self.lam_p))
         else:
             self.lam_m = float(min([s[0] for s in self.supp]))
@@ -354,7 +365,7 @@ class AlgebraicForm(BaseForm):
 
         # Initialize
         self.coeffs = None                 # Polynomial coefficients
-        self.info = None                 # Fitting information
+        self.info = None                   # Fitting information
 
     # ===
     # fit
@@ -370,7 +381,7 @@ class AlgebraicForm(BaseForm):
         ----------
 
         deg_m : int
-            :math:`\\mathrm{deg}_m(P)`: egree polynomial :math:`P(z, m)` in
+            :math:`\\mathrm{deg}_m(P)`: degree polynomial :math:`P(z, m)` in
             :math:`m`.
 
         deg_z : int
@@ -379,6 +390,32 @@ class AlgebraicForm(BaseForm):
 
         reg : float, default=0.0
             Tikhonov regularization parameter for fitting.
+
+        r : array_like, default=[1.25, 6.0, 20.0]
+            List of radii of  Bernstein ellipse around each support interval to
+            sample Stieltjes transform values. Each radius ``r[i]`` in the list
+            is used to create a grid of radii of the length ``n_r[i]`` starting
+            at ``r[i]``.
+
+        n_r : array_like, default=[3, 2, 1]
+            Number of radii to generate per each radius given in ``r``. That
+            is, for each radius ``r[i]`` given in ``r``, number of ``n_r[i]``
+            radius starting at ``r[i]`` is generated. The length of this array
+            should be equal to the length of ``r``.
+
+        n_samples : int, default=4.96
+            Number of angular samples on each Bernstein ellipse from
+            :math:`\\theta = 0` to :math:`\\theta = 2 \\pi`.
+
+        y_eps : float, default=2e-2
+            Sample points :math:`z_i` that are :math:`\\epsilon_y` (``y_eps``)
+            close to the real axis are filtered out to avoid numerical blowup
+            when evaluating Stieltjes transform near branch cuts.
+
+        x_pad : float, default=0.0
+            Sample points :math:`z_i` that are :math:`\\epsilon_x` (``x_pad``)
+            close to a branch cut are filtered out to avoid numerical blowup
+            when evaluating Stieltjes transform near branch cuts.
 
         triangular : {``'upper'``, ``'lower'``, ``'antidiag'``}, or None, \
                 default=None
@@ -610,29 +647,6 @@ class AlgebraicForm(BaseForm):
         else:
             return self.coeffs
 
-    # ==================
-    # inflate broad supp
-    # ==================
-
-    def _inflate_broad_supp(self, inflate=0.0):
-        """
-        Inflate the broad support for better post-processing, such as detecting
-        branch points, spectral edges, etc.
-        """
-
-        if inflate < 0:
-            raise ValueError('"inflate" should be non-negative.')
-
-        min_supp, max_supp = self.broad_supp
-
-        c_supp = 0.5 * (max_supp + min_supp)
-        r_supp = 0.5 * (max_supp - min_supp)
-
-        x_min = c_supp - r_supp * (1.0 + inflate)
-        x_max = c_supp + r_supp * (1.0 + inflate)
-
-        return x_min, x_max
-
     # =======
     # support
     # =======
@@ -644,6 +658,20 @@ class AlgebraicForm(BaseForm):
 
         Parameters
         ----------
+
+        coeffs : numpy.ndarray, default=None
+            Coefficients of a polynomial of a spectral curve. If `None`, the
+            coefficients of the fitted object (after calling :func:`fit`) is
+            used.
+
+        scan_range : tuple, default=None
+            A range ``(x_min, x_max)`` on the real axis to scan for the
+            spectral edge points. If `None`, an interval is considered is used
+            based on an initial broad support guess from the minimum and
+            maximum of the eigenvalues.
+
+        n_scan : int, default=4000
+            Number of points to scan along the ``scan_range`` interval.
 
         return_info : bool, default=False
             If `True`, debug info is also returned.
@@ -660,6 +688,59 @@ class AlgebraicForm(BaseForm):
         fit
         branch_points
         atoms
+
+        Notes
+        -----
+
+        Support is a list of tuples ``[(a_1, b_1), ..., (a_k, b_k)]``
+        where each represent a bulk interval :math:`I_j = (a_j, b_j)`. The
+        support of the absolutely-continuous part of the density is then
+
+        .. math::
+
+            I = \\bigcup_{j=1}^k I_j
+
+        The points :math:`a_j` and :math:`b_j` are the spectral edges. Spectral
+        edges are part of the branch points of the spectral curve (see
+        :func:`branch_points`).
+
+        There are two support variables used in the
+        :class:`freealg.AlgebraicForm` class:
+
+        * The ``self.supp`` attribute which is given by the user through
+          ``support`` argument when creating the class object.
+
+        * The ``self.est_supp``, which is estimated from the fitted polynomial
+          through this function (:func:`support`). All downstream computations
+          such as decompression, deformation, etc, uses this variable.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 18
+
+            >>> # Create a distribution with two bulks
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Find the exact support using the distribution (no fitting)
+            >>> supp = cfp.support()
+            >>> print(supp)
+            [(0.9984996249062267, 3.13165791447862),
+             (4.157389347336835, 7.597674418604652)]
+
+            >>> # Create AlgebraicForm and fit the distribution
+            >>> from freealg import AlgebraicForm
+            >>> af = AlgebraicForm(cfp)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Estimate the support (using the fitted polynomial)
+            >>> est_supp = af.support()
+            >>> print(est_supp)
+            [(1.0055181596689498, 3.1256892314391664),
+             (4.162723779878648, 7.595354543299085)]
         """
 
         if coeffs is None:
@@ -671,11 +752,16 @@ class AlgebraicForm(BaseForm):
         # Inflate a bit to make sure all points are searched
         if scan_range is not None:
             x_min, x_max = scan_range
+
+            if (self._log is True) and (x_min <= 0.0):
+                raise ValueError('"x_min" cannot be non-positive when '
+                                 '"log=True"')
         else:
             x_min, x_max = self._inflate_broad_supp(inflate=0.2)
 
         est_supp, info = estimate_support(coeffs, x_min=x_min, x_max=x_max,
-                                          n_scan=n_scan)
+                                          n_scan=n_scan, delta=self.delta,
+                                          log=self._log)
 
         if return_info:
             return est_supp, info
@@ -693,6 +779,13 @@ class AlgebraicForm(BaseForm):
 
         Parameters
         ----------
+
+        tol : float, default=1e-15
+            Tolerance of convergence
+
+        real_tol : float, default=None
+            Tolerance for treating a complex root as real. If None, uses
+            ``1e3*tol``.
 
         plot : bool, default=False
             If `True`, the branch points together with spectral edges and atoms
@@ -713,7 +806,42 @@ class AlgebraicForm(BaseForm):
         See Also
         --------
 
+        support
         atoms
+
+        Notes
+        -----
+
+        This function solves the discriminant equation to obtain branch points
+        :math:`z_{\\ast}`. The discriminant :math:`\\Delta(P)` is solved by
+
+        .. math::
+
+            P(z_{\\ast}, m_{\\ast}) = 0,
+            \\qquad
+            \\partial_m P(z_{\\ast}, m_{\\ast}) = 0.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 12
+
+            >>> # Create a distribution with two bulks
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Create AlgebraicForm and fit the distribution
+            >>> from freealg import AlgebraicForm
+            >>> af = AlgebraicForm(cfp)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Estimate the branch points (using the fitted polynomial)
+            >>> bp = af.branch_points()
+            >>> print(bp)
+            [6.93519593e+00 3.83043179e+00 3.11397655e+00 1.00372907e+00
+             4.39730918e-15]
         """
 
         if self.coeffs is None:
@@ -725,8 +853,8 @@ class AlgebraicForm(BaseForm):
         if plot:
             atoms_list = self.atoms()
             est_supp = self.support()
-            plot_branch_points(bp, atoms_list, est_supp, latex=latex,
-                               save=save)
+            plot_branch_points(bp, atoms_list, est_supp, log=self._log,
+                               latex=latex, save=save)
 
         if return_info:
             return bp, info
@@ -741,15 +869,6 @@ class AlgebraicForm(BaseForm):
               merge_tol=1e-8):
         """
         Detect atom locations and weights of distribution
-
-        This routine uses the necessary condition for a finite pole: a_s(z0)=0,
-        where a_s(z) is the leading coefficient of P in powers of m. Candidate
-        atom locations are the (nearly) real roots of a_s(z). The atom weight
-        is estimated numerically from the Stieltjes transform as
-
-            w ~= eta * Im(m(z0 + i*eta)),
-
-        which follows from m(z) ~ -w/(z - z0) near an atom at z0.
 
         Parameters
         ----------
@@ -772,17 +891,60 @@ class AlgebraicForm(BaseForm):
 
         Returns
         -------
+
         atoms : list of (float, float)
-            List of ``(atom_loc, atom_w)``. Locations are real numbers and
-            weights are nonnegative.
+            List of tuples of the form ``(atom_loc, atom_w)``. Locations are
+            real numbers and weights are nonnegative.
 
         See Also
         --------
 
         branch_points
+        support
 
         Notes
         -----
+
+        This routine uses the necessary condition for a finite pole
+
+        .. math::
+
+            a_s(z_0) = 0,
+
+        where :math:`a_s(z)` is the leading coefficient of :math:`P` in powers
+        of :math:`m`. Candidate atom locations are the (nearly) real roots of
+        :math:`a_s(z)`. The atom weight is estimated numerically from the
+        Stieltjes transform as
+
+        .. math::
+
+            w = \\eta \\, \\Im(m(z_0 + i \\eta)),
+
+        which follows from :math:`m(z) \\sim -w/(z - z_0)` near an atom at
+        :math:`z_0`.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 14
+
+            >>> # Create a distribution with two bulks
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Create AlgebraicForm and fit the distribution
+            >>> from freealg import AlgebraicForm
+            >>> af = AlgebraicForm(cfp)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Estimate the atoms (using the fitted polynomial). This
+            >>> # distribution has an atom at x=0 with 90% mass of the total
+            >>> # spectral density.
+            >>> atoms = af.atoms()
+            >>> print(atoms)
+             [(1.2538385955639516e-16, 0.9000000001406558)]
         """
 
         if self.coeffs is None:
@@ -801,7 +963,7 @@ class AlgebraicForm(BaseForm):
     def density(self, x=None, eta=2e-4, ac_only=False, plot=False, latex=False,
                 save=False):
         """
-        Evaluate spectral density.
+        Evaluate spectral density of the fitted spectral curve.
 
         Parameters
         ----------
@@ -840,12 +1002,35 @@ class AlgebraicForm(BaseForm):
         hilbert
         stieltjes
 
+        Notes
+        -----
+
+        In the density plot (assuming `plot=True`), the solid curve shows the
+        absolutely-continuous part of the spectral density. If the density has
+        atom(s), they are shown as an arrow, where the hight of the arrow is
+        proportional to its mass, and can be read from the right ordinate of
+        the plot.
+
         Examples
         --------
 
         .. code-block:: python
+            :emphasize-lines: 14
 
-            >>> from freealg import FreeForm
+            >>> # Create a distribution with two bulks
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Create AlgebraicForm and fit the distribution
+            >>> from freealg import AlgebraicForm
+            >>> af = AlgebraicForm(cfp)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Plot the density of the fitted spectral curve
+            >>> import numpy
+            >>> x = numpy.linspace(0, 8, 1000)
+            >>> rho = af.density(x, plot=True)
         """
 
         if self.coeffs is None:
@@ -854,7 +1039,7 @@ class AlgebraicForm(BaseForm):
 
         # Create x if not given
         if x is None:
-            x = self._generate_grid(1.25)
+            x = self._generate_grid(1.25, log=self._log)
 
         # Preallocate density to zero
         z = x.astype(complex) + 1j * self.delta
@@ -877,7 +1062,7 @@ class AlgebraicForm(BaseForm):
         if plot:
             plot_density(x, rho_ac, eig=self.eig, atoms=atoms_list,
                          support=self.est_supp, label='Estimate',
-                         latex=latex, save=save)
+                         log=self._log, latex=latex, save=save)
 
         return rho
 
@@ -920,12 +1105,44 @@ class AlgebraicForm(BaseForm):
         density
         stieltjes
 
+        Notes
+        -----
+
+        The Hilbert transform of s spectral density is
+
+        .. math::
+
+            H(x) = \\mathcal{H}[\\rho](x) = \\frac{1}{\\pi} \\mathrm{p.v.}
+            \\int_{\\mathbb{R}} \\frac{\\rho(y)}{x - y}\\, \\mathrm{d}y.
+
+        It can be directly computed from the non-tangential limit of the
+        Stieltjes transform by
+
+        .. math::
+
+            H(x) = -\\pi \\, \\lim_{\\epsilon \\to 0^{+}}
+            \\Re(m(x + i \\epsilon)).
+
         Examples
         --------
 
         .. code-block:: python
+            :emphasize-lines: 14
 
-            >>> from freealg import FreeForm
+            >>> # Create a distribution with two bulks
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Create AlgebraicForm and fit the distribution
+            >>> from freealg import AlgebraicForm
+            >>> af = AlgebraicForm(cfp)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Plot the density of the fitted spectral curve
+            >>> import numpy
+            >>> x = numpy.linspace(0, 8, 1000)
+            >>> hilb = af.hilbert(x, plot=True)
         """
 
         if self.coeffs is None:
@@ -934,14 +1151,14 @@ class AlgebraicForm(BaseForm):
 
         # Create x if not given
         if x is None:
-            x = self._generate_grid(1.25)
+            x = self._generate_grid(1.25, log=self._log)
 
         # Preallocate density to zero
         hilb = -self._stieltjes(x).real / numpy.pi
 
         if plot:
-            plot_hilbert(x, hilb, support=self.broad_supp, latex=latex,
-                         save=save)
+            plot_hilbert(x, hilb, support=self.broad_supp, log=self._log,
+                         latex=latex, save=save)
 
         return hilb
 
@@ -952,9 +1169,6 @@ class AlgebraicForm(BaseForm):
     def stieltjes(self, x=None, y=None, plot=False, latex=False, save=False):
         """
         Compute Stieltjes transform of the spectral density
-
-        This function evaluates Stieltjes transform on an array of points, or
-        over a 2D Cartesian grid on the complex plane.
 
         Parameters
         ----------
@@ -991,13 +1205,58 @@ class AlgebraicForm(BaseForm):
 
         density
         hilbert
+        plot_branches
+
+        Notes
+        -----
+
+        The Stieltjes transform is defined by
+
+        .. math::
+
+            m(z) = \\int_{\\mathbf{R}} \\frac{\\rho(x)}{x - z} \\,
+            \\mathrm{d}x.
+
+        The Stieltjes transform is a Herglotz function, meaning
+
+        .. math::
+
+            \\Im(m(z)) > 0,
+            \\quad
+            z \\in \\mathbb{C}^{+}.
+
+        Also, it satisfies normalization at infinity:
+
+        .. math::
+
+            m(z) = -\\frac{1}{z},
+            \\qquad
+            \\vert z \\vert \\to \\infty.
+
+        This function evaluates Stieltjes transform on an array of points, or
+        over a 2D Cartesian grid on the complex plane.
 
         Examples
         --------
 
         .. code-block:: python
+            :emphasize-lines: 15
 
-            >>> from freealg import FreeForm
+            >>> # Create a distribution with two bulks
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Create AlgebraicForm and fit the distribution
+            >>> from freealg import AlgebraicForm
+            >>> af = AlgebraicForm(cfp)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Plot the density of the fitted spectral curve
+            >>> import numpy
+            >>> x = numpy.linspace(0, 8, 100)
+            >>> y = numpy.linspace(-2, 2, 100)
+            >>> m = af.stieltjes(x, y, plot=True)
         """
 
         if self.coeffs is None:
@@ -1006,7 +1265,7 @@ class AlgebraicForm(BaseForm):
 
         # Create x if not given
         if x is None:
-            x = self._generate_grid(2.0, extend=2.0)[::2]
+            x = self._generate_grid(2.0, extend=2.0, log=self._log)[::2]
 
         # Create y if not given
         if (plot is False) and (y is None):
@@ -1021,7 +1280,7 @@ class AlgebraicForm(BaseForm):
             x_grid, y_grid = numpy.meshgrid(x.real, y.real)
             z = x_grid + 1j * y_grid              # shape (Ny, Nx)
 
-        m = self._stieltjes(z, progress=True)
+        m = self._stieltjes(z)
 
         if plot:
             plot_stieltjes(x, y, m, m, self.broad_supp, latex=latex,
@@ -1053,7 +1312,7 @@ class AlgebraicForm(BaseForm):
             Positions where density to be evaluated at. If `None`, an interval
             slightly larger than the support interval will be used.
 
-        method : {``'moc'``, ``'coeffs'`}, default= ``'moc'``
+        method : {``'moc'``, ``'coeffs'``}, default= ``'moc'``
             Method of decompression:
 
             * ``'moc'``: Method of characteristics with Newton iterations.
@@ -1106,13 +1365,28 @@ class AlgebraicForm(BaseForm):
         --------
 
         .. code-block:: python
+            :emphasize-lines: 15
 
+            >>> # Create a distribution with two bulks
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Create AlgebraicForm and fit the distribution
             >>> from freealg import AlgebraicForm
+            >>> af = AlgebraicForm(cfp)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Plot the density of the fitted spectral curve
+            >>> import numpy
+            >>> x = numpy.linspace(0, 8, 500)
+            >>> y = numpy.linspace(-2, 2, 300)
+            >>> m = af.stieltjes(x, y, plot=True)
         """
 
         # Create x if not given
         # if x is None:
-        #     x = self._generate_grid(1.25)
+        #     x = self._generate_grid(1.25, log=self._log)
 
         # Check size argument
         if numpy.isscalar(size):
@@ -1136,12 +1410,22 @@ class AlgebraicForm(BaseForm):
 
         # Create x if not given
         if x is None:
-            radius = 0.5 * (ub - lb)
-            center = 0.5 * (ub + lb)
-            scale = 1.25
-            x_min = numpy.floor(center - radius * scale)
-            x_max = numpy.ceil(center + radius * scale)
-            x = numpy.linspace(x_min, x_max, 200)
+            if self._log:
+                # Geometric mean in log scale
+                radius = numpy.sqrt(ub / lb)
+                center = numpy.sqrt(ub * lb)
+                scale = 1.25
+                x_min = center / (radius ** scale)
+                x_max = center * (radius ** scale)
+                x = numpy.geomspace(x_min, x_max, 200)
+            else:
+                # Arithmetic mean in linear scale
+                radius = 0.5 * (ub - lb)
+                center = 0.5 * (ub + lb)
+                scale = 1.25
+                x_min = numpy.floor(center - radius * scale)
+                x_max = numpy.ceil(center + radius * scale)
+                x = numpy.linspace(x_min, x_max, 200)
         else:
             x = numpy.asarray(x)
 
@@ -1238,7 +1522,8 @@ class AlgebraicForm(BaseForm):
 
             # Plot only the last time of atoms and density
             plot_density(x, rho_last, atoms=atoms_last, support=(lb, ub),
-                         label='Decompression', latex=latex, save=save)
+                         label='Decompression', log=self._log, latex=latex,
+                         save=save)
 
         if return_atoms:
             return rho, x, atoms_t
@@ -1249,8 +1534,8 @@ class AlgebraicForm(BaseForm):
     # candidates
     # ==========
 
-    def candidates(self, size, x=None, delta=1e-4, log=False, markersize=3,
-                   latex=False, verbose=False):
+    def candidates(self, size, x=None, delta=1e-4, markersize=3, latex=False,
+                   verbose=False):
         """
         Candidate densities of free decompression from all possible roots
 
@@ -1258,21 +1543,19 @@ class AlgebraicForm(BaseForm):
         ----------
 
         a : array_like of complex or float, shape (I+1, J+1)
-            Coefficients defining P(z, m) in the monomial basis:
-                P(z, m) = sum_{i=0..I} sum_{j=0..J} a[i, j] z^i m^j.
+            Coefficients defining P(z, m) in the monomial basis (see notes
+            below).
 
         x : array_like of float, shape (N,)
             1D array of real x-values (evaluation grid).
 
         delta : float, optional
-            Small positive imaginary offset used to evaluate m(x + i * delta).
+            Small positive imaginary offset used to evaluate
+            :math:`m(x + i \\delta)`.
 
         size : integer, optional
             For labelling purposes, the size of the corresponding matrix can
             be provided.
-
-        log : bool, default=False
-            If `True`, both x and y axes are shown in logarithmic scale.
 
         markersize : float, default=3
             Marker size of scatter plot.
@@ -1286,7 +1569,7 @@ class AlgebraicForm(BaseForm):
         See Also
         --------
 
-        stieltjes
+        density
 
         Notes
         -----
@@ -1295,20 +1578,47 @@ class AlgebraicForm(BaseForm):
 
         .. math::
 
-            P(z, m) = \\sum_{i=0}^I \\sum_{j=0}^J a_{i, j} z^i m^j,
+            P(z, m) = \\sum_{i=1}^I \\sum_{j=1}^J a_{i, j} z^i m^j,
 
         where :math:`m(z)` is defined implicitly by :math:`P(z, m(z)) = 0`.
 
-        For each grid point :math:`x_k`, set :math:`z = x_k + i * \\delta`,
+        For each grid point :math:`x_k`, set :math:`z = x_k + i \\delta`,
         form the polynomial in :math:`m` given by :math:`P(z, m) = 0`, solve
         for its roots, and plot the cloud of candidate densities:
 
         .. math::
 
-            \\frac{1}{\\pi} \\Im(m_{root}),
+            \\frac{1}{\\pi} \\Im(m_{\\mathrm{root}}),
 
-        keeping only roots with Im(m_root) > 0 (roots are not tracked/paired
-        across x-values).
+        keeping only roots with :math:`\\Im(m_{\\mathrm{root}}) > 0` (roots are
+        not tracked/paired across x-values).
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 20
+
+            >>> from freealg import AlgebraicForm
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> from freealg import submatrix
+
+            >>> # Create a distribution with two bulks
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Get a matrix realization of the distribution
+            >>> A = cfp.matrix(size=4000, seed=0)
+
+            >>> # Compress the matrix to smaller size
+            >>> As = submatrix(A, size=2000)
+
+            >>> # Create AlgebraicForm and fit the smaller matrix
+            >>> af = AlgebraicForm(As)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Plot all candidate roots at the decompressed size 4000
+            >>> af.candidates(size=4000)
         """
 
         # Check size argument
@@ -1333,12 +1643,20 @@ class AlgebraicForm(BaseForm):
 
         # Create x if not given
         if x is None:
-            radius = 0.5 * (ub - lb)
-            center = 0.5 * (ub + lb)
-            scale = 1.25
-            x_min = numpy.floor(center - radius * scale)
-            x_max = numpy.ceil(center + radius * scale)
-            x = numpy.linspace(x_min, x_max, 2000)
+            if self._log:
+                radius = numpy.sqrt(ub / lb)
+                center = numpy.sqrt(ub * lb)
+                scale = 1.25
+                x_min = center / (radius ** scale)
+                x_max = center * (radius ** scale)
+                x = numpy.geomspace(x_min, x_max, 2000)
+            else:
+                radius = 0.5 * (ub - lb)
+                center = 0.5 * (ub + lb)
+                scale = 1.25
+                x_min = numpy.floor(center - radius * scale)
+                x_max = numpy.ceil(center + radius * scale)
+                x = numpy.linspace(x_min, x_max, 2000)
         else:
             x = numpy.asarray(x)
 
@@ -1346,7 +1664,7 @@ class AlgebraicForm(BaseForm):
             t_i = numpy.log(alpha[i])
             coeffs_i = decompress_coeffs(self.coeffs, t_i)
             plot_candidates(coeffs_i, x, delta=delta,
-                            size=int(alpha[i]*self.n), log=log,
+                            size=int(alpha[i]*self.n), log=self._log,
                             markersize=markersize, latex=latex,
                             verbose=verbose)
 
@@ -1361,6 +1679,10 @@ class AlgebraicForm(BaseForm):
 
         To this end, this function checks if the evolved polynomial under the
         free decompression admits a valid Stieltjes root.
+
+        .. note::
+
+            This function is not always reliable!
 
         Parameters
         ----------
@@ -1430,7 +1752,7 @@ class AlgebraicForm(BaseForm):
 
         * :math:`\\tau = e^t`
         * :math:`y = \\tau * m`
-        * :math:`\\zeta = z + (1 - 1/\\tau) / m`
+        * :math:`\\zeta = z + (1 - \\tau^{-1}) m^{-1}`
         * :math:`P_t(z, m) = P(\\zeta, y)`
 
         A necessary condition for FD tracking to remain well-posed is that, for
@@ -1440,7 +1762,7 @@ class AlgebraicForm(BaseForm):
 
         .. math::
 
-            m(z) = -1/z + O(1/z^2)
+            m(z) = -\\frac{1}{z} + O(z^{-2})
 
         as :math:`\\vert z \\vert \\to \\infty` in :math:`\\Im(z) > 0`.
 
@@ -1450,7 +1772,8 @@ class AlgebraicForm(BaseForm):
 
         .. math::
 
-            m(z) = -(alpha/z + mu_1/z^2 + mu_2/z^3 + ...)
+            m(z) = -(\\frac{\\alpha}{z} + \\frac{\\mu_1}{z^2} +
+            \\frac{\\mu_2|{z^3} + \\dots)
 
         so that the Laurent series of :math:`P_t(1/w, m(w))` cancels on a
         prescribed range of powers. Concretely, for each truncation order
@@ -1470,20 +1793,30 @@ class AlgebraicForm(BaseForm):
         --------
 
         .. code-block:: python
-            :emphasize-lines: 9,10
+            :emphasize-lines: 20
 
-            >>> import freealg AlgebraicForm
-            >>> from freealg.distributions import CompoundPoisson
+            >>> from freealg import AlgebraicForm
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> from freealg import submatrix
 
             >>> # Create compound free Poisson law
-            >>> cp = CompoundPoisson(t1=2.0, t2=5.5, w1=0.75, c=0.1)
-            >>> af = AlgebraicForm(cp)
+            >>> cfp = CompoundFreePoisson(t=[2.0, 5.5], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Get a matrix realization of the distribution
+            >>> A = cfp.matrix(size=4000, seed=0)
+
+            >>> # Compress the matrix to smaller size
+            >>> As = submatrix(A, size=2000)
+
+            >>> # Use the distribution above to create an algebraic form
+            >>> af = AlgebraicForm(As)
+            >>> af.fit(deg_m=3, deg_z=1)
 
             >>> # Check the decompressibility of compound free Poisson
-            >>> status, info = af.is_decompressible(ratio=2, n_ratios=5,
-            ...                                     verbose=True)
+            >>> status = af.is_decompressible()
 
-            >>> status
+            >>> print(status)
             True
         """
 
@@ -1526,8 +1859,98 @@ class AlgebraicForm(BaseForm):
         """
         Evolves spectral edges.
 
-        Fix: if t is a scalar or length-1 array, we prepend t=0 internally so
-        evolve_edges actually advances from the initialization at t=0.
+        Parameters
+        ----------
+
+        t : float or array_like
+            Single scalar or an array of time :math:`t`. Edges are evolved at
+            these time points.
+
+        eta : float, default=1e-3
+            offset from the real axis to evaluate Stieltjes transform.
+
+        dt_max : float, default=0.1
+            Maximum time step during the continuous time evolution.
+
+        max_iter : int, default=30
+            Maximum number of iterations to solve for each time point.
+
+        tol : float, default=1e-12
+            Tolerance of convergence
+
+        verbose : bool, default=False
+            If `True`, debugging information is printed.
+
+        Returns
+        -------
+
+        complex_edges : numpy.ndarray
+            A 2D Array of the size ``(n_t, k)``, where ``n_t`` is the length of
+            the input time array ``t``, and ``k`` is the maximum number of
+            edges. The i-th column of this array is a x coordinate of the i-th
+            branch point, which may or may not be a spectral edge. This array
+            is complex.
+
+        real_merged_edges : numpy.ndarray
+            A 2D array of the same shape as ``complex_edges``, but the elements
+            of this array are real part of the previous array. If
+            ``complex_edges`` also has non-zero imaginary parts, the
+            corresponding element in ``real_merged_edges`` is set to ``nan``,
+            since these branch points points are spectral edges.
+
+        active_k : numpy.array
+            A 1D array of the size ``n_t``, the length of time ``t``. Each
+            element shows the number of active edges at each time point. For
+            example, if the total detected number of edges are 4 (two bulks),
+            once two edges merge, leading to one bulk, the active number of
+            edges become 2.
+
+        Notes
+        -----
+
+        This function evolves all branch points that are initially they were
+        spectral edges at `t=0`. Once evolved, some edges may leave the real
+        axis, in which, they no longer are spectral edges, but still branch
+        points. The output array ``complex_egde`` track all these points (as
+        complex number output) regardless they remain on the real axis or move
+        to the complex plane.
+
+        In contrast, the array ``real_merged_edges`` are only the real part of
+        the previous array, and filters out those branch points that cease to
+        be spectral edge: they will be set to ``nan``.
+
+        Fix: if ``t`` is a scalar or length-1 array, we prepend ``t=0``
+        internally to advances from the initialization at ``t=0``.
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 23
+
+            >>> import numpy
+            >>> from freealg import AlgebraicForm
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> from freealg import submatrix
+
+            >>> # Create a distribution with two bulks
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Get a matrix realization of the distribution
+            >>> A = cfp.matrix(size=4000, seed=0)
+
+            >>> # Compress the matrix to smaller size
+            >>> As = submatrix(A, size=2000)
+
+            >>> # Create AlgebraicForm and fit the smaller matrix
+            >>> af = AlgebraicForm(As)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Evolve edges corresponding to size 2000 to 4000
+            >>> t_final = numpy.log(A.shape[0] / As.shape[0])
+            >>> t = numpy.linspace(0, t_final)
+            >>> ce, rc, ne = af.evolve_edges(t)
         """
 
         if self.supp is not None:
@@ -1586,7 +2009,7 @@ class AlgebraicForm(BaseForm):
 
     def cusp(self, t_grid):
         """
-        Find cusp (merge) point of evolving spectral edges
+        Find cusp (merge/split) point of evolving spectral edges
         """
 
         if self.supp is not None:
@@ -1621,7 +2044,7 @@ class AlgebraicForm(BaseForm):
             Positions where density to be evaluated at. If `None`, an interval
             slightly larger than the support interval will be used.
 
-        method : {``'moc'``, ``'coeffs'`}, default= ``'moc'``
+        method : {``'moc'``, ``'coeffs'``}, default= ``'moc'``
             Method of decompression:
 
             * ``'moc'``: Method of characteristics with Newton iterations.
@@ -1685,7 +2108,7 @@ class AlgebraicForm(BaseForm):
 
         # Create x if not given
         if x is None:
-            x = self._generate_grid(1.25)
+            x = self._generate_grid(1.25, log=self._log)
 
         # Check size argument
         if numpy.isscalar(size):
@@ -1783,7 +2206,8 @@ class AlgebraicForm(BaseForm):
 
             # Plot only the last time of atoms and density
             plot_density(x, rho_last, atoms=atoms_last, support=None,
-                         label='Decompression', latex=latex, save=save)
+                         label='Decompression', log=self._log, latex=latex,
+                         save=save)
 
         if return_atoms:
             return rho, x, atoms_t

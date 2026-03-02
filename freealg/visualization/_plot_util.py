@@ -66,16 +66,46 @@ class HandlerLine2DArrow(HandlerLine2D):
 # ============
 
 def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
-                 title='Spectral Density', latex=False, save=False):
+                 title='Spectral Density', log=False, latex=False, save=False):
     """
     Parameters
     ----------
+
+    x : numpy.array, dfault=None
+        The abscissa to plot density.
+
+    rho : numpy.ndarray, default=None
+        A 1D array of density.
+
+    eig : numpy.array, default=None
+        If provided, the empirical histogram of the eigenvalues is also shown
+        to compare with ``rho``.
 
     atoms : list of tuples, default=None
         A list such as ``[(t1, w1), ..., (tk, wk)]`` where ``ti`` are the atom
         locations and ``wi`` are their weight. The sum of the weights should be
         one. If this is given, each atom is shown with a arrow, with the height
         equals its weight corresponding to the right ordinate axis.
+
+    support : list of tuples, default=None
+        If provided, the histogram bins are adjusted to the spectral edges.
+
+    label : str, default= ``''``
+        Label of the plot.
+
+    title : str, default= ``'Spectral density'``
+        Title of the plot
+
+    log : bool, default=False
+        If `True`. x and y axis are shown in log scale.
+
+    save : bool or str, default=False
+        If `False`, the plot is not saved. If `True`, the plot is saved with a
+        default filename. If string, the plot is saved with the full-path
+        filename and file extension given by the string.
+
+    latex : bool, default=False
+        If `True`, the plot is rendered using LaTeX.
     """
 
     with texplot.theme(use_latex=latex):
@@ -84,8 +114,17 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
         ax.plot(x, rho, color='black', label=label, zorder=3)
 
+        if log:
+            l_max = numpy.log10(numpy.max(rho))
+            l_min = numpy.log10(numpy.min(rho))
+            l_cen = 0.5 * (l_max + l_min)
+            l_rad = 0.5 * (l_max - l_min)
+            min_y = 10.0**(l_cen - 1.1 * l_rad)
+        else:
+            min_y = 0.0
+
         ax.set_xlim([x[0], x[-1]])
-        ax.set_ylim(bottom=0)
+        ax.set_ylim(bottom=min_y)
 
         # Lock y autoscaling so hist won't change it if there is an atom
         ax.relim()
@@ -110,7 +149,13 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
             # Option 1: Use matplotlib's hist
             lam_m, lam_p = min(eig), max(eig)
-            bins = numpy.linspace(lam_m, lam_p, auto_bins(eig))
+
+            if log:
+                nbins = auto_bins(numpy.log10(eig))
+                bins = numpy.geomspace(lam_m, lam_p, nbins)
+            else:
+                nbins = auto_bins(eig)
+                bins = numpy.linspace(lam_m, lam_p, nbins)
             _ = ax.hist(eig, bins, density=True, color='silver',
                         edgecolor='none', label='Empirical Histogram')
 
@@ -121,7 +166,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
             # ax.stairs(vals, edges, fill=True, color='silver', alpha=1.0,
             #           label='Empirical Histogram')
         else:
-            plt.fill_between(x, y1=rho, y2=0, color='silver', zorder=-1)
+            plt.fill_between(x, y1=rho, y2=min_y, color='silver', zorder=-1)
 
         arrow_handle = None
         if (atoms is not None) and (len(atoms) > 0):
@@ -147,6 +192,10 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
                     arrow_handle = Line2D([0, 0.96], [0, 0], color='black',
                                           lw=1.4, marker='>', markevery=[1],
                                           markersize=4)
+
+        if log:
+            ax.set_xscale('log')
+            ax.set_yscale('log')
 
         ax.set_xlabel(r'$\lambda$')
         ax.set_ylabel(r'$\rho(\lambda)$''')
@@ -185,7 +234,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 # plot hilbert
 # ============
 
-def plot_hilbert(x, hilb, support=None, latex=False, save=False):
+def plot_hilbert(x, hilb, support=None, log=False, latex=False, save=False):
     """
     """
 
@@ -214,6 +263,10 @@ def plot_hilbert(x, hilb, support=None, latex=False, save=False):
             yt.append(0)
         yt = sorted(yt)
         ax.set_yticks(yt)
+
+        if log:
+            ax.set_xscale('log')
+            ax.set_yscale('log')
 
         # Save
         if save is False:
