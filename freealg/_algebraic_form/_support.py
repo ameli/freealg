@@ -161,7 +161,8 @@ def _bisect_edge(stieltjes_poly, x_lo, x_hi, delta, im_thr, max_iter=60):
 # ===============
 
 def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
-                     **kwargs):
+                     thr_rel=1e-4, weak_thr_factor=1e-2,
+                     min_log_width_mult=2.0, **kwargs):
 
     coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
 
@@ -196,11 +197,6 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
     max_im = float(numpy.nanmax(im_grid)) \
         if numpy.any(numpy.isfinite(im_grid)) else 0.0
 
-    if log:
-        thr_rel = float(kwargs.get('thr_rel', 1e-5))
-    else:
-        thr_rel = float(kwargs.get('thr_rel', 1e-4))
-
     thr_abs = kwargs.get('thr_abs', None)
 
     im_thr = thr_rel * max_im
@@ -215,7 +211,8 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
     # enough in log-space, so linear-mode behavior stays unchanged.
     if log:
         dlogx = abs(numpy.log(x_grid[1]) - numpy.log(x_grid[0]))
-        im_thr_lo = max(0.1 * im_thr, 10.0 * delta)
+
+        im_thr_lo = max(weak_thr_factor * im_thr, 10.0 * delta)
         mask_lo = numpy.isfinite(im_grid) & (im_grid > im_thr_lo)
 
         runs_lo = []
@@ -231,7 +228,7 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
             i = j + 1
 
         # Keep only broad runs from the weaker mask.
-        min_log_width = 8.0 * dlogx
+        min_log_width = min_log_width_mult * dlogx
         for i0, i1 in runs_lo:
             if i0 == 0 or i1 == mask_lo.size - 1:
                 continue

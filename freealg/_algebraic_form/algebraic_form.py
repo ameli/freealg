@@ -651,7 +651,8 @@ class AlgebraicForm(BaseForm):
     # support
     # =======
 
-    def support(self, coeffs=None, scan_range=None, n_scan=4000,
+    def support(self, coeffs=None, scan_range=None, n_scan=4000, thr_rel=1e-4,
+                weak_thr_factor=1e-2, min_log_width_mult=2.0,
                 return_info=False):
         """
         Estimate the spectral edges of the density.
@@ -672,6 +673,18 @@ class AlgebraicForm(BaseForm):
 
         n_scan : int, default=4000
             Number of points to scan along the ``scan_range`` interval.
+
+        thr_rel : float, default=1e-4
+            Relative threshold on :math:`\\Im(m(x+i\\delta))` used to detect
+            support.
+
+        weak_thr_factor : float, default=1e-2
+            In log scale only, factor multiplying the main threshold to form a
+            weaker recovery threshold for faint bulks.
+
+        min_log_width_mult : float, default=2.0
+            In log scale only, minimum run width in units of log-grid spacing
+            required for the weaker-threshold recovery pass.
 
         return_info : bool, default=False
             If `True`, debug info is also returned.
@@ -722,7 +735,7 @@ class AlgebraicForm(BaseForm):
 
             >>> # Create a distribution with two bulks
             >>> from freealg.distributions import CompoundFreePoisson
-            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
             ...                           lam=0.1)
 
             >>> # Find the exact support using the distribution (no fitting)
@@ -759,9 +772,10 @@ class AlgebraicForm(BaseForm):
         else:
             x_min, x_max = self._inflate_broad_supp(inflate=0.2)
 
-        est_supp, info = estimate_support(coeffs, x_min=x_min, x_max=x_max,
-                                          n_scan=n_scan, delta=self.delta,
-                                          log=self._log)
+        est_supp, info = estimate_support(
+            coeffs, x_min=x_min, x_max=x_max, n_scan=n_scan, delta=self.delta,
+            log=self._log, thr_rel=thr_rel, weak_thr_factor=weak_thr_factor,
+            min_log_width_mult=min_log_width_mult)
 
         if return_info:
             return est_supp, info
@@ -829,7 +843,7 @@ class AlgebraicForm(BaseForm):
 
             >>> # Create a distribution with two bulks
             >>> from freealg.distributions import CompoundFreePoisson
-            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
             ...                           lam=0.1)
 
             >>> # Create AlgebraicForm and fit the distribution
@@ -931,7 +945,7 @@ class AlgebraicForm(BaseForm):
 
             >>> # Create a distribution with two bulks
             >>> from freealg.distributions import CompoundFreePoisson
-            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
             ...                           lam=0.1)
 
             >>> # Create AlgebraicForm and fit the distribution
@@ -1019,7 +1033,7 @@ class AlgebraicForm(BaseForm):
 
             >>> # Create a distribution with two bulks
             >>> from freealg.distributions import CompoundFreePoisson
-            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
             ...                           lam=0.1)
 
             >>> # Create AlgebraicForm and fit the distribution
@@ -1131,7 +1145,7 @@ class AlgebraicForm(BaseForm):
 
             >>> # Create a distribution with two bulks
             >>> from freealg.distributions import CompoundFreePoisson
-            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
             ...                           lam=0.1)
 
             >>> # Create AlgebraicForm and fit the distribution
@@ -1244,7 +1258,7 @@ class AlgebraicForm(BaseForm):
 
             >>> # Create a distribution with two bulks
             >>> from freealg.distributions import CompoundFreePoisson
-            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
             ...                           lam=0.1)
 
             >>> # Create AlgebraicForm and fit the distribution
@@ -1369,7 +1383,7 @@ class AlgebraicForm(BaseForm):
 
             >>> # Create a distribution with two bulks
             >>> from freealg.distributions import CompoundFreePoisson
-            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
             ...                           lam=0.1)
 
             >>> # Create AlgebraicForm and fit the distribution
@@ -1604,7 +1618,7 @@ class AlgebraicForm(BaseForm):
             >>> from freealg import submatrix
 
             >>> # Create a distribution with two bulks
-            >>> cfp = CompoundFreePoisson(t=[2.0,  5.0], w=[0.75, 0.25],
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
             ...                           lam=0.1)
 
             >>> # Get a matrix realization of the distribution
@@ -1854,8 +1868,8 @@ class AlgebraicForm(BaseForm):
     # edge
     # ====
 
-    def edge(self, t, eta=1e-3, dt_max=0.1, max_iter=30, tol=1e-12,
-             verbose=False):
+    def edge(self, t, dt_max=0.1, max_iter=30, tol=1e-12, verbose=False,
+             plot=False, latex=False, save=False):
         """
         Evolves spectral edges.
 
@@ -1865,9 +1879,6 @@ class AlgebraicForm(BaseForm):
         t : float or array_like
             Single scalar or an array of time :math:`t`. Edges are evolved at
             these time points.
-
-        eta : float, default=1e-3
-            offset from the real axis to evaluate Stieltjes transform.
 
         dt_max : float, default=0.1
             Maximum time step during the continuous time evolution.
@@ -1880,6 +1891,18 @@ class AlgebraicForm(BaseForm):
 
         verbose : bool, default=False
             If `True`, debugging information is printed.
+
+        plot : bool, default=False
+            If `True`, density is plotted.
+
+        latex : bool, default=False
+            If `True`, the plot is rendered using LaTeX. This option is
+            relevant only if ``plot=True``.
+
+        save : bool, default=False
+            If not `False`, the plot is saved. If a string is given, it is
+            assumed to the save filename (with the file extension). This option
+            is relevant only if ``plot=True``.
 
         Returns
         -------
@@ -1911,7 +1934,7 @@ class AlgebraicForm(BaseForm):
         This function evolves all branch points that are initially they were
         spectral edges at `t=0`. Once evolved, some edges may leave the real
         axis, in which, they no longer are spectral edges, but still branch
-        points. The output array ``complex_egde`` track all these points (as
+        points. The output array ``complex_edge`` track all these points (as
         complex number output) regardless they remain on the real axis or move
         to the complex plane.
 
@@ -1967,7 +1990,7 @@ class AlgebraicForm(BaseForm):
             if t1 == 0.0:
                 t_grid = numpy.array([0.0], dtype=float)
                 complex_edges, ok_edges = evolve_edges(
-                    t_grid, self.coeffs, support=known_supp, eta=eta,
+                    t_grid, self.coeffs, support=known_supp, delta=self.delta,
                     dt_max=dt_max, max_iter=max_iter, tol=tol)
             else:
                 # Use an internal grid so bifurcations (newborn edges) can be
@@ -1975,19 +1998,19 @@ class AlgebraicForm(BaseForm):
                 n_internal = 64  # small, but enough to pass cusp/birth
                 t_grid = numpy.linspace(0.0, t1, n_internal)
 
-                cusps = self.cusp(t_grid)
+                _, cusps_sol = self.cusp(t_grid, return_info=True)
                 complex_edges2, ok_edges2 = evolve_edges_with_births(
-                    t_grid, self.coeffs, support=known_supp, cusps=cusps,
-                    eta=eta, dt_max=dt_max, max_iter=max_iter, tol=tol,
-                    split_tol=0.0, seed_eps=1e-6)
+                    t_grid, self.coeffs, support=known_supp, cusps=cusps_sol,
+                    delta=self.delta, dt_max=dt_max, max_iter=max_iter,
+                    tol=tol, split_tol=0.0, seed_eps=1e-6)
 
                 complex_edges = complex_edges2[-1:, :]
                 ok_edges = ok_edges2[-1:, :]
         else:
-            cusps = self.cusp(t)
+            _, cusps_sol = self.cusp(t, return_info=True)
             complex_edges, ok_edges = evolve_edges_with_births(
-                t, self.coeffs, support=known_supp, cusps=cusps,
-                eta=eta, dt_max=dt_max, max_iter=max_iter, tol=tol,
+                t, self.coeffs, support=known_supp, cusps=cusps_sol,
+                delta=self.delta, dt_max=dt_max, max_iter=max_iter, tol=tol,
                 split_tol=0.0, seed_eps=1e-6)
 
         real_edges = complex_edges.real
@@ -2007,9 +2030,78 @@ class AlgebraicForm(BaseForm):
     # cusp
     # ====
 
-    def cusp(self, t_grid):
+    def cusp(self, t_grid, max_iter=50, tol=1e-12, dedup_t_tol=1e-6,
+             dedup_x_tol=1e-6, return_info=False):
         """
-        Find cusp (merge/split) point of evolving spectral edges
+        Find cusp (merge/split) point of evolving spectral edges.
+
+        Parameters
+        ----------
+
+        t_grid : array_like
+            A time grid to search for cusp points.
+
+        max_iter : int, default=50
+            Maximum number of Newton iterations
+
+        tol : float, default=1e-12
+            Tolerance in Newton root finding method
+
+        dedup_t_tol : float, default=1e-6
+            Tolerance along t axis to identify duplicity (de-duplication.)
+
+        dedup_x_tol : float, default=1e-6
+            Tolerance along x axis to identify duplicity (de-duplication.)
+
+        return_info : bool, default=False
+            If `True`, a list of debugging information per each cusp point is
+            returned.
+
+        Returns
+        -------
+
+        cusps : list
+            A list of tuples ``(x, t)`` of the location ``x`` and time ``t`` of
+            cusp points.
+
+        info : list
+            A list of dictionaries, each contain the debugging information for
+            a cusp point. This is returned if ``return_info`` is set to `True`.
+
+        See Also
+        --------
+
+        edge
+
+        Examples
+        --------
+
+        .. code-block:: python
+            :emphasize-lines: 23
+
+            >>> import numpy
+            >>> from freealg import AlgebraicForm
+            >>> from freealg.distributions import CompoundFreePoisson
+            >>> from freealg import submatrix
+
+            >>> # Create a distribution with two bulks
+            >>> cfp = CompoundFreePoisson(t=[2.0,  5.5], w=[0.75, 0.25],
+            ...                           lam=0.1)
+
+            >>> # Get a matrix realization of the distribution
+            >>> A = cfp.matrix(size=6000, seed=0)
+
+            >>> # Compress the matrix to smaller size
+            >>> As = submatrix(A, size=1000)
+
+            >>> # Create AlgebraicForm and fit the smaller matrix
+            >>> af = AlgebraicForm(As)
+            >>> af.fit(deg_m=3, deg_z=1)
+
+            >>> # Find cusp points
+            >>> t_final = numpy.log(A.shape[0] / As.shape[0])
+            >>> t = numpy.linspace(0, t_final)
+            >>> cusps = af.cusp(t)
         """
 
         if self.supp is not None:
@@ -2019,8 +2111,21 @@ class AlgebraicForm(BaseForm):
         else:
             raise RuntimeError('Call "fit" first.')
 
-        return cusp_wrap(self.coeffs, t_grid, support=known_supp, max_iter=50,
-                         tol=1.0e-12)
+        sol = cusp_wrap(self.coeffs, t_grid, support=known_supp,
+                        max_iter=max_iter, tol=tol, dedup_t_tol=dedup_t_tol,
+                        dedup_x_tol=dedup_x_tol)
+
+        # Extract x and t from solution
+        cusps = []
+        for i in range(len(sol)):
+            x = sol[i]['x']
+            t = sol[i]['t']
+            cusps.append((x, t))
+
+        if return_info:
+            return cusps, sol
+        else:
+            return cusps
 
     # ======
     # deform

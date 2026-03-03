@@ -102,15 +102,15 @@ def _pick_physical_root(z, roots):
 # init edge point from support
 # ============================
 
-def _init_edge_point_from_support(x_edge, coeffs, eta=1e-3):
+def _init_edge_point_from_support(x_edge, coeffs, delta=1e-5):
     """
     Initialize (zeta,y) at t=0 for an edge near x_edge.
 
-    Uses z = x_edge + i*eta, picks physical root y, then refines zeta on real
+    Uses z = x_edge + i*delta, picks physical root y, then refines zeta on real
     axis.
     """
 
-    z = complex(x_edge + 1j * eta)
+    z = complex(x_edge + 1j * delta)
     roots = eval_roots(numpy.array([z]), coeffs)[0]
     y = _pick_physical_root(z, roots)
 
@@ -133,7 +133,7 @@ def evolve_edges(
         t_grid,
         coeffs,
         support=None,
-        eta=1e-3,
+        delta=1e-5,
         dt_max=0.1,
         max_iter=30,
         tol=1e-12,
@@ -186,7 +186,7 @@ def evolve_edges(
 
     for j in range(m):
         z0, y0, ok0 = _init_edge_point_from_support(endpoints0[j], coeffs,
-                                                    eta=eta)
+                                                    delta=delta)
         zeta[j] = z0
         y[j] = y0
         ok[0, j] = ok0
@@ -393,7 +393,7 @@ def _first_index_ge(t_grid, t0):
 # =======================
 
 def evolve_edges_with_births(t_grid, coeffs, support=None, cusps=None,
-                             eta=1e-3, dt_max=0.1, max_iter=30, tol=1e-12,
+                             delta=1e-5, dt_max=0.1, max_iter=30, tol=1e-12,
                              return_preimage=False, split_tol=0.0,
                              seed_eps=1e-6, fill_gap="linear"):
     """
@@ -423,14 +423,13 @@ def evolve_edges_with_births(t_grid, coeffs, support=None, cusps=None,
     # 1) Baseline evolution (fixed-width)
     if return_preimage:
         base_edges, base_ok, base_zeta, base_y = evolve_edges(
-            t_grid, coeffs, support=support, eta=eta, dt_max=dt_max,
-            max_iter=max_iter, tol=tol, return_preimage=True
-        )
+            t_grid, coeffs, support=support, delta=delta, dt_max=dt_max,
+            max_iter=max_iter, tol=tol, return_preimage=True)
     else:
         base_edges, base_ok = evolve_edges(
-            t_grid, coeffs, support=support, eta=eta, dt_max=dt_max,
-            max_iter=max_iter, tol=tol, return_preimage=False
-        )
+            t_grid, coeffs, support=support, delta=delta, dt_max=dt_max,
+            max_iter=max_iter, tol=tol, return_preimage=False)
+
         base_zeta = None
         base_y = None
 

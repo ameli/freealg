@@ -294,13 +294,13 @@ def plot_branch_points(bp, atoms, support, log=False, latex=False, save=False):
 
     with texplot.theme(use_latex=latex):
 
-        fig, ax = plt.subplots(figsize=(5.8, 3.2))
+        fig, ax = plt.subplots(figsize=(6, 3.1))
 
         ax.plot(bp.real, bp.imag, 'o', color='black', markersize=6,
                 markeredgewidth=1, markerfacecolor='white',
                 label='Branch points')
 
-        ax.plot(sp_edges.real, sp_edges.imag, 'o', color='black', markersize=6,
+        ax.plot(sp_edges.real, sp_edges.imag, '+', color='black', markersize=6,
                 label='Spectral edges')
 
         ax.plot(atoms_loc.real, atoms_loc.imag, 'x', color='black',
@@ -321,6 +321,12 @@ def plot_branch_points(bp, atoms, support, log=False, latex=False, save=False):
             ax.axvline(0.0, color='gray', linewidth=0.5, zorder=-2)
         else:
             ax.set_xscale('log')
+        x_min = numpy.min(all_data)
+        x_max = numpy.max(all_data)
+        if x_min < 0:
+            ax.set_xlim([x_min * 2.0, x_max * 2.0])
+        else:
+            ax.set_xlim([x_min / 2.0, x_max * 2.0])
 
     # Save
     if save is False:

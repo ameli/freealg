@@ -91,12 +91,13 @@ def _edge(t, coeffs, support=None):
     Returns edges that is already merged and real.
     """
 
-    eta = 1e-3
+    # TEST
+    delta = 1e-3
     dt_max = 0.1
     max_iter = 30
     tol = 1e-12
 
-    complex_edges, _ = evolve_edges(t, coeffs, support=support, eta=eta,
+    complex_edges, _ = evolve_edges(t, coeffs, support=support, delta=delta,
                                     dt_max=dt_max, max_iter=max_iter, tol=tol)
 
     real_edges = complex_edges.real
@@ -307,8 +308,8 @@ def cusp_wrap(coeffs, t_grid, support=None, max_iter=80, tol=1e-12,
         if sol is None:
             continue
 
-        # Optional quality filter: reject very weak convergences
-        # (May need to tune this; this is a safe-ish default.)
+        # Optional quality filter: reject very weak convergences (May need to
+        # tune this; this is a safe-ish default.)
         if not numpy.isfinite(sol["info"]["norm_inf_F"]):
             continue
 
@@ -325,7 +326,7 @@ def cusp_wrap(coeffs, t_grid, support=None, max_iter=80, tol=1e-12,
 
         sols.append(sol)
 
-    # Deduplicate independent cusps
+    # De-duplicate independent cusps
     sols = _dedup_cusps(sols, t_tol=dedup_t_tol, x_tol=dedup_x_tol)
 
     # Sort by time for stable output

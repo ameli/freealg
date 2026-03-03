@@ -99,11 +99,17 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
         minimum and maximum of ``x`` is used.
 
     ylim : tuple or scalar, default=None,
-        The upper limit of the y axis. The lower limit is always set to zero,
-        and this argument only sets the upper limit in the plot. It can be
-        given as a tuple of length three, which sets upper limit for each of
-        the three axis, or as a scalar, which is used for all axes. If `None`,
-        the maximum of ``rho`` is used.
+        This sets the lower and upper limit of the y axis as follows:
+
+        * If scalar such as ``ylim=y_max``, the y limit of all three axes are
+          set to ``[0, y_max]``. This should not be used for the log-scale
+          plots (``plot=True``) when the lower y limit cannot be zero.
+        * If a tuple of length 2, such as ``ylim= (y_min, y_max)``, the y limit
+          of all three axes are set to these bounds.
+        * If a tuple of length three, such as ``ylim = (a, b, c)``, the y limit
+          of three axes are respectively set to ``(0, a)``, ``(0, b)``, and
+          ``(0, c)``, independently.
+        * If `None`, y limit is automatically set.
 
     share_ax : bool, default=False
         If `True`, the x axis (in vertical layout) or y axis (in horizontal
@@ -493,9 +499,10 @@ def _darker(color, factor=0.85):
 # =========
 
 def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
-              xlim=None, log=False, text_side='left', atom_tol=0.0, cmap=None,
-              c_range=None, hspace=-0.3, scaley=True, nbins=None,
-              bin_factor=10, label_mode='int', save=False, latex=False):
+              xlim=None, ylim_factor=1.0, scaley=True, log=False,
+              text_side='left', atom_tol=0.0, cmap=None, c_range=None,
+              hspace=-0.3, nbins=None, bin_factor=10, label_mode='int',
+              rho_color=None, save=False, latex=False):
     """
     Rideplot of a cascade of spectral density functions.
 
@@ -532,6 +539,15 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
         The limits ``(x_min, x_max)`` of the x axis in the plot. If `None`,
         minimum and maximum of ``x`` is used.
 
+    ylim_factor : float, default=1.0
+        The upper limit of y axis is automatically set, but can be changed by
+        this factor. This is effective only if ``scaley=False``.
+
+    scaley : bool, default=True
+        If `True`, the density on each axis is scaled independently to fit the
+        axis height. If `False`, the plots in all axes will the same scale,
+        showing their true comparable scale.
+
     log : bool, default=False
         If `True`, both x and y axis will be in log scale of base 10.
 
@@ -551,11 +567,6 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
     hspace : float, default=-0.3
         The vertical gap space between axes. Negative makes axes get closer.
 
-    scaley : bool, default=True
-        If `True`, the density on each axis is scaled independently to fit the
-        axis height. If `False`, the plots in all axes will the same scale,
-        showing their true comparable scale.
-
     nbins : int, default=None
         Number of histogram bins. If `None`, it is automatically chosen.
 
@@ -571,6 +582,9 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
         * ``'pow-int'``: Integer powers of base 2.
         * ``'pow-dec'``: Decimal powers of base 2 with one decimal power.
 
+    rho_color : str, default=None
+        The color of ``rho`` curves.
+
     save : bool or str, default=False
         If `False`, the plot is not saved. If `True`, the plot is saved with a
         default filename. If string, the plot is saved with the full-path
@@ -585,6 +599,32 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
     plot_flow
     plot_mass
     """
+
+    # Check inputs
+    if (rho is not None) and (x is None):
+        raise ValueError('When "rho" is provided, "x" should also be given.')
+    elif (x is not None) and (rho is None):
+        raise ValueError('When "x" is provided, "rho" should also be given.')
+    elif (rho is not None) and (x is not None) and (rho.shape[1] != x.size):
+        raise ValueError('Number of columns of "rho" should be the size of '
+                         '"x".')
+
+    if (rho is not None) and (eigs is not None) and \
+            (rho.shape[0] != len(eigs)):
+        raise ValueError('Number of rows of "rho" should be the length of '
+                         '"eigs"')
+
+    sizes = numpy.array(sizes)
+    if (rho is not None) and (sizes.size != rho.shape[0]):
+        raise ValueError('The length of "sizes" should be the same as the '
+                         'number of rows of "rho".')
+    if (eigs is not None) and (sizes.size != len(eigs)):
+        raise ValueError('The length of "sizes" should be the same as the '
+                         'length of "eigs".')
+
+    # Initialize min and max of y axis (used when scaley is False)
+    max_y = 0.0
+    min_y = numpy.inf
 
     fontsize = 11
     num_plots = sizes.size
@@ -660,13 +700,19 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
                 ax[i].step(edges[:-1][mask], counts[mask], where="post",
                            color="white", linewidth=0.5, zorder=3)
 
+                # Update min and max of y
+                min_y = numpy.min([min_y, numpy.nanmin(counts[counts > 0])])
+                max_y = numpy.max([max_y, numpy.nanmax(counts)])
+
             elif (x is not None) and (rho is not None):
                 ax[i].fill_between(x, y1=rho[i], y2=0, alpha=1,
                                    color=colors[i])
 
             if (x is not None) and (rho is not None):
-                ax[i].plot(x, rho[i], linewidth=1,
-                           color=_darker(colors[i], factor=0.2))
+                if rho_color is None:
+                    # rho_color =_darker(colors[i], factor=0.6))
+                    rho_color = 'gray'
+                ax[i].plot(x, rho[i], linewidth=1, zorder=20, color=rho_color)
 
             # Text showing the submatrix sizes
             label = _decimal_text(sizes[i] / 1000.0, label_mode)
@@ -674,15 +720,6 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
                        transform=ax[i].transAxes, fontsize=fontsize-1, ha=ha)
 
             ax[i].set_yticks([])
-
-            if scaley and not log:
-                ax[i].set_ylim(bottom=0)
-            else:
-                if rho is not None:
-                    if log:
-                        ax[i].set_ylim(top=numpy.max(rho))
-                    else:
-                        ax[i].set_ylim([0, numpy.max(rho)])
 
             ax[i].spines[['left', 'right', 'top']].set_visible(False)
             ax[i].spines['bottom'].set_color(colors[i])
@@ -707,6 +744,36 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
                 ax[i].yaxis.set_minor_locator(NullLocator())
                 ax[i].tick_params(axis='y', which='both', bottom=False,
                                   labelbottom=False)
+
+        if rho is not None:
+            max_y = numpy.max([max_y, numpy.max(rho)])
+            min_y = numpy.min([min_y, numpy.min(rho)])
+
+        # max of y
+        if log:
+            log_max_y = numpy.log10(max_y)
+            log_min_y = numpy.log10(min_y)
+            log_center_y = 0.5 * (log_max_y + log_min_y)
+            log_radius_y = 0.5 * (log_max_y - log_min_y)
+            max_y_ = 10.0**(log_center_y + (log_radius_y * 1.05))
+            if rho is None:
+                min_y_ = 10.0**(log_center_y - (log_radius_y * 1.2))
+            else:
+                min_y_ = 10.0**(log_center_y - (log_radius_y * 1.04))
+        else:
+            center_y = 0.5 * (max_y + min_y)
+            radius_y = 0.5 * (max_y - min_y)
+            max_y_ = center_y + (radius_y * 1.04)
+            min_y_ = 0.0
+
+        for i in range(len(ax)):
+            # When scaley is True, we let matplotlib to decide max of y
+            if scaley is False:
+                # Set the same upper limit for all y axes
+                ax[i].set_ylim(top=max_y_ * ylim_factor)
+
+            # Set lower limit of y
+            ax[i].set_ylim(bottom=min_y_)
 
         ax[-1].set_xlabel(r'$\lambda$', fontsize=fontsize)
         fig.subplots_adjust(hspace=hspace)
