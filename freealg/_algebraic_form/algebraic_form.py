@@ -440,9 +440,12 @@ class AlgebraicForm(BaseForm):
             See also ``mu_reg``.
 
         mu_reg: float, default=None
-            If `None`, the constraints ``mu`` are applied as hard constraint.
-            If a positive number, the constraints are applied as a soft
-            constraints with regularisation ``mu_reg``.
+            Regularization for applying the moments ``mu``:
+
+            * If `None`, the constraints ``mu`` are applied as hard constraint.
+            * If a positive number, the constraints are applied as a soft
+              constraints with regularisation ``mu_reg``.
+            * If zero, no moment constraint (hard or soft) is applied.
 
         normalize : bool, default=True
             If `True`, the coefficients are scaled so that ``coeff[0, 0] = 1``.
@@ -565,7 +568,7 @@ class AlgebraicForm(BaseForm):
             if self.eig is not None:
                 mu_0 = 1.0
                 mu_1 = numpy.mean(self.eig)
-                mu_2 = numpy.var(self.eig)
+                mu_2 = numpy.mean(self.eig**2)
                 mu = [mu_0, mu_1, mu_2]
             else:
                 mu = None

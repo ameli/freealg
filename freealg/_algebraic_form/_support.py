@@ -118,11 +118,20 @@ def _cluster_edges(edges, x_tol):
 # bisect edge
 # ===========
 
-def _bisect_edge(stieltjes_poly, x_lo, x_hi, delta, im_thr, max_iter=60):
-    z_lo = x_lo + 1j * delta
-    z_hi = x_hi + 1j * delta
-    f_lo = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_lo)) - im_thr)
-    f_hi = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_hi)) - im_thr)
+def _bisect_edge(stieltjes_poly, x_lo, x_hi, delta, thr, log=False,
+                 max_iter=60):
+
+    def _edge_fun(x):
+        z = x + 1j * delta
+        im_val = numpy.imag(stieltjes_poly.evaluate_scalar(z))
+        if log:
+            floor = delta / (x * x + delta * delta)
+            return float(im_val / floor - thr)
+        else:
+            return float(im_val - thr)
+
+    f_lo = _edge_fun(x_lo)
+    f_hi = _edge_fun(x_hi)
 
     if (not numpy.isfinite(f_lo)) or (not numpy.isfinite(f_hi)):
         return 0.5 * (x_lo + x_hi)
@@ -136,19 +145,16 @@ def _bisect_edge(stieltjes_poly, x_lo, x_hi, delta, im_thr, max_iter=60):
     a = float(x_lo)
     b = float(x_hi)
     fa = f_lo
-    # fb = f_hi
 
     for _ in range(max_iter):
         c = 0.5 * (a + b)
-        z_c = c + 1j * delta
-        fc = float(numpy.imag(stieltjes_poly.evaluate_scalar(z_c)) - im_thr)
+        fc = _edge_fun(c)
         if not numpy.isfinite(fc):
             return c
         if fc == 0.0 or (b - a) < 1e-14 * (1.0 + abs(c)):
             return c
         if fa * fc <= 0.0:
             b = c
-            # fb = fc
         else:
             a = c
             fa = fc
@@ -156,9 +162,9 @@ def _bisect_edge(stieltjes_poly, x_lo, x_hi, delta, im_thr, max_iter=60):
     return 0.5 * (a + b)
 
 
-# ===============
+# ================
 # estimate support
-# ===============
+# ================
 
 def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
                      thr_rel=1e-4, weak_thr_factor=1e-2,
@@ -194,17 +200,28 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
     m_grid = stieltjes(z_grid)
     im_grid = numpy.imag(m_grid)
 
-    max_im = float(numpy.nanmax(im_grid)) \
-        if numpy.any(numpy.isfinite(im_grid)) else 0.0
+    if log:
+        floor_grid = delta / (x_grid * x_grid + delta * delta)
+        score_grid = im_grid / floor_grid
+    else:
+        floor_grid = None
+        score_grid = im_grid
+
+    max_score = float(numpy.nanmax(score_grid)) \
+        if numpy.any(numpy.isfinite(score_grid)) else 0.0
 
     thr_abs = kwargs.get('thr_abs', None)
 
-    im_thr = thr_rel * max_im
-    im_thr = max(im_thr, 10.0 * delta)
-    if thr_abs is not None:
-        im_thr = max(im_thr, float(thr_abs))
+    score_thr = thr_rel * max_score
+    if log:
+        score_thr = max(score_thr, 10.0)
+    else:
+        score_thr = max(score_thr, 10.0 * delta)
 
-    mask = numpy.isfinite(im_grid) & (im_grid > im_thr)
+    if thr_abs is not None:
+        score_thr = max(score_thr, float(thr_abs))
+
+    mask = numpy.isfinite(score_grid) & (score_grid > score_thr)
 
     # In log mode only, we add a second weaker threshold pass to recover wide
     # but low-amplitude bulks at large x. We keep only runs that are wide
@@ -212,8 +229,8 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
     if log:
         dlogx = abs(numpy.log(x_grid[1]) - numpy.log(x_grid[0]))
 
-        im_thr_lo = max(weak_thr_factor * im_thr, 10.0 * delta)
-        mask_lo = numpy.isfinite(im_grid) & (im_grid > im_thr_lo)
+        score_thr_lo = max(weak_thr_factor * score_thr, 2.0)
+        mask_lo = numpy.isfinite(score_grid) & (score_grid > score_thr_lo)
 
         runs_lo = []
         i = 0
@@ -227,7 +244,6 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
             runs_lo.append((i, j))
             i = j + 1
 
-        # Keep only broad runs from the weaker mask.
         min_log_width = min_log_width_mult * dlogx
         for i0, i1 in runs_lo:
             if i0 == 0 or i1 == mask_lo.size - 1:
@@ -254,8 +270,10 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
         if i0 == 0 or i1 == mask.size - 1:
             continue
 
-        xL = _bisect_edge(stieltjes, x_grid[i0 - 1], x_grid[i0], delta, im_thr)
-        xR = _bisect_edge(stieltjes, x_grid[i1], x_grid[i1 + 1], delta, im_thr)
+        xL = _bisect_edge(
+            stieltjes, x_grid[i0 - 1], x_grid[i0], delta, score_thr, log=log)
+        xR = _bisect_edge(
+            stieltjes, x_grid[i1], x_grid[i1 + 1], delta, score_thr, log=log)
 
         edges.append(float(xL))
         edges.append(float(xR))
@@ -316,7 +334,8 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
         'x_grid': x_grid,
         'm_grid': m_grid,
         'im_grid': im_grid,
-        'im_thr': float(im_thr),
+        'score_thr': float(score_thr),
+        'score_grid': score_grid,
         'edges': edges,
         'est_supp': est_supp,
         'x_min': x_min,
