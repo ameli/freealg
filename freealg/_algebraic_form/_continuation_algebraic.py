@@ -65,7 +65,8 @@ def _normalize_coefficients(arr):
 # sample z joukowski
 # ==================
 
-def sample_z_joukowski(a, b, n_samples=4096, r=1.25, n_r=3, r_min=None):
+def sample_z_joukowski(a, b, n_samples=4096, r=1.25, n_r=3, r_min=None,
+                       log=False):
 
     if r_min is None:
         r_min = 1.0 + 0.05 * (r - 1.0) if r > 1.0 else 1.0
@@ -87,7 +88,13 @@ def sample_z_joukowski(a, b, n_samples=4096, r=1.25, n_r=3, r_min=None):
     z_list = []
     for r_i in rs:
         w = r_i * numpy.exp(1j * theta)
-        z = joukowski_z(w, a, b)
+
+        if log:
+            z = joukowski_z(w, numpy.log(a), numpy.log(b))
+            z = numpy.exp(z.real) + 1j * z.imag
+        else:
+            z = joukowski_z(w, a, b)
+
         z_list.append(z)
         z_list.append(numpy.conjugate(z))
 

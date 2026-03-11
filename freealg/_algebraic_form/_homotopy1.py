@@ -159,10 +159,10 @@ def _path_energy(z_list, path, *, lam_space, lam_asym, lam_tiny_im, tiny_im,
 class StieltjesPoly(object):
     """Callable m(z) for P(z,m)=0 using robust branch selection."""
 
-    def __init__(self, coeffs, mom=None, *, viterbi_opt=None, eps=None,
+    def __init__(self, coeffs, mom=None, *, stieltjes_opt=None, eps=None,
                  height=2.0, steps=80, order=15):
         self.coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
-        self.viterbi_opt = dict(viterbi_opt or {})
+        self.stieltjes_opt = dict(stieltjes_opt or {})
         self.eps = eps
         self.height = float(height)
         self.steps = int(steps)
@@ -248,12 +248,12 @@ class StieltjesPoly(object):
         if abs(z_eval) > rad:
             target = self._moment_est(z_eval)
             return _select_with_target(z_eval, self._poly_roots(z_eval), target,
-                                       tol_im=float(self.viterbi_opt.get("tol_im", 1e-14)),
+                                       tol_im=float(self.stieltjes_opt.get("tol_im", 1e-14)),
                                        lam_asym=0.25, lam_target=1.0)
 
         z0 = 1j * rad if sgn > 0 else -1j * rad
         target = self._moment_est(z0)
-        tol_im = float(self.viterbi_opt.get("tol_im", 1e-14))
+        tol_im = float(self.stieltjes_opt.get("tol_im", 1e-14))
         w_prev = _select_with_target(z0, self._poly_roots(z0), target, tol_im,
                                      lam_asym=0.25, lam_target=1.0)
         # Straight-line continuation.
@@ -273,8 +273,8 @@ class StieltjesPoly(object):
             r = self._poly_roots(z)
             if r.size == 0:
                 return numpy.nan + 1j * numpy.nan
-            tol_im = float(self.viterbi_opt.get("tol_im", 1e-14))
-            lam_asym = float(self.viterbi_opt.get("lam_asym", 1.0))
+            tol_im = float(self.stieltjes_opt.get("tol_im", 1e-14))
+            lam_asym = float(self.stieltjes_opt.get("lam_asym", 1.0))
             return _select_with_target(z, r, target, tol_im, lam_asym=lam_asym, lam_target=1.0)
 
     def __call__(self, z):
@@ -314,7 +314,7 @@ class StieltjesPoly(object):
                 "repair_cuts": True,
                 "repair_factor": 4.0,
             }
-            opt.update(self.viterbi_opt)
+            opt.update(self.stieltjes_opt)
             tol_im = float(opt["tol_im"])
 
             if opt["tiny_im"] is None:

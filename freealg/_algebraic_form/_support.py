@@ -13,7 +13,6 @@
 
 import numpy
 import numpy.polynomial.polynomial as poly
-from ._homotopy6 import StieltjesPoly
 
 __all__ = ['estimate_support']
 
@@ -166,8 +165,8 @@ def _bisect_edge(stieltjes_poly, x_lo, x_hi, delta, thr, log=False,
 # estimate support
 # ================
 
-def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
-                     thr_rel=1e-4, weak_thr_factor=1e-2,
+def estimate_support(coeffs, stieltjes, x_min, x_max, n_scan=4000, log=False,
+                     delta=None, thr_rel=1e-4, weak_thr_factor=1e-2,
                      min_log_width_mult=2.0, **kwargs):
 
     coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
@@ -180,16 +179,6 @@ def estimate_support(coeffs, x_min, x_max, n_scan=4000, log=False, delta=None,
     if delta is None:
         delta = 1e-6 * scale
     delta = float(delta)
-
-    vopt = {
-        'lam_space': 1.0,
-        'lam_asym': 1.0,
-        'lam_tiny_im': 200.0,
-        'tiny_im': 0.5 * delta,
-        'tol_im': 1e-14,
-    }
-    vopt.update(kwargs.get('viterbi_opt', {}) or {})
-    stieltjes = StieltjesPoly(coeffs, viterbi_opt=vopt)
 
     if log:
         x_grid = numpy.geomspace(x_min, x_max, n_scan)

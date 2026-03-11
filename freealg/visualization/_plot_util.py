@@ -71,7 +71,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
     Parameters
     ----------
 
-    x : numpy.array, dfault=None
+    x : numpy.array, default=None
         The abscissa to plot density.
 
     rho : numpy.ndarray, default=None
@@ -114,17 +114,23 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
         ax.plot(x, rho, color='black', label=label, zorder=3)
 
+        # Remove zero rho for the plot in log-scale
         if log:
-            l_max = numpy.log10(numpy.max(rho))
-            l_min = numpy.log10(numpy.min(rho))
+            rho[rho == 0.0] = numpy.nan
+
+        if log:
+            l_max = numpy.log10(numpy.nanmax(rho))
+            l_min = numpy.log10(numpy.nanmin(rho))
             l_cen = 0.5 * (l_max + l_min)
             l_rad = 0.5 * (l_max - l_min)
-            min_y = 10.0**(l_cen - 1.1 * l_rad)
+            max_y = 10.0**(l_cen + 1.1 * l_rad)
+            min_y = numpy.nanmax([10.0**(l_cen - 1.1 * l_rad), 1e-16])
+            ax.set_ylim([min_y, max_y])
         else:
             min_y = 0.0
+            ax.set_ylim(bottom=min_y)
 
         ax.set_xlim([x[0], x[-1]])
-        ax.set_ylim(bottom=min_y)
 
         # Lock y autoscaling so hist won't change it if there is an atom
         ax.relim()

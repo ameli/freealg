@@ -46,12 +46,9 @@ from ._decompress import decompress_newton
 from ._deform5 import deform_newton  # predictor-corrector
 
 # Homotopy
-# from ._homotopy import StieltjesPoly
-# from ._homotopy2 import StieltjesPoly
-# from ._homotopy3 import StieltjesPoly  # Viterbi
-# from ._homotopy4 import StieltjesPoly
-# from ._homotopy5 import StieltjesPoly
-from ._homotopy6 import StieltjesPoly
+# from ._homotopy1 import StieltjesPoly  # pure 1D horizontal Viterbi
+# from ._homotopy2 import StieltjesPoly  # 2D hybrid (vertical + horizontal)
+from ._homotopy3 import StieltjesPoly    # pure vertical, empirical/asymptote
 
 from ._moments import Moments, AlgebraicStieltjesMoments
 from ..visualization._plot_util import plot_density, plot_hilbert, \
@@ -109,9 +106,13 @@ class AlgebraicForm(BaseForm):
           double precision floating point. This option is only available on
           Linux machines.
 
-    **kwargs : dict, optional
-        Parameters for the :func:`supp` function can also be prescribed
-        here when ``support=None``.
+    stieltjes_opt : dict, default={}
+        Dictionary of options to configure the computation of Stieltjes
+        transform from the fitted polynomial.
+
+    supp_opt : dict, default={}
+        Dictionary of parameters to pass to :func:`supp` function when
+        ``support=None``.
 
     Attributes
     ----------
@@ -296,7 +297,7 @@ class AlgebraicForm(BaseForm):
     # ====
 
     def __init__(self, A, support=None, ratio=None, delta=1e-5, log=False,
-                 dtype='complex128', **kwargs):
+                 dtype='complex128', stieltjes_opt={}, supp_opt={}):
         """
         Initialization.
         """
@@ -312,6 +313,7 @@ class AlgebraicForm(BaseForm):
         self._moments = None
         self.supp = support
         self.est_supp = None  # Estimated from polynomial after fitting
+        self.stieltjes_opt = stieltjes_opt
 
         if hasattr(A, 'stieltjes') and callable(getattr(A, 'stieltjes', None)):
             # This is one of the distribution objects, like MarchenkoPastur
@@ -344,7 +346,7 @@ class AlgebraicForm(BaseForm):
                 numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
             self._moments = Moments(self.eig)  # NOTE (never used)
 
-        # Check eigenavlues to be positive when log is True
+        # Check eigenvalues to be positive when log is True
         if (self.eig is not None) and (self._log is True):
             if numpy.any(self.eig <= 0):
                 raise ValueError('Eigenvalues are not all positive. This '
@@ -356,7 +358,8 @@ class AlgebraicForm(BaseForm):
                 raise RuntimeError("Support must be provided without data")
 
             # Detect support
-            self.lam_m, self.lam_p = estimate_broad_supp(self.eig, **kwargs)[0]
+            self.lam_m, self.lam_p = \
+                estimate_broad_supp(self.eig, **supp_opt)[0]
             self.broad_supp = (float(self.lam_m), float(self.lam_p))
         else:
             self.lam_m = float(min([s[0] for s in self.supp]))
@@ -548,6 +551,7 @@ class AlgebraicForm(BaseForm):
         else:
             possible_supp = [self.broad_supp]
 
+        # ----------------
         # Sampling points for fitting
         z_fits = []
         for sup in possible_supp:
@@ -555,13 +559,53 @@ class AlgebraicForm(BaseForm):
 
             for i in range(len(r)):
                 z_fits.append(sample_z_joukowski(a, b, n_samples=n_samples,
-                                                 r=r[i], n_r=n_r[i]))
+                                                 r=r[i], n_r=n_r[i],
+                                                 log=self._log))
 
         z_fit = numpy.concatenate(z_fits)
+        # ----------------
+        # TEST
+        # # Sampling points for fitting
+        # z_fits = []
+        #
+        # if self._log and (len(possible_supp) > 1):
+        #     widths = numpy.array([
+        #         max(numpy.log(float(b) / float(a)), 1e-12)
+        #         for a, b in possible_supp
+        #     ], dtype=float)
+        #
+        #     widths = widths / numpy.mean(widths)
+        #
+        #     def _even_int(x):
+        #         n = int(2 * round(float(x) / 2.0))
+        #         return max(n, 32)
+        #
+        #     n_samples_list = [_even_int(n_samples * w) for w in widths]
+        # else:
+        #     n_samples_list = [int(n_samples)] * len(possible_supp)
+        #
+        # for sup, n_samples_i in zip(possible_supp, n_samples_list):
+        #     a, b = sup
+        #
+        #     for i in range(len(r)):
+        #         z_fits.append(sample_z_joukowski(
+        #             a, b, n_samples=n_samples_i, r=r[i], n_r=n_r[i]))
+        #
+        # z_fit = numpy.concatenate(z_fits)
+        # ------------------
 
         # Remove points too close to any cut
         z_fit = filter_z_away_from_cuts(z_fit, possible_supp, y_eps=y_eps,
                                         x_pad=x_pad)
+
+        # Sampling weights (seems not helping, so I comment them out for now)
+        # if self._log:
+        #     y = numpy.abs(numpy.imag(z_fit))
+        #     y0 = max(float(y_eps), 1e-12)
+        #     weights = (y0 / numpy.maximum(y, y0))**0.5
+        # else:
+        #     weights = None
+        weights = None
 
         # Automatically add mu constraints from eigenvalues
         if mu == 'auto':
@@ -577,11 +621,8 @@ class AlgebraicForm(BaseForm):
         m1_fit = self._stieltjes(z_fit)
         self.coeffs, fit_metrics = fit_polynomial_relation(
                 z_fit, m1_fit, s=deg_m, deg_z=deg_z, ridge_lambda=reg,
-                triangular=triangular, normalize=normalize, mu=mu,
-                mu_reg=mu_reg)
-
-        # Estimate support from the fitted polynomial
-        self.est_supp = self.support(self.coeffs)
+                weights=weights, triangular=triangular, normalize=normalize,
+                mu=mu, mu_reg=mu_reg)
 
         # Reporting error
         P_res = numpy.abs(eval_P(z_fit, m1_fit, self.coeffs))
@@ -598,7 +639,7 @@ class AlgebraicForm(BaseForm):
         info['res_max'] = float(res_max)
         info['res_99_9'] = float(res_99_9)
         info['fit_metrics'] = fit_metrics
-        self.into = info
+        self.info = info
 
         # -----------------
 
@@ -606,18 +647,21 @@ class AlgebraicForm(BaseForm):
         # x_min, x_max = self._inflate_broad_supp(inflate=0.2)
         # scale = float(max(1.0, abs(x_max - x_min), abs(x_min), abs(x_max)))
         # eta = 1e-6 * scale
-        #
-        # vopt = {
-        #     'lam_space': 1.0,
-        #     'lam_asym': 1.0,
-        #     'lam_tiny_im': 200.0,
-        #     'tiny_im': 0.5 * eta,
-        #     'tol_im': 1e-14,
-        # }
+
+        # Update defaults if these options are not given
+        self.stieltjes_opt.setdefault("max_subdivide", 2)
+        self.stieltjes_opt.setdefault("log_scale", self._log)
+        self.stieltjes_opt.setdefault("anchor_ratio", 1.0)
+        self.stieltjes_opt.setdefault("anchor_y_min", max(self.delta, 1e-8))
+        self.stieltjes_opt.setdefault("anchor_y_max", 1)
 
         # NOTE overwrite init
-        self._stieltjes = StieltjesPoly(self.coeffs)
-        # self._stieltjes = StieltjesPoly(self.coeffs, viterbi_opt=vopt)
+        self._stieltjes = StieltjesPoly(self.coeffs,
+                                        stieltjes_opt=self.stieltjes_opt,
+                                        emp_eigs=self.eig)
+
+        # Estimate support from the fitted polynomial
+        self.est_supp = self.support(self.coeffs)
 
         self._moments_base = AlgebraicStieltjesMoments(self.coeffs)
         self.moments = Moments(self._moments_base)
@@ -776,8 +820,9 @@ class AlgebraicForm(BaseForm):
             x_min, x_max = self._inflate_broad_supp(inflate=0.2)
 
         est_supp, info = estimate_support(
-            coeffs, x_min=x_min, x_max=x_max, n_scan=n_scan, delta=self.delta,
-            log=self._log, thr_rel=thr_rel, weak_thr_factor=weak_thr_factor,
+            coeffs, self._stieltjes, x_min=x_min, x_max=x_max, n_scan=n_scan,
+            delta=self.delta, log=self._log, thr_rel=thr_rel,
+            weak_thr_factor=weak_thr_factor,
             min_log_width_mult=min_log_width_mult)
 
         if return_info:
@@ -1076,8 +1121,16 @@ class AlgebraicForm(BaseForm):
             if (ac_only is True):
                 rho = rho_ac
 
+        # Remove densities near Poisson kernel delta floor to zero
+        if self._log:
+            kernel_floor = (self.delta / numpy.pi) / (self.delta**2 + x**2)
+            factor = 5.0
+            rho[rho < factor * kernel_floor] = 0.0
+
         if plot:
-            plot_density(x, rho_ac, eig=self.eig, atoms=atoms_list,
+            # Pass a copy of rho since in plot function it's zero values will
+            # be set to nan.
+            plot_density(x, numpy.copy(rho), eig=self.eig, atoms=atoms_list,
                          support=self.est_supp, label='Estimate',
                          log=self._log, latex=latex, save=save)
 
@@ -1551,8 +1604,8 @@ class AlgebraicForm(BaseForm):
     # candidates
     # ==========
 
-    def candidates(self, size, x=None, delta=1e-4, markersize=3, latex=False,
-                   verbose=False):
+    def candidates(self, size, x=None, eig=None, delta=None, markersize=1,
+                   latex=False, verbose=False):
         """
         Candidate densities of free decompression from all possible roots
 
@@ -1566,9 +1619,13 @@ class AlgebraicForm(BaseForm):
         x : array_like of float, shape (N,)
             1D array of real x-values (evaluation grid).
 
+        eig : numpy.array, default=None
+            Eigenvalues to plot as histogtam.
+
         delta : float, optional
             Small positive imaginary offset used to evaluate
-            :math:`m(x + i \\delta)`.
+            :math:`m(x + i \\delta)`. If `None`, the ``delta`` attribute of the
+            object is used.
 
         size : integer, optional
             For labelling purposes, the size of the corresponding matrix can
@@ -1677,10 +1734,13 @@ class AlgebraicForm(BaseForm):
         else:
             x = numpy.asarray(x)
 
+        # Poisson kernel shift
+        delta_ = self.delta if delta is None else delta
+
         for i in range(alpha.size):
             t_i = numpy.log(alpha[i])
             coeffs_i = decompress_coeffs(self.coeffs, t_i)
-            plot_candidates(coeffs_i, x, delta=delta,
+            plot_candidates(coeffs_i, x, eig=eig, delta=delta_,
                             size=int(alpha[i]*self.n), log=self._log,
                             markersize=markersize, latex=latex,
                             verbose=verbose)

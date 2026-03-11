@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.special import comb
 import texplot
 from ._continuation_algebraic import _normalize_coefficients
+from ..visualization._hist_util import auto_bins
 
 __all__ = ['decompress_coeffs', 'plot_candidates']
 
@@ -94,8 +95,8 @@ def decompress_coeffs(a, t, normalize=True):
 # plot candidates
 # ===============
 
-def plot_candidates(a, x, delta=1e-4, size=None, log=False, markersize=3,
-                    latex=False, verbose=False):
+def plot_candidates(a, x, eig=None, delta=1e-4, size=None, log=False,
+                    markersize=3, latex=False, verbose=False):
     """
     Plot candicate roots.
     """
@@ -166,12 +167,30 @@ def plot_candidates(a, x, delta=1e-4, size=None, log=False, markersize=3,
 
     with texplot.theme(use_latex=latex):
         fig, ax = plt.subplots(figsize=(6, 2.7))
-        ax.scatter(xs, ys, s=markersize, alpha=1, linewidths=0, c='k')
+        ax.scatter(xs, ys, s=markersize, alpha=1, linewidths=0, c='k',
+                   zorder=2)
 
         ax.set_xlim([x[0], x[-1]])
 
-        if not log:
+        if log:
+            min_y = numpy.min(ys)
+            min_y = numpy.max([min_y, 1e-16])
+            ax.set_ylim(bottom=min_y)
+        else:
             ax.set_ylim([0, 1.1 * numpy.quantile(ys, 0.99)])
+
+        if (eig is not None):
+            lam_m, lam_p = min(eig), max(eig)
+
+            if log:
+                nbins = auto_bins(numpy.log10(eig))
+                bins = numpy.geomspace(lam_m, lam_p, nbins)
+            else:
+                nbins = auto_bins(eig)
+                bins = numpy.linspace(lam_m, lam_p, nbins)
+            _ = ax.hist(eig, bins, density=True, color='royalblue', alpha=0.5,
+                        edgecolor='none', label='Empirical Histogram',
+                        zorder=1)
 
         ax.set_xlabel(r'$\lambda$')
         ax.set_ylabel(r'$\rho(\lambda)$''')
@@ -182,6 +201,7 @@ def plot_candidates(a, x, delta=1e-4, size=None, log=False, markersize=3,
             ax.set_yscale('log')
             ax.grid(which='both', axis='x')
 
+        # Save
         if size is not None:
             ax.set_title(
                 "Candidate Density Cloud (size = {})".format(size))
