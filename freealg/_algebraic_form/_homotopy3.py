@@ -25,7 +25,7 @@ import numpy
 
 try:
     from ._moments import AlgebraicStieltjesMoments
-except Exception:  # pragma: no cover
+except Exception:
     AlgebraicStieltjesMoments = None
 
 __all__ = ["StieltjesPoly", "_roots_m"]
@@ -359,8 +359,12 @@ class StieltjesPoly(object):
 
     def __init__(self, coeffs, mom=None, *, stieltjes_opt=None, eps=None,
                  height=2.0, steps=80, order=15, emp_eigs=None,
-                 anchor_mode=None):
-        self.coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
+                 anchor_mode=None, dtype=complex):
+
+        self.dtype = dtype
+        self.rdtype = numpy.empty((), dtype=self.dtype).real.dtype
+
+        self.coeffs = numpy.asarray(coeffs, dtype=self.dtype)
         if self.coeffs.ndim != 2:
             raise ValueError("coeffs must be a 2D array.")
 
@@ -376,7 +380,7 @@ class StieltjesPoly(object):
         self._m0m = None
 
         self.emp_eigs = None if emp_eigs is None else numpy.asarray(
-            emp_eigs, dtype=numpy.float64)
+            emp_eigs, dtype=self.rdtype)
 
         if anchor_mode is None:
             anchor_mode = self.stieltjes_opt.get("anchor_mode", "asymptotic")
@@ -411,7 +415,7 @@ class StieltjesPoly(object):
             Imaginary-part admissibility tolerance at the anchor.
         """
 
-        self.emp_eigs = numpy.asarray(eigs, dtype=numpy.float64)
+        self.emp_eigs = numpy.asarray(eigs, dtype=self.rdtype)
         self.anchor_mode = "empirical"
 
         if anchor_y is not None:
@@ -420,7 +424,6 @@ class StieltjesPoly(object):
         if tol_im is not None:
             self.stieltjes_opt["emp_tol_im"] = float(tol_im)
 
-        # NEW:
         if log_scale is not None:
             self.stieltjes_opt["log_scale"] = bool(log_scale)
 
@@ -465,7 +468,7 @@ class StieltjesPoly(object):
 
         try:
             mu = numpy.array([self._mom(j) for j in range(self.order + 1)],
-                             dtype=numpy.complex128)
+                             dtype=self.dtype)
             ratios = []
             for j in range(2, self.order + 1):
                 den = mu[j - 1]
@@ -496,7 +499,7 @@ class StieltjesPoly(object):
             pass
         try:
             mu = numpy.array([self._mom(j) for j in range(self.order + 1)],
-                             dtype=numpy.complex128)
+                             dtype=self.dtype)
             z = complex(z)
             return -numpy.sum(mu * (z ** (-numpy.arange(self.order + 1) - 1)))
         except Exception:
@@ -577,7 +580,7 @@ class StieltjesPoly(object):
         y_start = float(abs(y_start))
         y_stop = float(abs(y_stop))
         if numpy.isclose(y_start, y_stop):
-            return numpy.array([y_start], dtype=float)
+            return numpy.array([y_start], dtype=self.rdtype)
 
         y_hi = max(y_start, y_stop)
         y_lo = min(y_start, y_stop)
@@ -712,7 +715,7 @@ class StieltjesPoly(object):
         z_anchor = complex(numpy.real(z_eval), sgn * y_anchor)
 
         roots = numpy.asarray(_roots_m(self.coeffs, z_anchor),
-                              dtype=numpy.complex128)
+                              dtype=self.dtype)
         if roots.size == 0:
             return self._scalar_from_top(z_eval)
 
@@ -755,17 +758,16 @@ class StieltjesPoly(object):
         """
         """
 
-        z_arr = numpy.asarray(z, dtype=numpy.complex128)
+        z_arr = numpy.asarray(z, dtype=self.dtype)
         scalar = (z_arr.ndim == 0)
 
         if scalar:
             return numpy.asarray(
-                self.evaluate_scalar(complex(z_arr)),
-                dtype=numpy.complex128)
+                self.evaluate_scalar(complex(z_arr)), dtype=self.dtype)
 
         shp = z_arr.shape
         z_flat = z_arr.ravel()
-        out = numpy.empty(z_flat.size, dtype=numpy.complex128)
+        out = numpy.empty(z_flat.size, dtype=self.dtype)
 
         for k in range(z_flat.size):
             out[k] = self.evaluate_scalar(z_flat[k])

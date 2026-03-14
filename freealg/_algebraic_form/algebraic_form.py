@@ -14,14 +14,16 @@
 import numpy
 from .._base_form import BaseForm
 from .._util import compute_eig
+
 from ._continuation_algebraic import sample_z_joukowski, \
-        filter_z_away_from_cuts, fit_polynomial_relation, \
-        sanity_check_stieltjes_branch, eval_P
+        filter_z_away_from_cuts, fit_polynomial_relation, eval_P
+
 from ._edge import evolve_edges, merge_edges, evolve_edges_with_births
 from ._cusp_wrap import cusp_wrap
 from ._branch_points import estimate_branch_points, plot_branch_points
 from ._atoms import detect_atoms, evolve_atoms
 from ._support import estimate_support
+
 from .._support import supp as estimate_broad_supp
 from ._decompressible import precheck_laurent
 from ._decompress_util import build_time_grid
@@ -90,8 +92,7 @@ class AlgebraicForm(BaseForm):
         estimated from the minimum and maximum of the eigenvalues.
 
     delta: float, default=1e-6
-        Size of perturbations into the upper half plane for Plemelj's
-        formula.
+        Size of perturbations into the upper half plane for Plemelj's formula.
 
     log : bool, default=False
         If `True`, it is assumed the spectral density is positive-definite and
@@ -308,7 +309,8 @@ class AlgebraicForm(BaseForm):
             self.ratio = float(ratio)
         else:
             self.ratio = None
-        self._stieltjes = None
+        self._stieltjes_emp = None   # empirical Stieltjes from eigenvalues
+        self._stieltjes_poly = None  # Stieltjes from fitted polynomial
         self.eig = None
         self._moments = None
         self.supp = support
@@ -317,13 +319,13 @@ class AlgebraicForm(BaseForm):
 
         if hasattr(A, 'stieltjes') and callable(getattr(A, 'stieltjes', None)):
             # This is one of the distribution objects, like MarchenkoPastur
-            self._stieltjes = A.stieltjes
+            self._stieltjes_emp = A.stieltjes
             self.supp = A.support()
             self.n = 1
 
         elif callable(A):
             # This is a custom function
-            self._stieltjes = A
+            self._stieltjes_emp = A
             self.n = 1
 
         else:
@@ -342,8 +344,9 @@ class AlgebraicForm(BaseForm):
                 self.eig = compute_eig(A)
 
             # Use empirical Stieltjes function
-            self._stieltjes = lambda z: \
-                numpy.mean(1.0/(self.eig-z[:, numpy.newaxis]), axis=-1)
+            self._stieltjes_emp = lambda z: \
+                numpy.mean(1.0 / (self.eig - z[:, numpy.newaxis]), axis=-1)
+
             self._moments = Moments(self.eig)  # NOTE (never used)
 
         # Check eigenvalues to be positive when log is True
@@ -368,7 +371,6 @@ class AlgebraicForm(BaseForm):
 
         # Initialize
         self.coeffs = None                 # Polynomial coefficients
-        self.info = None                   # Fitting information
 
     # ===
     # fit
@@ -376,7 +378,7 @@ class AlgebraicForm(BaseForm):
 
     def fit(self, deg_m, deg_z, reg=0.0, r=[1.25, 6.0, 20.0], n_r=[3, 2, 1],
             n_samples=4096, y_eps=2e-2, x_pad=0.0, triangular=None, mu='auto',
-            mu_reg=None, normalize=True, verbose=False, return_info=False):
+            mu_reg=None, normalize=True, verbose=False):
         """
         Fit an algebraic structure to the input data.
 
@@ -457,9 +459,6 @@ class AlgebraicForm(BaseForm):
         verbose : bool, default=False
             If `True`, debugging info is printed.
 
-        return_info : bool, default=False
-            If `True`, debugging info is also returned.
-
         Returns
         -------
 
@@ -467,10 +466,6 @@ class AlgebraicForm(BaseForm):
             A 2D array of the size :math:`(d_z, d_m)` where :math:`d_z` and
             :math:`d_m` are the degrees of :math:`P(z, m)` in :math:`z` and
             :math:`m` respectively.
-
-        info : dict
-            If ``return_info = True``, a dictionary of debugging info is also
-            returned.
 
         See Also
         --------
@@ -551,61 +546,21 @@ class AlgebraicForm(BaseForm):
         else:
             possible_supp = [self.broad_supp]
 
-        # ----------------
         # Sampling points for fitting
         z_fits = []
         for sup in possible_supp:
             a, b = sup
 
             for i in range(len(r)):
-                z_fits.append(sample_z_joukowski(a, b, n_samples=n_samples,
-                                                 r=r[i], n_r=n_r[i],
-                                                 log=self._log))
+                z_fits.append(sample_z_joukowski(
+                    a, b, n_samples=n_samples, r=r[i], n_r=n_r[i],
+                    log=self._log, dtype=self.dtype))
 
-        z_fit = numpy.concatenate(z_fits)
-        # ----------------
-        # TEST
-        # # Sampling points for fitting
-        # z_fits = []
-        #
-        # if self._log and (len(possible_supp) > 1):
-        #     widths = numpy.array([
-        #         max(numpy.log(float(b) / float(a)), 1e-12)
-        #         for a, b in possible_supp
-        #     ], dtype=float)
-        #
-        #     widths = widths / numpy.mean(widths)
-        #
-        #     def _even_int(x):
-        #         n = int(2 * round(float(x) / 2.0))
-        #         return max(n, 32)
-        #
-        #     n_samples_list = [_even_int(n_samples * w) for w in widths]
-        # else:
-        #     n_samples_list = [int(n_samples)] * len(possible_supp)
-        #
-        # for sup, n_samples_i in zip(possible_supp, n_samples_list):
-        #     a, b = sup
-        #
-        #     for i in range(len(r)):
-        #         z_fits.append(sample_z_joukowski(
-        #             a, b, n_samples=n_samples_i, r=r[i], n_r=n_r[i]))
-        #
-        # z_fit = numpy.concatenate(z_fits)
-        # ------------------
+        z_fit = numpy.concatenate(z_fits, dtype=self.dtype)
 
         # Remove points too close to any cut
         z_fit = filter_z_away_from_cuts(z_fit, possible_supp, y_eps=y_eps,
-                                        x_pad=x_pad)
-
-        # Sampling weights (seems not helping, so I comment them out for now)
-        # if self._log:
-        #     y = numpy.abs(numpy.imag(z_fit))
-        #     y0 = max(float(y_eps), 1e-12)
-        #     weights = (y0 / numpy.maximum(y, y0))**0.5
-        # else:
-        #     weights = None
-        weights = None
+                                        x_pad=x_pad, dtype=self.dtype)
 
         # Automatically add mu constraints from eigenvalues
         if mu == 'auto':
@@ -618,50 +573,32 @@ class AlgebraicForm(BaseForm):
                 mu = None
 
         # Fitting (w_inf = None means adaptive weight selection)
-        m1_fit = self._stieltjes(z_fit)
+        m1_fit = self._stieltjes_emp(z_fit)
         self.coeffs, fit_metrics = fit_polynomial_relation(
                 z_fit, m1_fit, s=deg_m, deg_z=deg_z, ridge_lambda=reg,
-                weights=weights, triangular=triangular, normalize=normalize,
-                mu=mu, mu_reg=mu_reg)
+                weights=None, triangular=triangular, normalize=normalize,
+                mu=mu, mu_reg=mu_reg, dtype=self.dtype)
 
         # Reporting error
         P_res = numpy.abs(eval_P(z_fit, m1_fit, self.coeffs))
         res_max = numpy.max(P_res[numpy.isfinite(P_res)])
         res_99_9 = numpy.quantile(P_res[numpy.isfinite(P_res)], 0.999)
 
-        # Check polynomial has Stieltjes root
-        x_min = self.lam_m - 1.0
-        x_max = self.lam_p + 1.0
-        info = sanity_check_stieltjes_branch(self.coeffs, x_min, x_max,
-                                             eta=max(y_eps, 1e-2), n_x=128,
-                                             max_bad_frac=0.05)
-
-        info['res_max'] = float(res_max)
-        info['res_99_9'] = float(res_99_9)
-        info['fit_metrics'] = fit_metrics
-        self.info = info
-
-        # -----------------
-
-        # Inflate a bit to make sure all points are searched
-        # x_min, x_max = self._inflate_broad_supp(inflate=0.2)
-        # scale = float(max(1.0, abs(x_max - x_min), abs(x_min), abs(x_max)))
-        # eta = 1e-6 * scale
-
         # Update defaults if these options are not given
-        self.stieltjes_opt.setdefault("max_subdivide", 2)
+        self.stieltjes_opt.setdefault("max_subdivide", 3)
         self.stieltjes_opt.setdefault("log_scale", self._log)
         self.stieltjes_opt.setdefault("anchor_ratio", 1.0)
         self.stieltjes_opt.setdefault("anchor_y_min", max(self.delta, 1e-8))
         self.stieltjes_opt.setdefault("anchor_y_max", 1)
 
-        # NOTE overwrite init
-        self._stieltjes = StieltjesPoly(self.coeffs,
-                                        stieltjes_opt=self.stieltjes_opt,
-                                        emp_eigs=self.eig)
+        # Stieltjes transform from fitted polynomial (not from empirical eigs)
+        self._stieltjes_poly = StieltjesPoly(
+            self.coeffs, stieltjes_opt=self.stieltjes_opt, emp_eigs=self.eig,
+            dtype=self.dtype)
 
         # Estimate support from the fitted polynomial
-        self.est_supp = self.support(self.coeffs)
+        # TEST (commented out since it is slow)
+        # self.est_supp = self.support(self.coeffs)
 
         self._moments_base = AlgebraicStieltjesMoments(self.coeffs)
         self.moments = Moments(self._moments_base)
@@ -681,26 +618,14 @@ class AlgebraicForm(BaseForm):
             coeffs_img_norm = numpy.linalg.norm(self.coeffs.imag, ord='fro')
             print(f'\nCoefficients (imag) norm: {coeffs_img_norm:>0.4e}')
 
-            if not info['ok']:
-                print("\nWARNING: sanity check failed:\n" +
-                      f"\tfrac_bad: {info['frac_bad']:>0.3f}\n" +
-                      f"\tn_bad   : {info['n_bad']}\n" +
-                      f"\tn_test  : {info['n_test']}")
-            else:
-                print('\nStieltjes sanity check: OK')
-
-        if return_info:
-            return self.coeffs, info
-        else:
-            return self.coeffs
+        return self.coeffs
 
     # =======
     # support
     # =======
 
-    def support(self, coeffs=None, scan_range=None, n_scan=4000, thr_rel=1e-4,
-                weak_thr_factor=1e-2, min_log_width_mult=2.0,
-                return_info=False):
+    def support(self, coeffs=None, scan_range=None, n_scan=1024, thr_rel=1e-4,
+                min_log_width_mult=1.0, return_info=False, **kwargs):
         """
         Estimate the spectral edges of the density.
 
@@ -718,20 +643,18 @@ class AlgebraicForm(BaseForm):
             based on an initial broad support guess from the minimum and
             maximum of the eigenvalues.
 
-        n_scan : int, default=4000
+        n_scan : int, default=1024
             Number of points to scan along the ``scan_range`` interval.
 
         thr_rel : float, default=1e-4
             Relative threshold on :math:`\\Im(m(x+i\\delta))` used to detect
-            support.
+            support. This is mainly relevant in linear-scale detection.
 
-        weak_thr_factor : float, default=1e-2
-            In log scale only, factor multiplying the main threshold to form a
-            weaker recovery threshold for faint bulks.
-
-        min_log_width_mult : float, default=2.0
-            In log scale only, minimum run width in units of log-grid spacing
-            required for the weaker-threshold recovery pass.
+        min_log_width_mult : float, default=1.0
+            In log-scale detection only, minimum accepted run width measured in
+            units of the log-grid spacing. Smaller values are more permissive
+            and may keep narrow bulks; larger values are more conservative and
+            may suppress spurious tiny runs.
 
         return_info : bool, default=False
             If `True`, debug info is also returned.
@@ -803,6 +726,16 @@ class AlgebraicForm(BaseForm):
              (4.162723779878648, 7.595354543299085)]
         """
 
+        # Default kwargs
+        kwargs.setdefault("seed_drop", 3.0)
+        kwargs.setdefault("edge_drop", 1.0)
+        kwargs.setdefault("edge_rel", 0.1)
+        kwargs.setdefault("valley_rel", 0.35)
+        kwargs.setdefault("smooth_width", 7)
+        kwargs.setdefault("n_refine", 256)
+        kwargs.setdefault("refine", True)
+        kwargs.setdefault("merge_micro_gaps", True)
+
         if coeffs is None:
             if self.coeffs is None:
                 raise RuntimeError('Call "fit" first.')
@@ -820,10 +753,9 @@ class AlgebraicForm(BaseForm):
             x_min, x_max = self._inflate_broad_supp(inflate=0.2)
 
         est_supp, info = estimate_support(
-            coeffs, self._stieltjes, x_min=x_min, x_max=x_max, n_scan=n_scan,
-            delta=self.delta, log=self._log, thr_rel=thr_rel,
-            weak_thr_factor=weak_thr_factor,
-            min_log_width_mult=min_log_width_mult)
+            coeffs, self._stieltjes_poly, x_min=x_min, x_max=x_max,
+            n_scan=n_scan, delta=self.delta, log=self._log, thr_rel=thr_rel,
+            min_log_width_mult=min_log_width_mult, **kwargs)
 
         if return_info:
             return est_supp, info
@@ -1012,7 +944,7 @@ class AlgebraicForm(BaseForm):
         if self.coeffs is None:
             raise RuntimeError('Call "fit" first.')
 
-        atoms_list = detect_atoms(self.coeffs, self._stieltjes, eta=eta,
+        atoms_list = detect_atoms(self.coeffs, self._stieltjes_poly, eta=eta,
                                   tol=tol, real_tol=real_tol, w_tol=w_tol,
                                   merge_tol=merge_tol)
 
@@ -1105,7 +1037,7 @@ class AlgebraicForm(BaseForm):
 
         # Preallocate density to zero
         z = x.astype(complex) + 1j * self.delta
-        rho = self._stieltjes(z).imag / numpy.pi
+        rho = self._stieltjes_poly(z).imag / numpy.pi
 
         rho_ac = rho
         atoms_list = self.atoms()
@@ -1224,7 +1156,7 @@ class AlgebraicForm(BaseForm):
             x = self._generate_grid(1.25, log=self._log)
 
         # Preallocate density to zero
-        hilb = -self._stieltjes(x).real / numpy.pi
+        hilb = -self._stieltjes_poly(x).real / numpy.pi
 
         if plot:
             plot_hilbert(x, hilb, support=self.broad_supp, log=self._log,
@@ -1350,7 +1282,7 @@ class AlgebraicForm(BaseForm):
             x_grid, y_grid = numpy.meshgrid(x.real, y.real)
             z = x_grid + 1j * y_grid              # shape (Ny, Nx)
 
-        m = self._stieltjes(z)
+        m = self._stieltjes_poly(z)
 
         if plot:
             plot_stieltjes(x, y, m, m, self.broad_supp, latex=latex,
@@ -1471,10 +1403,10 @@ class AlgebraicForm(BaseForm):
         alpha = numpy.atleast_1d(size) / self.n
 
         # Lower and upper bound on new support
-        hilb_lb = \
-            (1.0 / self._stieltjes(self.lam_m + self.delta * 1j).item()).real
-        hilb_ub = \
-            (1.0 / self._stieltjes(self.lam_p + self.delta * 1j).item()).real
+        m_lb = self._stieltjes_poly(self.lam_m + self.delta * 1j).item()
+        m_ub = self._stieltjes_poly(self.lam_p + self.delta * 1j).item()
+        hilb_lb = (1.0 / m_lb).real
+        hilb_ub = (1.0 / m_ub).real
         lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
         ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
 
@@ -1522,7 +1454,7 @@ class AlgebraicForm(BaseForm):
             z_query = x_safe + 1j * self.delta
 
             # Initial condition at t = 0 (physical branch)
-            w0_list = self._stieltjes(z_query)
+            w0_list = self._stieltjes_poly(z_query)
 
             # Remove atom from Stieltjes transform (Experimental)
             # if len(atoms0) > 0:
@@ -1620,7 +1552,7 @@ class AlgebraicForm(BaseForm):
             1D array of real x-values (evaluation grid).
 
         eig : numpy.array, default=None
-            Eigenvalues to plot as histogtam.
+            Eigenvalues to plot as histogram.
 
         delta : float, optional
             Small positive imaginary offset used to evaluate
@@ -1708,10 +1640,10 @@ class AlgebraicForm(BaseForm):
         alpha = numpy.atleast_1d(size) / self.n
 
         # Lower and upper bound on new support
-        hilb_lb = \
-            (1.0 / self._stieltjes(self.lam_m + self.delta * 1j).item()).real
-        hilb_ub = \
-            (1.0 / self._stieltjes(self.lam_p + self.delta * 1j).item()).real
+        m_lb = self._stieltjes_poly(self.lam_m + self.delta * 1j).item()
+        m_ub = self._stieltjes_poly(self.lam_p + self.delta * 1j).item()
+        hilb_lb = (1.0 / m_lb).real
+        hilb_ub = (1.0 / m_ub).real
         lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
         ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
 
@@ -2318,7 +2250,7 @@ class AlgebraicForm(BaseForm):
             z_query = x_safe + 1j * self.delta
 
             # Initial condition at t = 0 (physical branch)
-            w0_list = self._stieltjes(z_query)
+            w0_list = self._stieltjes_poly(z_query)
 
             # Remove atom from Stieltjes transform (Experimental)
             # if len(atoms0) > 0:

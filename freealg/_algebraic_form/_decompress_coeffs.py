@@ -6,7 +6,7 @@ import numpy
 import matplotlib.pyplot as plt
 from scipy.special import comb
 import texplot
-from ._continuation_algebraic import _normalize_coefficients
+from ._continuation_algebraic import _normalize_coefficients, eval_roots
 from ..visualization._hist_util import auto_bins
 
 __all__ = ['decompress_coeffs', 'plot_candidates']
@@ -98,7 +98,7 @@ def decompress_coeffs(a, t, normalize=True):
 def plot_candidates(a, x, eig=None, delta=1e-4, size=None, log=False,
                     markersize=3, latex=False, verbose=False):
     """
-    Plot candicate roots.
+    Plot candidate roots.
     """
 
     if not (isinstance(delta, (float, int)) and delta > 0):
@@ -114,45 +114,22 @@ def plot_candidates(a, x, eig=None, delta=1e-4, size=None, log=False,
     if not numpy.issubdtype(a.dtype, numpy.number):
         raise ValueError("a must be numeric.")
 
-    i_degree = a.shape[0] - 1
-
     xs = []
     ys = []
-    max_ys = numpy.zeros_like(x)
+    max_ys = numpy.zeros_like(x, dtype=float)
 
-    # Precompute i-powers indices to avoid repeated arange creation.
-    i_idx = numpy.arange(i_degree + 1)
+    z = x.astype(complex) + 1j * float(delta)
+    roots = eval_roots(z, a, dtype=complex)
 
-    for idx, xk in enumerate(x):
-        z = complex(float(xk), float(delta))  # x + i * delta
-
-        # b[j] = sum_i a[i, j] * z^i  => polynomial in m:
-        #   sum_{j=0..J} b[j] m^j = 0
-        z_pows = z ** i_idx  # length I+1
-        b = (z_pows[:, None] * a).sum(axis=0)  # length J+1, low->high in m
-
-        # Trim trailing (highest-degree) coefficients near zero to avoid
-        # numerical issues in numpy.roots. b is low->high, so trim from end.
-        tol = 1e-14
-        b_trim = b.copy()
-        while b_trim.size > 1 and abs(b_trim[-1]) < tol:
-            b_trim = b_trim[:-1]
-
-        # If constant polynomial (no roots), skip.
-        if b_trim.size <= 1:
-            continue
-
-        # numpy.roots expects highest degree first.
-        coeffs_high_to_low = b_trim[::-1]
-        roots = numpy.roots(coeffs_high_to_low)
-
-        # Keep only roots with positive imaginary part.
-        im = numpy.imag(roots)
+    for idx in range(x.size):
+        im = numpy.imag(roots[idx])
         mask = im > 0
+
         if numpy.any(mask):
-            xs.append(numpy.full(mask.sum(), float(xk)))
-            ys.append(im[mask] / numpy.pi)
-            max_ys[idx] = max(ys[-1])
+            dens = im[mask] / numpy.pi
+            xs.append(numpy.full(mask.sum(), float(x[idx])))
+            ys.append(dens)
+            max_ys[idx] = numpy.max(dens)
 
     if verbose:
         max_density = numpy.trapezoid(max_ys, x)
@@ -168,16 +145,22 @@ def plot_candidates(a, x, eig=None, delta=1e-4, size=None, log=False,
     with texplot.theme(use_latex=latex):
         fig, ax = plt.subplots(figsize=(6, 2.7))
         ax.scatter(xs, ys, s=markersize, alpha=1, linewidths=0, c='k',
-                   zorder=2)
+                   zorder=2, label='Roots')
 
         ax.set_xlim([x[0], x[-1]])
 
-        if log:
-            min_y = numpy.min(ys)
-            min_y = numpy.max([min_y, 1e-16])
-            ax.set_ylim(bottom=min_y)
+        if ys.size > 0:
+            if log:
+                min_y = numpy.quantile(ys, 0.01)
+                min_y = numpy.max([min_y, 1e-16])
+                ax.set_ylim([min_y, 5.0 * numpy.quantile(ys, 0.99)])
+            else:
+                ax.set_ylim([0, 1.1 * numpy.quantile(ys, 0.99)])
         else:
-            ax.set_ylim([0, 1.1 * numpy.quantile(ys, 0.99)])
+            if log:
+                ax.set_ylim(bottom=1e-16)
+            else:
+                ax.set_ylim([0, 1])
 
         if (eig is not None):
             lam_m, lam_p = min(eig), max(eig)
@@ -195,6 +178,7 @@ def plot_candidates(a, x, eig=None, delta=1e-4, size=None, log=False,
         ax.set_xlabel(r'$\lambda$')
         ax.set_ylabel(r'$\rho(\lambda)$''')
         ax.set_title("Candidate Density Cloud")
+        ax.legend(fontsize='x-small', markerscale=4.0)
 
         if log:
             ax.set_xscale('log')
