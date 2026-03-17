@@ -94,10 +94,10 @@ def sample_z_joukowski(a, b, n_samples=4096, r=1.25, n_r=3, r_min=None,
             z = joukowski_z(w, numpy.log(a), numpy.log(b))
 
             # Option 1: Log only along x axis
-            # z = numpy.exp(z.real) + 1j * z.imag
+            z = numpy.exp(z.real) + 1j * z.imag
 
             # Option 2: Full log in z plane
-            z = numpy.exp(z)
+            # z = numpy.exp(z)
         else:
             z = joukowski_z(w, a, b)
 

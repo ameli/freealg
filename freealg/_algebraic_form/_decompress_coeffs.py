@@ -149,19 +149,6 @@ def plot_candidates(a, x, eig=None, delta=1e-4, size=None, log=False,
 
         ax.set_xlim([x[0], x[-1]])
 
-        if ys.size > 0:
-            if log:
-                min_y = numpy.quantile(ys, 0.01)
-                min_y = numpy.max([min_y, 1e-16])
-                ax.set_ylim([min_y, 5.0 * numpy.quantile(ys, 0.99)])
-            else:
-                ax.set_ylim([0, 1.1 * numpy.quantile(ys, 0.99)])
-        else:
-            if log:
-                ax.set_ylim(bottom=1e-16)
-            else:
-                ax.set_ylim([0, 1])
-
         if (eig is not None):
             lam_m, lam_p = min(eig), max(eig)
 
@@ -175,10 +162,31 @@ def plot_candidates(a, x, eig=None, delta=1e-4, size=None, log=False,
                         edgecolor='none', label='Empirical Histogram',
                         zorder=1)
 
+        if ys.size > 0:
+            max_y = numpy.quantile(ys, 0.999)
+            if eig is not None:
+                max_y = max(max_y, numpy.quantile(eig, 0.999))
+
+            if log:
+                min_y = numpy.quantile(ys, 0.001)
+                min_y = numpy.max([min_y, 1e-16])
+                ax.set_ylim([min_y, 5.0 * max_y])
+            else:
+                ax.set_ylim([0, 1.1 * max_y])
+        else:
+            if log:
+                ax.set_ylim(bottom=1e-16)
+            else:
+                ax.set_ylim([0, 1])
+
         ax.set_xlabel(r'$\lambda$')
         ax.set_ylabel(r'$\rho(\lambda)$''')
         ax.set_title("Candidate Density Cloud")
-        ax.legend(fontsize='x-small', markerscale=4.0)
+
+        if log:
+            ax.legend(fontsize='x-small', markerscale=4.0, loc='lower left')
+        else:
+            ax.legend(fontsize='x-small', markerscale=4.0, loc='upper right')
 
         if log:
             ax.set_xscale('log')

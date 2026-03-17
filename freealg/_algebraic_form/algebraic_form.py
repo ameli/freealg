@@ -29,16 +29,21 @@ from ._decompressible import precheck_laurent
 from ._decompress_util import build_time_grid
 from ._decompress_coeffs import decompress_coeffs, plot_candidates
 
+# Stieltjes Poly
+# from ._stieltjes_poly1 import StieltjesPoly  # 1D horizontal Viterbi
+# from ._stieltjes_poly2 import StieltjesPoly  # 2D vertical + horizontal
+from ._stieltjes_poly3 import StieltjesPoly    # 1D vertical, parallel
+
 # Decompress with Newton
-from ._decompress import decompress_newton
-# from ._decompress_new import decompress_newton
-# from ._decompress_new_2 import decompress_newton
-# from ._decompress4 import decompress_newton # WORKS (mass issue)
+# from ._decompress import decompress_newton
+# from ._decompress4 import decompress_newton
 # from ._decompress5 import decompress_newton
 # from ._decompress6 import decompress_newton
 # from ._decompress7 import decompress_newton
 # from ._decompress8 import decompress_newton
-# from ._decompress9 import decompress_newton  # With Predictor/Corrector
+# from ._decompress9 import decompress_newton   # With Predictor/Corrector
+# from ._decompress10 import decompress_newton  # log aware
+from ._decompress10_6 import decompress_newton  # parallel, like 10, log aware
 
 # Deform
 # from ._deform import deform_newton
@@ -46,11 +51,6 @@ from ._decompress import decompress_newton
 # from ._deform3 import deform_newton
 # from ._deform4 import deform_newton
 from ._deform5 import deform_newton  # predictor-corrector
-
-# Homotopy
-# from ._homotopy1 import StieltjesPoly  # pure 1D horizontal Viterbi
-# from ._homotopy2 import StieltjesPoly  # 2D hybrid (vertical + horizontal)
-from ._homotopy3 import StieltjesPoly    # pure vertical, empirical/asymptote
 
 from ._moments import Moments, AlgebraicStieltjesMoments
 from ..visualization._plot_util import plot_density, plot_hilbert, \
@@ -585,16 +585,17 @@ class AlgebraicForm(BaseForm):
         res_99_9 = numpy.quantile(P_res[numpy.isfinite(P_res)], 0.999)
 
         # Update defaults if these options are not given
-        self.stieltjes_opt.setdefault("max_subdivide", 3)
+        self.stieltjes_opt.setdefault("n_levels", 100)
+        self.stieltjes_opt.setdefault("max_subdivide", 10)
         self.stieltjes_opt.setdefault("log_scale", self._log)
         self.stieltjes_opt.setdefault("anchor_ratio", 1.0)
         self.stieltjes_opt.setdefault("anchor_y_min", max(self.delta, 1e-8))
-        self.stieltjes_opt.setdefault("anchor_y_max", 1)
+        self.stieltjes_opt.setdefault("anchor_y_max", 10)
 
         # Stieltjes transform from fitted polynomial (not from empirical eigs)
         self._stieltjes_poly = StieltjesPoly(
-            self.coeffs, stieltjes_opt=self.stieltjes_opt, emp_eigs=self.eig,
-            dtype=self.dtype)
+            self.coeffs, stieltjes_opt=self.stieltjes_opt,
+            stieltjes_emp=self._stieltjes_emp, dtype=self.dtype)
 
         # Estimate support from the fitted polynomial
         # TEST (commented out since it is slow)
@@ -1465,6 +1466,23 @@ class AlgebraicForm(BaseForm):
             # times, and especially time t = 0
             t_all, idx_req = build_time_grid(
                 size, self.n, min_n_times=min_n_times)
+
+            # Primary options (more important to tune)
+            newton_opt.setdefault('dt_max', 0.01)
+            newton_opt.setdefault('tol', 1e-10)
+            newton_opt.setdefault('max_iter', 1000)
+            newton_opt.setdefault('parallel', True)
+            newton_opt.setdefault('n_jobs', None)  # uses all CPUs
+            newton_opt.setdefault('log_mode', self._log)
+
+            # Secondary options (less important to tune)
+            newton_opt.setdefault('dt_min', 1e-6)
+            newton_opt.setdefault('pred_atol', 1e-8)
+            newton_opt.setdefault('pred_rtol', 5e-3)
+            newton_opt.setdefault('corr_factor', 5.0)
+            newton_opt.setdefault('max_reject', 30)
+            newton_opt.setdefault('det_guard', 1e-14)
+            newton_opt.setdefault('tol_step', 0.1 * float(newton_opt['tol']))
 
             # Evolve
             W, ok = decompress_newton(
