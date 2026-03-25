@@ -26,12 +26,14 @@ from ._support import estimate_support
 
 from .._support import supp as estimate_broad_supp
 from ._decompressible import precheck_laurent
-from ._decompress_util import build_time_grid
+from ._decompress_util import build_time_grid, inverse_stieltjes
 from ._decompress_coeffs import decompress_coeffs, plot_candidates
 
 # Stieltjes Poly
 # from ._stieltjes_poly1 import StieltjesPoly  # 1D horizontal Viterbi
 # from ._stieltjes_poly2 import StieltjesPoly  # 2D vertical + horizontal
+# from ._stieltjes_poly3 import StieltjesPoly    # 1D vertical, parallel
+# from ._stieltjes_poly3_old import StieltjesPoly    # 1D vertical, parallel
 from ._stieltjes_poly3 import StieltjesPoly    # 1D vertical, parallel
 
 # Decompress with Newton
@@ -91,8 +93,19 @@ class AlgebraicForm(BaseForm):
         The support of the density of :math:`\\mathbf{A}`. If `None`, it is
         estimated from the minimum and maximum of the eigenvalues.
 
-    delta: float, default=1e-6
-        Size of perturbations into the upper half plane for Plemelj's formula.
+    delta : float, default=1e-5
+        Imaginary offset into the upper half-plane used to evaluate the
+        Stieltjes transform for density recovery by the inverse Stieltjes
+        transform (Plemelj formula).
+
+    delta_ladder_ratio : float, default=2.0
+        Geometric ratio of the imaginary offsets used for multi-level density
+        recovery. The offsets are defined by :math:`\\delta_j = \\delta r^j`,
+        where :math:`r` is this argument.
+
+    delta_ladder_size : int, default=1
+        Number of imaginary offsets in the geometric ladder used for
+        multi-level density recovery.
 
     log : bool, default=False
         If `True`, it is assumed the spectral density is positive-definite and
@@ -297,13 +310,15 @@ class AlgebraicForm(BaseForm):
     # init
     # ====
 
-    def __init__(self, A, support=None, ratio=None, delta=1e-5, log=False,
-                 dtype='complex128', stieltjes_opt={}, supp_opt={}):
+    def __init__(self, A, support=None, ratio=None, log=False,
+                 dtype='complex128', stieltjes_opt={}, inv_stieltjes_opt={},
+                 supp_opt={}):
         """
         Initialization.
         """
 
-        super().__init__(delta, log=log, dtype=dtype)
+        super().__init__(log=log, dtype=dtype, stieltjes_opt=stieltjes_opt,
+                         inv_stieltjes_opt=inv_stieltjes_opt)
 
         if ratio is not None:
             self.ratio = float(ratio)
@@ -315,7 +330,6 @@ class AlgebraicForm(BaseForm):
         self._moments = None
         self.supp = support
         self.est_supp = None  # Estimated from polynomial after fitting
-        self.stieltjes_opt = stieltjes_opt
 
         if hasattr(A, 'stieltjes') and callable(getattr(A, 'stieltjes', None)):
             # This is one of the distribution objects, like MarchenkoPastur
@@ -584,14 +598,6 @@ class AlgebraicForm(BaseForm):
         res_max = numpy.max(P_res[numpy.isfinite(P_res)])
         res_99_9 = numpy.quantile(P_res[numpy.isfinite(P_res)], 0.999)
 
-        # Update defaults if these options are not given
-        self.stieltjes_opt.setdefault("n_levels", 100)
-        self.stieltjes_opt.setdefault("max_subdivide", 10)
-        self.stieltjes_opt.setdefault("log_scale", self._log)
-        self.stieltjes_opt.setdefault("anchor_ratio", 1.0)
-        self.stieltjes_opt.setdefault("anchor_y_min", max(self.delta, 1e-8))
-        self.stieltjes_opt.setdefault("anchor_y_max", 10)
-
         # Stieltjes transform from fitted polynomial (not from empirical eigs)
         self._stieltjes_poly = StieltjesPoly(
             self.coeffs, stieltjes_opt=self.stieltjes_opt,
@@ -625,18 +631,14 @@ class AlgebraicForm(BaseForm):
     # support
     # =======
 
-    def support(self, coeffs=None, scan_range=None, n_scan=1024, thr_rel=1e-4,
+    def support(self, scan_range=None, n_scan=1024, refine=True,
+                resplit_density=16, merge_threshold=0.0, thr_rel=1e-4,
                 min_log_width_mult=1.0, return_info=False, **kwargs):
         """
         Estimate the spectral edges of the density.
 
         Parameters
         ----------
-
-        coeffs : numpy.ndarray, default=None
-            Coefficients of a polynomial of a spectral curve. If `None`, the
-            coefficients of the fitted object (after calling :func:`fit`) is
-            used.
 
         scan_range : tuple, default=None
             A range ``(x_min, x_max)`` on the real axis to scan for the
@@ -647,15 +649,24 @@ class AlgebraicForm(BaseForm):
         n_scan : int, default=1024
             Number of points to scan along the ``scan_range`` interval.
 
+        refine : bool, default=True
+            Refine each detected edge by a safeguarded Newton solve of the
+            local threshold-crossing equation.
+
+        resplit_density : int, default=16
+            Densification factor used to re-check each coarse run for touching
+            bulks that may be missed by the coarse scan.
+
+        merge_threshold : float, default=0.0
+            Merge adjacent detected bulks if the gap is smaller than this
+            value. In log mode it is measured in log-x.
+
         thr_rel : float, default=1e-4
-            Relative threshold on :math:`\\Im(m(x+i\\delta))` used to detect
-            support. This is mainly relevant in linear-scale detection.
+            Linear-mode relative threshold. In log mode the threshold is
+            selected automatically from the data.
 
         min_log_width_mult : float, default=1.0
-            In log-scale detection only, minimum accepted run width measured in
-            units of the log-grid spacing. Smaller values are more permissive
-            and may keep narrow bulks; larger values are more conservative and
-            may suppress spurious tiny runs.
+            Minimum accepted run width in units of log-grid spacing.
 
         return_info : bool, default=False
             If `True`, debug info is also returned.
@@ -728,20 +739,10 @@ class AlgebraicForm(BaseForm):
         """
 
         # Default kwargs
-        kwargs.setdefault("seed_drop", 3.0)
-        kwargs.setdefault("edge_drop", 1.0)
-        kwargs.setdefault("edge_rel", 0.1)
-        kwargs.setdefault("valley_rel", 0.35)
-        kwargs.setdefault("smooth_width", 7)
-        kwargs.setdefault("n_refine", 256)
-        kwargs.setdefault("refine", True)
-        kwargs.setdefault("merge_micro_gaps", True)
+        # kwargs.setdefault("smooth_width", 7)
 
-        if coeffs is None:
-            if self.coeffs is None:
-                raise RuntimeError('Call "fit" first.')
-            else:
-                coeffs = self.coeffs
+        if self._stieltjes_poly is None:
+            raise RuntimeError('Call "fit" first.')
 
         # Inflate a bit to make sure all points are searched
         if scan_range is not None:
@@ -754,9 +755,13 @@ class AlgebraicForm(BaseForm):
             x_min, x_max = self._inflate_broad_supp(inflate=0.2)
 
         est_supp, info = estimate_support(
-            coeffs, self._stieltjes_poly, x_min=x_min, x_max=x_max,
-            n_scan=n_scan, delta=self.delta, log=self._log, thr_rel=thr_rel,
-            min_log_width_mult=min_log_width_mult, **kwargs)
+            self._stieltjes_poly, x_min=x_min, x_max=x_max, n_scan=n_scan,
+            refine=refine, resplit_density=resplit_density,
+            merge_threshold=merge_threshold, thr_rel=thr_rel,
+            min_log_width_mult=min_log_width_mult, log=self._log,
+            delta=self.delta, **kwargs)
+
+        self.est_supp = est_supp
 
         if return_info:
             return est_supp, info
@@ -1036,9 +1041,18 @@ class AlgebraicForm(BaseForm):
         if x is None:
             x = self._generate_grid(1.25, log=self._log)
 
-        # Preallocate density to zero
-        z = x.astype(complex) + 1j * self.delta
-        rho = self._stieltjes_poly(z).imag / numpy.pi
+        # Stack of all stieltjes compacted over a ladder of delta
+        m_stack = numpy.zeros((self.delta_ladder.size, x.size),
+                              dtype=self.dtype)
+
+        # Compute m over a ladder of delta
+        for i in range(self.delta_ladder.size):
+            z = x.astype(complex) + 1j * self.delta_ladder[i]
+            m_stack[i, :] = self._stieltjes_poly(z)
+
+        # Inverse Stieltjes transform
+        rho = inverse_stieltjes(m_stack, self.delta_ladder, x=x, log=self._log,
+                                nonnegative=True, **self.inv_stieltjes_opt)
 
         rho_ac = rho
         atoms_list = self.atoms()
@@ -1055,10 +1069,11 @@ class AlgebraicForm(BaseForm):
                 rho = rho_ac
 
         # Remove densities near Poisson kernel delta floor to zero
-        if self._log:
-            kernel_floor = (self.delta / numpy.pi) / (self.delta**2 + x**2)
-            factor = 5.0
-            rho[rho < factor * kernel_floor] = 0.0
+        # TEST
+        # if self._log:
+        #     kernel_floor = (self.delta / numpy.pi) / (self.delta**2 + x**2)
+        #     factor = 5.0
+        #     rho[rho < factor * kernel_floor] = 0.0
 
         if plot:
             # Pass a copy of rho since in plot function it's zero values will
@@ -1443,24 +1458,13 @@ class AlgebraicForm(BaseForm):
         # Remove points too close to atoms to avoid Newton stall at poles
         near_atom = numpy.zeros(x.size, dtype=bool)
         if len(atoms0) > 0:
-
             # Exclude x grid near atoms
             for x0, _w0 in (atoms0 or []):
                 near_atom |= (numpy.abs(x - float(x0)) <= float(atom_eps))
 
+        x_safe = x[~near_atom]
+
         if method == 'moc':
-
-            # Query grid on the real axis + a small imaginary buffer
-            x_safe = x[~near_atom]
-            z_query = x_safe + 1j * self.delta
-
-            # Initial condition at t = 0 (physical branch)
-            w0_list = self._stieltjes_poly(z_query)
-
-            # Remove atom from Stieltjes transform (Experimental)
-            # if len(atoms0) > 0:
-            #     for x0, w0 in atoms0:
-            #         w0_list = w0_list - (float(w0) / (float(x0) - z_query))
 
             # Ensure there are at least min_n_times time t, including requested
             # times, and especially time t = 0
@@ -1484,21 +1488,48 @@ class AlgebraicForm(BaseForm):
             newton_opt.setdefault('det_guard', 1e-14)
             newton_opt.setdefault('tol_step', 0.1 * float(newton_opt['tol']))
 
-            # Evolve
-            W, ok = decompress_newton(
-                z_query, t_all, self.coeffs, w0_list=w0_list, **newton_opt)
+            # Stack all output indexed by (delta ladder, requested time, x)
+            m_stack = numpy.zeros(
+                (self.delta_ladder.size, idx_req.size, x_safe.size),
+                dtype=self.dtype)
 
-            rho_all_safe = W.imag / numpy.pi
+            for i in range(self.delta_ladder.size):
+                # Query grid on the real axis + a small imaginary buffer
+                if self.inv_stieltjes_opt['z_query_delta'] == 'linear':
+                    z_query = x_safe.astype(complex) * \
+                        (1.0 + 1j * self.delta_ladder[i])
+                elif self.inv_stieltjes_opt['z_query_delta'] == 'const':
+                    z_query = x_safe.astype(complex) + \
+                        1j * self.delta_ladder[i]
+                else:
+                    raise ValueError('z_query_delta is invalid.')
 
-            # Back into full grid (fill with zero, may not be a good idea)
-            rho_all = numpy.full((t_all.size, x.size), 0.0, dtype=float)
-            rho_all[:, ~near_atom] = rho_all_safe
+                # Initial condition at t = 0 (physical branch)
+                w0_list = self._stieltjes_poly(z_query)
 
-            # return only the user-requested ones
-            rho = rho_all[idx_req]
+                # Remove atom from Stieltjes transform (Experimental)
+                # if len(atoms0) > 0:
+                #     for x0, w0 in atoms0:
+                #         w0_list -= (float(w0) / (float(x0) - z_query))
 
-            if verbose:
-                print("success rate per t:", ok.mean(axis=1))
+                # Evolve. Output is Stieltjes m(t_all, x_safe)
+                m, ok = decompress_newton(
+                    z_query, t_all, self.coeffs, w0_list=w0_list, **newton_opt)
+
+                # Keep only the requested times
+                m_stack[i, :, :] = m[idx_req, :]
+
+                if verbose:
+                    print("success rate per t:", ok.mean(axis=1))
+
+            # Inverse Stieltjes transform
+            rho_safe = inverse_stieltjes(
+                m_stack, self.delta_ladder, x=x_safe, log=self._log,
+                nonnegative=True, **self.inv_stieltjes_opt)
+
+            # Back into full x grid (fill with zero, may not be a good idea)
+            rho = numpy.full((idx_req.size, x.size), 0.0, dtype=float)
+            rho[:, ~near_atom] = rho_safe
 
         elif method == 'coeffs':
 
@@ -2260,11 +2291,16 @@ class AlgebraicForm(BaseForm):
         # theoretically cancel perfectly, nut numerically, it wont.
         zero_eps = 50.0 * float(self.delta)
         near_atom |= (numpy.abs(x) <= zero_eps)
+        x_safe = x[~near_atom]
 
         if method == 'moc':
 
+            # Ensure there are at least min_n_times time t, including requested
+            # times, and especially time t = 0
+            t_all, idx_req = build_time_grid(
+                size, self.n, min_n_times=min_n_times)
+
             # Query grid on the real axis + a small imaginary buffer
-            x_safe = x[~near_atom]
             z_query = x_safe + 1j * self.delta
 
             # Initial condition at t = 0 (physical branch)
@@ -2274,11 +2310,6 @@ class AlgebraicForm(BaseForm):
             # if len(atoms0) > 0:
             #     for x0, w0 in atoms0:
             #         w0_list = w0_list - (float(w0) / (float(x0) - z_query))
-
-            # Ensure there are at least min_n_times time t, including requested
-            # times, and especially time t = 0
-            t_all, idx_req = build_time_grid(
-                size, self.n, min_n_times=min_n_times)
 
             # Evolve
             W, ok = deform_newton(

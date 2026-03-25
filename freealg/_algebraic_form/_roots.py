@@ -7,28 +7,31 @@
 # of this source tree.
 
 """
-Numba-friendly variant of _root3.
+Numerical root solver for univariate polynomials, and for bivariate
+polynomials P(z, m) after fixing z.
 
-This module keeps the same conservative philosophy as ``_root3.py``, but the
-root initializer is replaced by a Numba-callable companion-matrix eigensolve.
-This makes the core solver callable from ``@njit`` code, which is the main
-requirement for later integration into homotopy.
+The core solver uses a companion-matrix eigenvalue method, similar in
+spirit to ``numpy.roots``, but adds two stabilizing steps that are useful
+when roots span a wide range of magnitudes. First, it can solve both the
+polynomial itself and its reversed polynomial. The reversed solve maps
+large roots to small ones through inversion, which can improve numerical
+conditioning for high-dynamic-range root sets. Second, the candidate roots
+can be refined by a few Newton iterations applied to the original
+polynomial.
 
-The algorithm remains:
+When both direct and reversed candidates are available, the solver
+compares them using the maximum normalized residual on the original
+polynomial and keeps the more accurate set. Leading coefficients close to
+zero can also be trimmed before forming the companion problem.
 
-* direct companion solve of the polynomial in descending order,
-* optional solve of the reversed polynomial,
-* Newton polishing on the original polynomial,
-* selection by maximum normalized residual.
-
-For the bivariate polynomial
+For a bivariate polynomial
 
     P(z, m) = sum_{i=0}^{deg_z} sum_{j=0}^{deg_m} coeffs[i, j] z**i m**j,
 
-``roots_m(coeffs, z)`` returns the roots in ``m`` of ``P(z, m)=0``.
+the solver first evaluates the coefficients in ``m`` at the given ``z``,
+then applies the same univariate root-solving procedure.
 
-For the univariate solver, ``roots(p)`` follows the same convention as
-``numpy.roots``:
+The coefficient convention for ``roots(p)`` matches ``numpy.roots``:
 
     p[0] x**n + p[1] x**(n-1) + ... + p[n].
 """
@@ -67,8 +70,13 @@ MODE_DIRECT = 1
 MODE_REVERSE = 2
 
 
+# ====================
+# eval poly in z numba
+# ====================
+
 @njit(cache=False)
 def _eval_poly_in_z_numba(coeffs, z):
+
     deg_z = coeffs.shape[0] - 1
     deg_m = coeffs.shape[1] - 1
     a = numpy.empty(deg_m + 1, dtype=numpy.complex128)
@@ -82,8 +90,13 @@ def _eval_poly_in_z_numba(coeffs, z):
     return a
 
 
+# =========================
+# eval poly in z many numba
+# =========================
+
 @njit(parallel=True, cache=False)
 def _eval_poly_in_z_many_numba(coeffs, z_array):
+
     deg_m = coeffs.shape[1] - 1
     out = numpy.empty((z_array.size, deg_m + 1), dtype=numpy.complex128)
     for k in prange(z_array.size):
@@ -91,8 +104,13 @@ def _eval_poly_in_z_many_numba(coeffs, z_array):
     return out
 
 
+# ============================
+# trim descending degree numba
+# ============================
+
 @njit(cache=False)
 def _trim_descending_degree_numba(p_desc, abs_tol, rel_tol):
+
     scale = 0.0
     for i in range(p_desc.size):
         ai = abs(p_desc[i])
@@ -107,8 +125,13 @@ def _trim_descending_degree_numba(p_desc, abs_tol, rel_tol):
     return start
 
 
+# ========================
+# prepare descending numba
+# ========================
+
 @njit(cache=False)
 def _prepare_descending_numba(p_desc, trim_abs_tol, trim_rel_tol):
+
     start = _trim_descending_degree_numba(p_desc, trim_abs_tol, trim_rel_tol)
     q = p_desc[start:].copy()
     if q.size == 0:
@@ -117,16 +140,26 @@ def _prepare_descending_numba(p_desc, trim_abs_tol, trim_rel_tol):
     return q, q.size - 1
 
 
+# =================
+# horner desc numba
+# =================
+
 @njit(cache=False)
 def _horner_desc_numba(p_desc, x):
+
     y = p_desc[0]
     for i in range(1, p_desc.size):
         y = y * x + p_desc[i]
     return y
 
 
+# ================================
+# horner desc and derivative numba
+# ================================
+
 @njit(cache=False)
 def _horner_desc_and_derivative_numba(p_desc, x):
+
     p = p_desc[0]
     dp = 0.0 + 0.0j
     for i in range(1, p_desc.size):
@@ -135,8 +168,14 @@ def _horner_desc_and_derivative_numba(p_desc, x):
     return p, dp
 
 
+# ================================
+# newton polish desc inplace numba
+# ================================
+
 @njit(cache=False)
-def _newton_polish_desc_inplace_numba(roots, p_desc, max_iter, step_tol, res_tol):
+def _newton_polish_desc_inplace_numba(roots, p_desc, max_iter, step_tol,
+                                      res_tol):
+
     for j in range(roots.size):
         x = roots[j]
         if not numpy.isfinite(x.real) or not numpy.isfinite(x.imag):
@@ -150,7 +189,8 @@ def _newton_polish_desc_inplace_numba(roots, p_desc, max_iter, step_tol, res_tol
                 break
             dx = -p / dp
             x_new = x + dx
-            if (not numpy.isfinite(x_new.real)) or (not numpy.isfinite(x_new.imag)):
+            if (not numpy.isfinite(x_new.real)) or \
+                    (not numpy.isfinite(x_new.imag)):
                 break
             x = x_new
             if abs(dx) <= step_tol:
@@ -158,8 +198,13 @@ def _newton_polish_desc_inplace_numba(roots, p_desc, max_iter, step_tol, res_tol
         roots[j] = x
 
 
+# ========================
+# sort roots inplace numba
+# ========================
+
 @njit(cache=False)
 def _sort_roots_inplace_numba(roots):
+
     n = roots.size
     for i in range(n - 1):
         k = i
@@ -178,8 +223,13 @@ def _sort_roots_inplace_numba(roots):
             roots[k] = tmp
 
 
+# ==============================
+# normalize residuals desc numba
+# ==============================
+
 @njit(cache=False)
 def _normalized_residuals_desc_numba(p_desc, roots):
+
     out = numpy.empty(roots.size, dtype=numpy.float64)
     n = p_desc.size - 1
 
@@ -206,8 +256,13 @@ def _normalized_residuals_desc_numba(p_desc, roots):
     return out
 
 
+# ==================================
+# max normalized residual desc numba
+# ==================================
+
 @njit(cache=False)
 def _max_normalized_residual_desc_numba(p_desc, roots):
+
     if roots.size == 0:
         return numpy.inf
     vals = _normalized_residuals_desc_numba(p_desc, roots)
@@ -218,8 +273,13 @@ def _max_normalized_residual_desc_numba(p_desc, roots):
     return out
 
 
+# =============================
+# max backward error desc numba
+# =============================
+
 @njit(cache=False)
 def _max_backward_error_desc_numba(p_desc, roots):
+
     out = 0.0
     for i in range(roots.size):
         r = roots[i]
@@ -231,8 +291,12 @@ def _max_backward_error_desc_numba(p_desc, roots):
     return out
 
 
+# ==========================
+# companion roots desc numba
+# ==========================
 @njit(cache=False)
 def _companion_roots_desc_numba(p_desc):
+
     n = p_desc.size - 1
     if n <= 0:
         return numpy.empty(0, dtype=numpy.complex128)
@@ -251,13 +315,23 @@ def _companion_roots_desc_numba(p_desc):
     return numpy.linalg.eigvals(C)
 
 
+# =======================
+# roots direct desc numba
+# =======================
+
 @njit(cache=False)
 def _roots_direct_desc_numba(p_desc):
+
     return _companion_roots_desc_numba(p_desc)
 
 
+# =========================
+# roots reversed desc numba
+# =========================
+
 @njit(cache=False)
 def _roots_reversed_desc_numba(p_desc):
+
     q_desc = p_desc[::-1].copy()
     y = _companion_roots_desc_numba(q_desc)
     x = numpy.empty_like(y)
@@ -269,6 +343,10 @@ def _roots_reversed_desc_numba(p_desc):
             x[i] = 1.0 / yi
     return x
 
+
+# ========================
+# finalize candidate numba
+# ========================
 
 @njit(cache=False)
 def _finalize_candidate_numba(p_desc, r, polish, polish_iter, polish_step_tol,
@@ -283,6 +361,10 @@ def _finalize_candidate_numba(p_desc, r, polish, polish_iter, polish_step_tol,
     return out
 
 
+# ================
+# roots desc numba
+# ================
+
 @njit(cache=False)
 def roots_desc_numba(p_desc,
                      trim_abs_tol=0.0,
@@ -293,9 +375,8 @@ def roots_desc_numba(p_desc,
                      polish_step_tol=1e-14,
                      polish_res_tol=1e-14,
                      sort_roots=True):
-    q_desc, deg = _prepare_descending_numba(
-        p_desc, trim_abs_tol, trim_rel_tol
-    )
+
+    q_desc, deg = _prepare_descending_numba(p_desc, trim_abs_tol, trim_rel_tol)
 
     if deg <= 0:
         return numpy.empty(0, dtype=numpy.complex128)
@@ -309,23 +390,20 @@ def roots_desc_numba(p_desc,
     if mode == MODE_DIRECT:
         return _finalize_candidate_numba(
             q_desc, _roots_direct_desc_numba(q_desc),
-            polish, polish_iter, polish_step_tol, polish_res_tol, sort_roots,
-        )
+            polish, polish_iter, polish_step_tol, polish_res_tol, sort_roots)
 
     if mode == MODE_REVERSE:
         return _finalize_candidate_numba(
             q_desc, _roots_reversed_desc_numba(q_desc),
-            polish, polish_iter, polish_step_tol, polish_res_tol, sort_roots,
-        )
+            polish, polish_iter, polish_step_tol, polish_res_tol, sort_roots)
 
     r_direct = _finalize_candidate_numba(
         q_desc, _roots_direct_desc_numba(q_desc),
-        polish, polish_iter, polish_step_tol, polish_res_tol, sort_roots,
-    )
+        polish, polish_iter, polish_step_tol, polish_res_tol, sort_roots)
+
     r_reverse = _finalize_candidate_numba(
         q_desc, _roots_reversed_desc_numba(q_desc),
-        polish, polish_iter, polish_step_tol, polish_res_tol, sort_roots,
-    )
+        polish, polish_iter, polish_step_tol, polish_res_tol, sort_roots)
 
     e_direct = _max_normalized_residual_desc_numba(q_desc, r_direct)
     e_reverse = _max_normalized_residual_desc_numba(q_desc, r_reverse)
@@ -334,6 +412,10 @@ def roots_desc_numba(p_desc,
         return r_reverse
     return r_direct
 
+
+# =============
+# roots m numba
+# =============
 
 @njit(cache=False)
 def roots_m_numba(coeffs,
@@ -346,8 +428,10 @@ def roots_m_numba(coeffs,
                   polish_step_tol=1e-14,
                   polish_res_tol=1e-14,
                   sort_roots=True):
+
     a_asc = _eval_poly_in_z_numba(coeffs, z)
     p_desc = a_asc[::-1].copy()
+
     return roots_desc_numba(
         p_desc,
         trim_abs_tol,
@@ -357,16 +441,25 @@ def roots_m_numba(coeffs,
         polish_iter,
         polish_step_tol,
         polish_res_tol,
-        sort_roots,
-    )
+        sort_roots)
 
+
+# ================
+# poly coeffs in m
+# ================
 
 def poly_coeffs_in_m(coeffs: numpy.ndarray, z: complex) -> numpy.ndarray:
+
     coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
     return _eval_poly_in_z_numba(coeffs, complex(z))
 
 
+# ==========
+# parse mode
+# ==========
+
 def _parse_mode(use_reverse: str) -> int:
+
     mode = str(use_reverse).lower()
     if mode == 'auto':
         return MODE_AUTO
@@ -376,6 +469,10 @@ def _parse_mode(use_reverse: str) -> int:
         return MODE_REVERSE
     raise ValueError("use_reverse should be 'auto', 'direct', or 'reverse'.")
 
+
+# =====
+# roots
+# =====
 
 def roots(p: numpy.ndarray,
           *,
@@ -387,6 +484,7 @@ def roots(p: numpy.ndarray,
           polish_step_tol: float = 1e-14,
           polish_res_tol: float = 1e-14,
           sort_roots: bool = True) -> numpy.ndarray:
+
     p_desc = numpy.asarray(p, dtype=numpy.complex128).ravel()
     return roots_desc_numba(
         p_desc,
@@ -397,9 +495,12 @@ def roots(p: numpy.ndarray,
         int(polish_iter),
         float(polish_step_tol),
         float(polish_res_tol),
-        bool(sort_roots),
-    )
+        bool(sort_roots))
 
+
+# ==========
+# roots many
+# ==========
 
 def roots_many(p_array: numpy.ndarray,
                *,
@@ -411,6 +512,7 @@ def roots_many(p_array: numpy.ndarray,
                polish_step_tol: float = 1e-14,
                polish_res_tol: float = 1e-14,
                sort_roots: bool = True) -> tuple[numpy.ndarray, numpy.ndarray]:
+
     p_array = numpy.asarray(p_array, dtype=numpy.complex128)
     if p_array.ndim != 2:
         raise ValueError('p_array should be a 2D array.')
@@ -419,8 +521,8 @@ def roots_many(p_array: numpy.ndarray,
     roots_out = numpy.full(
         (n_poly, max(0, n_coeff - 1)),
         numpy.nan + 1j * numpy.nan,
-        dtype=numpy.complex128,
-    )
+        dtype=numpy.complex128)
+
     n_eff = numpy.zeros(n_poly, dtype=numpy.int64)
     mode = _parse_mode(use_reverse)
 
@@ -434,13 +536,17 @@ def roots_many(p_array: numpy.ndarray,
             int(polish_iter),
             float(polish_step_tol),
             float(polish_res_tol),
-            bool(sort_roots),
-        )
+            bool(sort_roots))
+
         roots_out[i, :r.size] = r
         n_eff[i] = r.size
 
     return roots_out, n_eff
 
+
+# =======
+# roots m
+# =======
 
 def roots_m(coeffs: numpy.ndarray,
             z: complex,
@@ -453,7 +559,9 @@ def roots_m(coeffs: numpy.ndarray,
             polish_step_tol: float = 1e-14,
             polish_res_tol: float = 1e-14,
             sort_roots: bool = True) -> numpy.ndarray:
+
     coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
+
     return roots_m_numba(
         coeffs,
         complex(z),
@@ -464,9 +572,12 @@ def roots_m(coeffs: numpy.ndarray,
         int(polish_iter),
         float(polish_step_tol),
         float(polish_res_tol),
-        bool(sort_roots),
-    )
+        bool(sort_roots))
 
+
+# ============
+# roots m many
+# ============
 
 def roots_m_many(coeffs: numpy.ndarray,
                  z_array: numpy.ndarray,
@@ -478,7 +589,9 @@ def roots_m_many(coeffs: numpy.ndarray,
                  polish_iter: int = 8,
                  polish_step_tol: float = 1e-14,
                  polish_res_tol: float = 1e-14,
-                 sort_roots: bool = True) -> tuple[numpy.ndarray, numpy.ndarray]:
+                 sort_roots: bool = True) -> \
+                         tuple[numpy.ndarray, numpy.ndarray]:
+
     coeffs = numpy.asarray(coeffs, dtype=numpy.complex128)
     z_array = numpy.asarray(z_array, dtype=numpy.complex128).ravel()
     mode = _parse_mode(use_reverse)
@@ -487,8 +600,8 @@ def roots_m_many(coeffs: numpy.ndarray,
     roots_out = numpy.full(
         (z_array.size, max(0, deg_m)),
         numpy.nan + 1j * numpy.nan,
-        dtype=numpy.complex128,
-    )
+        dtype=numpy.complex128)
+
     n_eff = numpy.zeros(z_array.size, dtype=numpy.int64)
 
     for i in range(z_array.size):
@@ -502,53 +615,83 @@ def roots_m_many(coeffs: numpy.ndarray,
             int(polish_iter),
             float(polish_step_tol),
             float(polish_res_tol),
-            bool(sort_roots),
-        )
+            bool(sort_roots))
+
         roots_out[i, :r.size] = r
         n_eff[i] = r.size
 
     return roots_out, n_eff
 
 
-def normalized_residual(p: numpy.ndarray, roots_: numpy.ndarray) -> numpy.ndarray:
+# ===================
+# normalized residual
+# ===================
+
+def normalized_residual(p: numpy.ndarray, roots_: numpy.ndarray) -> \
+        numpy.ndarray:
+
     p_desc = numpy.asarray(p, dtype=numpy.complex128).ravel()
     roots_ = numpy.asarray(roots_, dtype=numpy.complex128).ravel()
     return _normalized_residuals_desc_numba(p_desc, roots_)
 
 
+# =======================
+# max normalized residual
+# =======================
+
 def max_normalized_residual(p: numpy.ndarray, roots_: numpy.ndarray) -> float:
+
     p_desc = numpy.asarray(p, dtype=numpy.complex128).ravel()
     roots_ = numpy.asarray(roots_, dtype=numpy.complex128).ravel()
     return float(_max_normalized_residual_desc_numba(p_desc, roots_))
 
 
+# =====================
+# normalized residual m
+# =====================
 def normalized_residual_m(coeffs: numpy.ndarray,
                           z: complex,
                           roots_: numpy.ndarray) -> numpy.ndarray:
+
     a_asc = poly_coeffs_in_m(coeffs, z)
     p_desc = a_asc[::-1]
     roots_ = numpy.asarray(roots_, dtype=numpy.complex128).ravel()
     return _normalized_residuals_desc_numba(p_desc, roots_)
 
+
+# =========================
+# max normalized residual m
+# =========================
 
 def max_normalized_residual_m(coeffs: numpy.ndarray,
                               z: complex,
                               roots_: numpy.ndarray) -> float:
+
     a_asc = poly_coeffs_in_m(coeffs, z)
     p_desc = a_asc[::-1]
     roots_ = numpy.asarray(roots_, dtype=numpy.complex128).ravel()
     return float(_max_normalized_residual_desc_numba(p_desc, roots_))
 
 
+# ==================
+# max backward error
+# ==================
+
 def max_backward_error(p: numpy.ndarray, roots_: numpy.ndarray) -> float:
+
     p_desc = numpy.asarray(p, dtype=numpy.complex128).ravel()
     roots_ = numpy.asarray(roots_, dtype=numpy.complex128).ravel()
     return float(_max_backward_error_desc_numba(p_desc, roots_))
 
 
+# ====================
+# max backward error m
+# ====================
+
 def max_backward_error_m(coeffs: numpy.ndarray,
                          z: complex,
                          roots_: numpy.ndarray) -> float:
+
     a_asc = poly_coeffs_in_m(coeffs, z)
     p_desc = a_asc[::-1]
     roots_ = numpy.asarray(roots_, dtype=numpy.complex128).ravel()

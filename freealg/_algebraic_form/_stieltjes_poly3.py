@@ -38,6 +38,9 @@ try:
 except Exception:
     AlgebraicStieltjesMoments = None
 
+# Set to False to avoid crash at multiple runs
+numba_cache = False
+
 __all__ = ["StieltjesPoly", "_roots_m"]
 
 
@@ -45,7 +48,7 @@ __all__ = ["StieltjesPoly", "_roots_m"]
 # poly coeffs in m numba
 # ======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _poly_coeffs_in_m_numba(coeffs, z):
     dz = coeffs.shape[0] - 1
     dm = coeffs.shape[1] - 1
@@ -75,7 +78,7 @@ def _roots_m(coeffs, z):
 # poly eval numba
 # ===============
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _poly_eval_numba(coeffs, z, m):
     b = _poly_coeffs_in_m_numba(coeffs, z)
     acc = 0.0 + 0.0j
@@ -89,7 +92,7 @@ def _poly_eval_numba(coeffs, z, m):
 # poly der m numba
 # ================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _poly_der_m_numba(coeffs, z, m):
     b = _poly_coeffs_in_m_numba(coeffs, z)
     if b.size <= 1:
@@ -106,7 +109,7 @@ def _poly_der_m_numba(coeffs, z, m):
 # poly coeffs in z numba
 # ======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _poly_coeffs_in_z_numba(coeffs, m):
     dz = coeffs.shape[0] - 1
     dm = coeffs.shape[1] - 1
@@ -125,7 +128,7 @@ def _poly_coeffs_in_z_numba(coeffs, m):
 # poly der z numbda
 # =================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _poly_der_z_numba(coeffs, z, m):
     c = _poly_coeffs_in_z_numba(coeffs, m)
     if c.size <= 1:
@@ -153,7 +156,7 @@ def _is_finite_complex(x):
 # is finite complex numba
 # =======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _is_finite_complex_numba(x):
     return numpy.isfinite(numpy.real(x)) and numpy.isfinite(numpy.imag(x))
 
@@ -186,7 +189,7 @@ def _pick_with_target(z, roots, target, tol_im=1e-14, lam_asym=0.2,
 # pick with target numba
 # ======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _pick_with_target_numba(z, roots, target, tol_im=1e-14, lam_asym=0.2,
                             lam_target=1.0):
     if roots.size == 0:
@@ -229,7 +232,7 @@ def _pick_with_target_numba(z, roots, target, tol_im=1e-14, lam_asym=0.2,
 # roots pick numba
 # ================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _roots_pick_numba(coeffs, z_new, w_pred, w_last, tol_im, lam_asym):
     roots = _roots_backend_m_numba(coeffs, z_new, mode=_ROOTS_MODE_AUTO)
     target = w_pred if _is_finite_complex_numba(w_pred) else w_last
@@ -244,7 +247,7 @@ def _roots_pick_numba(coeffs, z_new, w_pred, w_last, tol_im, lam_asym):
 # newton correct numba
 # ====================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _newton_correct_numba(coeffs, z, w0, tol=1e-12, max_iter=20, min_pm=1e-12):
 
     w = w0
@@ -275,7 +278,7 @@ def _newton_correct_numba(coeffs, z, w0, tol=1e-12, max_iter=20, min_pm=1e-12):
 # ode rhs numba
 # =============
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _ode_rhs_numba(coeffs, z, w, min_pm=1e-12):
     pm = _poly_der_m_numba(coeffs, z, w)
     if (not _is_finite_complex_numba(pm)) or abs(pm) < min_pm:
@@ -292,7 +295,7 @@ def _ode_rhs_numba(coeffs, z, w, min_pm=1e-12):
 # vertical predict numba
 # ======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _vertical_predict_numba(coeffs, x0, sgn, y_hist, w_hist, hist_len, y_new,
                             min_pm=1e-12):
     z_last = complex(x0, sgn * y_hist[hist_len - 1])
@@ -321,7 +324,7 @@ def _vertical_predict_numba(coeffs, x0, sgn, y_hist, w_hist, hist_len, y_new,
 # continue one step numba
 # =======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _continue_one_step_numba(coeffs, x0, sgn, y_hist, w_hist, hist_len, y_new,
                              tol_im, lam_asym, newton_tol, newton_iter,
                              min_pm, pc_rel_tol, pc_abs_tol, max_subdivide,
@@ -403,7 +406,7 @@ def _continue_one_step_numba(coeffs, x0, sgn, y_hist, w_hist, hist_len, y_new,
 # n levels auto numba
 # ===================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _n_levels_auto_numba(y_hi, y_lo):
     ratio = max(y_hi / max(y_lo, 1e-300), 1.0)
     return max(12, min(48, int(numpy.ceil(6.0 * numpy.log10(
@@ -414,7 +417,7 @@ def _n_levels_auto_numba(y_hi, y_lo):
 # fill levels between numba
 # =========================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _fill_levels_between_numba(out, y_start, y_stop, n_levels):
     y_hi = max(y_start, y_stop)
     y_lo = min(y_start, y_stop)
@@ -455,7 +458,7 @@ def _fill_levels_between_numba(out, y_start, y_stop, n_levels):
 # scalar from seed numba
 # ======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _scalar_from_seed_numba(coeffs, x0, y_eval_abs, sgn, y_seed, m_seed,
                             tol_im, lam_asym, newton_tol, newton_iter,
                             min_pm, n_levels, pc_rel_tol, pc_abs_tol,
@@ -509,7 +512,7 @@ def _scalar_from_seed_numba(coeffs, x0, y_eval_abs, sgn, y_seed, m_seed,
 # batch from seed numba
 # =====================
 
-@njit(cache=True, parallel=True)
+@njit(cache=numba_cache, parallel=True)
 def _batch_from_seed_numba(coeffs, x_arr, y_arr, sgn_arr, y_seed_arr,
                            m_seed_arr, tol_im, lam_asym, newton_tol,
                            newton_iter, min_pm, n_levels, pc_rel_tol,
@@ -689,6 +692,9 @@ class StieltjesPoly(object):
             "anchor_ratio": 1.0,
             "anchor_y_min": 1e-6,
             "anchor_y_max": 10.0,
+            "anchor_match_tol": 0.1,
+            "anchor_ratio_tol": 0.90,
+            "anchor_retry_factor": 3.0,
         }
 
         opt.update(self.stieltjes_opt)
@@ -711,53 +717,27 @@ class StieltjesPoly(object):
         return max(float(abs(numpy.imag(z_eval)) * opt["top_factor"]),
                    float(abs(rad)))
 
-    # ==============
-    # levels between
-    # ==============
-
-    def _levels_between(self, y_start, y_stop, opt):
-        """
-        """
-
-        y_start = float(abs(y_start))
-        y_stop = float(abs(y_stop))
-        if numpy.isclose(y_start, y_stop):
-            return numpy.array([y_start], dtype=self.rdtype)
-
-        y_hi = max(y_start, y_stop)
-        y_lo = min(y_start, y_stop)
-
-        n_levels = opt["n_levels"]
-        if n_levels is None:
-            ratio = max(y_hi / max(y_lo, 1e-300), 1.0)
-            n_levels = max(
-                12, min(48, int(
-                    numpy.ceil(6.0 * numpy.log10(ratio + 1e-300))) + 8))
-        else:
-            n_levels = max(2, int(n_levels))
-
-        lev = numpy.geomspace(y_hi, y_lo, n_levels)
-        lev[0] = y_hi
-        lev[-1] = y_lo
-        if y_start < y_stop:
-            lev = lev[::-1]
-            lev[0] = y_start
-            lev[-1] = y_stop
-        else:
-            lev[0] = y_start
-            lev[-1] = y_stop
-        return lev
-
     # ===================
     # empirical stieltjes
     # ===================
 
     def _empirical_stieltjes(self, z):
         """
+        Evaluate empirical Stieltjes transform on a scalar or an array.
         """
 
-        z = complex(z)
-        return self.stieltjes_emp(numpy.array([z], dtype=self.dtype))[0]
+        z_arr = numpy.asarray(z, dtype=self.dtype)
+        scalar = (z_arr.ndim == 0)
+
+        if scalar:
+            z1 = z_arr.reshape(1)
+            out = self.stieltjes_emp(z1)
+            return out[0]
+
+        shp = z_arr.shape
+        z_flat = z_arr.ravel()
+        out = self.stieltjes_emp(z_flat)
+        return numpy.asarray(out, dtype=self.dtype).reshape(shp)
 
     # ========
     # top seed
@@ -801,26 +781,219 @@ class StieltjesPoly(object):
         if y_anchor <= 0.0:
             return self._top_seed(z_eval)
 
-        z_anchor = complex(numpy.real(z_eval), sgn * y_anchor)
+        match_tol = float(opt.get("anchor_match_tol", 0.18))
+        ratio_tol = float(opt.get("anchor_ratio_tol", 0.90))
+        retry_factor = max(float(opt.get("anchor_retry_factor", 3.0)), 1.0)
+        y_anchor_max = float(opt["anchor_y_max"])
 
-        roots = numpy.asarray(_roots_m(self.coeffs, z_anchor),
-                              dtype=self.dtype)
-        if roots.size == 0:
-            return self._top_seed(z_eval)
+        best_key = None
+        best_y = None
+        best_m = None
 
-        ok = (sgn * numpy.imag(roots) > -float(opt["emp_tol_im"]))
-        cand = roots[ok] if numpy.any(ok) else roots
-        if cand.size == 0:
-            return self._top_seed(z_eval)
+        while True:
+            z_anchor = complex(numpy.real(z_eval), sgn * y_anchor)
 
-        m_emp = self._empirical_stieltjes(z_anchor)
-        if not _is_finite_complex(m_emp):
-            return self._top_seed(z_eval)
+            roots = numpy.asarray(_roots_m(self.coeffs, z_anchor),
+                                  dtype=self.dtype)
+            if roots.size == 0:
+                if best_m is not None:
+                    return best_y, best_m
+                return self._top_seed(z_eval)
 
-        idx = int(numpy.argmin(numpy.abs(cand - m_emp)))
-        m_seed = cand[idx]
+            ok = (sgn * numpy.imag(roots) > -float(opt["emp_tol_im"]))
+            cand = roots[ok] if numpy.any(ok) else roots
+            if cand.size == 0:
+                if best_m is not None:
+                    return best_y, best_m
+                return self._top_seed(z_eval)
 
-        return y_anchor, m_seed
+            m_emp = self._empirical_stieltjes(z_anchor)
+            if not _is_finite_complex(m_emp):
+                if best_m is not None:
+                    return best_y, best_m
+                return self._top_seed(z_eval)
+
+            dist = numpy.abs(cand - m_emp)
+            idx = numpy.argsort(dist)
+            i1 = int(idx[0])
+            d1 = float(dist[i1])
+            if cand.size >= 2:
+                d2 = float(dist[int(idx[1])])
+                r2 = d1 / d2 if d2 > 0.0 else numpy.inf
+            else:
+                r2 = 0.0
+
+            r1 = d1 / (1.0 + abs(m_emp))
+            m_seed = cand[i1]
+
+            key = (r1, r2)
+            if (best_key is None) or (key < best_key):
+                best_key = key
+                best_y = y_anchor
+                best_m = m_seed
+
+            if (r1 <= match_tol) and (r2 <= ratio_tol):
+                return y_anchor, m_seed
+
+            if y_anchor >= y_anchor_max:
+                return best_y, best_m
+
+            y_next = min(y_anchor_max, retry_factor * y_anchor)
+            if y_next <= y_anchor + 1e-300:
+                return best_y, best_m
+
+            y_anchor = y_next
+
+    # ====================
+    # empirical seed array
+    # ====================
+
+    def _empirical_seed_array(self, z_eval_arr):
+        """
+        Batched empirical anchors for array evaluation.
+
+        This batches empirical Stieltjes evaluations across all points at each
+        anchor height, while applying the same retry logic used by the scalar
+        empirical seed path.
+        """
+
+        z_eval_arr = numpy.asarray(z_eval_arr, dtype=self.dtype).ravel()
+        n = z_eval_arr.size
+
+        y_seed = numpy.empty(n, dtype=self.rdtype)
+        m_seed = numpy.empty(n, dtype=self.dtype)
+
+        if self.stieltjes_emp is None:
+            for k in range(n):
+                y_seed[k], m_seed[k] = self._top_seed(z_eval_arr[k])
+            return y_seed, m_seed
+
+        opt = self._options()
+        tol_im = float(opt["emp_tol_im"])
+        match_tol = float(opt.get("anchor_match_tol", 0.18))
+        ratio_tol = float(opt.get("anchor_ratio_tol", 0.90))
+        retry_factor = max(float(opt.get("anchor_retry_factor", 3.0)), 1.0)
+        y_anchor_max = float(opt["anchor_y_max"])
+
+        sgn = numpy.where(numpy.imag(z_eval_arr) >= 0.0, 1.0, -1.0)
+        x_abs = numpy.abs(numpy.real(z_eval_arr))
+
+        if bool(opt.get("log_scale", False)):
+            y0 = float(opt["anchor_ratio"]) * \
+                numpy.maximum(x_abs, float(self.eps or 0.0))
+            y0 = numpy.maximum(y0, float(opt["anchor_y_min"]))
+            y0 = numpy.minimum(y0, float(opt["anchor_y_max"]))
+        else:
+            y0 = numpy.full(n, float(opt["anchor_y"]), dtype=self.rdtype)
+
+        active = numpy.ones(n, dtype=bool)
+        best_key = numpy.full((n, 2), numpy.inf, dtype=float)
+        best_y = numpy.full(n, numpy.nan, dtype=self.rdtype)
+        best_m = numpy.full(n, numpy.nan + 1j * numpy.nan, dtype=self.dtype)
+        y_curr = y0.astype(self.rdtype, copy=True)
+
+        # Handle non-positive initial anchors immediately.
+        bad_y = y_curr <= 0.0
+        if numpy.any(bad_y):
+            for k in numpy.where(bad_y)[0]:
+                y_seed[k], m_seed[k] = self._top_seed(z_eval_arr[k])
+            active[bad_y] = False
+
+        while numpy.any(active):
+            idx_active = numpy.where(active)[0]
+            z_anchor = \
+                numpy.real(z_eval_arr[idx_active]).astype(self.rdtype) + \
+                1j * sgn[idx_active].astype(self.rdtype) * \
+                y_curr[idx_active].astype(self.rdtype)
+
+            m_emp_all = self._empirical_stieltjes(z_anchor)
+
+            finished_now = numpy.zeros(idx_active.size, dtype=bool)
+
+            for j, k in enumerate(idx_active):
+                roots = numpy.asarray(_roots_m(self.coeffs, z_anchor[j]),
+                                      dtype=self.dtype)
+                if roots.size == 0:
+                    if numpy.isfinite(best_key[k, 0]):
+                        y_seed[k] = best_y[k]
+                        m_seed[k] = best_m[k]
+                    else:
+                        y_seed[k], m_seed[k] = self._top_seed(z_eval_arr[k])
+                    finished_now[j] = True
+                    continue
+
+                ok = (sgn[k] * numpy.imag(roots) > -tol_im)
+                cand = roots[ok] if numpy.any(ok) else roots
+                if cand.size == 0:
+                    if numpy.isfinite(best_key[k, 0]):
+                        y_seed[k] = best_y[k]
+                        m_seed[k] = best_m[k]
+                    else:
+                        y_seed[k], m_seed[k] = self._top_seed(z_eval_arr[k])
+                    finished_now[j] = True
+                    continue
+
+                m_emp = m_emp_all[j]
+                if not _is_finite_complex(m_emp):
+                    if numpy.isfinite(best_key[k, 0]):
+                        y_seed[k] = best_y[k]
+                        m_seed[k] = best_m[k]
+                    else:
+                        y_seed[k], m_seed[k] = self._top_seed(z_eval_arr[k])
+                    finished_now[j] = True
+                    continue
+
+                dist = numpy.abs(cand - m_emp)
+                idx_sort = numpy.argsort(dist)
+                i1 = int(idx_sort[0])
+                d1 = float(dist[i1])
+                if cand.size >= 2:
+                    d2 = float(dist[int(idx_sort[1])])
+                    r2 = d1 / d2 if d2 > 0.0 else numpy.inf
+                else:
+                    r2 = 0.0
+
+                r1 = d1 / (1.0 + abs(m_emp))
+                m_cur = cand[i1]
+
+                key = (r1, r2)
+                if (key[0] < best_key[k, 0]) or \
+                   ((key[0] == best_key[k, 0]) and (key[1] < best_key[k, 1])):
+                    best_key[k, 0] = key[0]
+                    best_key[k, 1] = key[1]
+                    best_y[k] = y_curr[k]
+                    best_m[k] = m_cur
+
+                if (r1 <= match_tol) and (r2 <= ratio_tol):
+                    y_seed[k] = y_curr[k]
+                    m_seed[k] = m_cur
+                    finished_now[j] = True
+                    continue
+
+                if y_curr[k] >= y_anchor_max:
+                    if numpy.isfinite(best_key[k, 0]):
+                        y_seed[k] = best_y[k]
+                        m_seed[k] = best_m[k]
+                    else:
+                        y_seed[k], m_seed[k] = self._top_seed(z_eval_arr[k])
+                    finished_now[j] = True
+                    continue
+
+                y_next = min(y_anchor_max, retry_factor * float(y_curr[k]))
+                if y_next <= float(y_curr[k]) + 1e-300:
+                    if numpy.isfinite(best_key[k, 0]):
+                        y_seed[k] = best_y[k]
+                        m_seed[k] = best_m[k]
+                    else:
+                        y_seed[k], m_seed[k] = self._top_seed(z_eval_arr[k])
+                    finished_now[j] = True
+                    continue
+
+                y_curr[k] = y_next
+
+            active[idx_active[finished_now]] = False
+
+        return y_seed, m_seed
 
     # ================
     # scalar from seed
@@ -909,28 +1082,37 @@ class StieltjesPoly(object):
     # ==============
 
     def _evaluate_array(self, z_flat):
+
         z_flat = numpy.asarray(z_flat, dtype=self.dtype)
-        z_norm = numpy.empty(z_flat.size, dtype=self.dtype)
-        for k in range(z_flat.size):
-            z_norm[k] = self._normalize_z(z_flat[k])
+
+        # Vectorized normalize_z
+        z_norm = z_flat.astype(self.dtype, copy=True)
+        mask_real = (numpy.imag(z_norm) == 0.0)
+        if numpy.any(mask_real):
+            if self.eps is not None:
+                eps_loc = float(self.eps)
+                z_norm[mask_real] = z_norm[mask_real] + 1j * eps_loc
+            else:
+                eps_loc = 1e-8 * \
+                    numpy.maximum(1.0, numpy.abs(z_norm[mask_real]))
+                z_norm[mask_real] = z_norm[mask_real] + 1j * eps_loc.astype(
+                    self.rdtype)
 
         mode = str(self._options().get("anchor_mode", self.anchor_mode))
-        y_seed = numpy.empty(z_norm.size, dtype=self.rdtype)
-        m_seed = numpy.empty(z_norm.size, dtype=self.dtype)
 
-        for k in range(z_norm.size):
-            if mode == "empirical":
-                y_seed[k], m_seed[k] = self._empirical_seed(z_norm[k])
-            else:
+        if mode == "empirical":
+            y_seed, m_seed = self._empirical_seed_array(z_norm)
+        else:
+            y_seed = numpy.empty(z_norm.size, dtype=self.rdtype)
+            m_seed = numpy.empty(z_norm.size, dtype=self.dtype)
+            for k in range(z_norm.size):
                 y_seed[k], m_seed[k] = self._top_seed(z_norm[k])
 
         bad = ~numpy.isfinite(m_seed.real) | ~numpy.isfinite(m_seed.imag)
         out = numpy.empty(z_norm.size, dtype=self.dtype)
 
         if numpy.any(bad):
-            for k in range(z_norm.size):
-                if bad[k]:
-                    out[k] = m_seed[k]
+            out[bad] = m_seed[bad]
 
         good = ~bad
         if not numpy.any(good):

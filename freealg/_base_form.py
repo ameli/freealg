@@ -33,11 +33,11 @@ class BaseForm(object):
     # init
     # ====
 
-    def __init__(self, delta, log=False, dtype='complex128'):
+    def __init__(self, log=False, dtype='complex128', stieltjes_opt={},
+                 inv_stieltjes_opt={}):
 
         self.A = None
         self.eig = None
-        self.delta = delta    # Offset above real axis to apply Plemelj formula
         self._log = log
         self.n = None
         self.lam_m = None
@@ -46,6 +46,57 @@ class BaseForm(object):
 
         # Data type for complex arrays
         self.dtype = resolve_complex_dtype(dtype)
+
+        self.stieltjes_opt = stieltjes_opt
+        self.inv_stieltjes_opt = inv_stieltjes_opt
+
+        # Defaults for inverse Stieltjes options for computing density
+        self.inv_stieltjes_opt.setdefault('delta', 1e-5)
+        self.inv_stieltjes_opt.setdefault('delta_ladder_ratio', 2.0)
+        self.inv_stieltjes_opt.setdefault('delta_ladder_size', 1)
+        self.inv_stieltjes_opt.setdefault('delta_ladder_grid', 'linear')
+        self.inv_stieltjes_opt.setdefault('z_query_delta', 'const')
+        self.inv_stieltjes_opt.setdefault('method', 'polyfit')
+        self.inv_stieltjes_opt.setdefault('fit_degree', 2)
+        self.inv_stieltjes_opt.setdefault('reg', 0.0)
+        self.inv_stieltjes_opt.setdefault('fit_weight', 'small_delta')
+
+        if (self._log is False) and \
+                (self.inv_stieltjes_opt['z_query_delta'] != 'const'):
+            raise ValueError(
+                'When "log=False", set "z_query_delta" to "const.')
+
+        if (self.inv_stieltjes_opt['method'] == 'direct') and \
+                (self.inv_stieltjes_opt['delta_ladder_size'] > 1):
+            raise ValueError('When "inv_stieltjes_opt" is set to "direct", '
+                             '"delta_ladder_size" should be set to 1.')
+
+        # Offset above real axis to apply Plemelj formula
+        self.delta = self.inv_stieltjes_opt['delta']
+        self.delta_ladder = None
+
+        delta_ladder_ratio = inv_stieltjes_opt['delta_ladder_ratio']
+        delta_ladder_size = inv_stieltjes_opt['delta_ladder_size']
+        delta_ladder_grid = inv_stieltjes_opt['delta_ladder_grid']
+
+        # Type of grid to produces multiple deltas for Plemelj
+        if delta_ladder_grid == 'geometric':
+            self.delta_ladder = self.delta * (
+                    delta_ladder_ratio **
+                    numpy.arange(delta_ladder_size, dtype=int))
+        elif delta_ladder_grid == 'linear':
+            self.delta_ladder = self.delta * \
+                numpy.arange(1, delta_ladder_size+1, dtype=int)
+        else:
+            raise ValueError('delta_ladder_grid is invalid.')
+
+        # Defaults for Stieltjes computation from polynomial
+        self.stieltjes_opt.setdefault('n_levels', 100)
+        self.stieltjes_opt.setdefault('max_subdivide', 10)
+        self.stieltjes_opt.setdefault('log_scale', self._log)
+        self.stieltjes_opt.setdefault('anchor_ratio', 1.0)
+        self.stieltjes_opt.setdefault('anchor_y_min', max(self.delta, 1e-8))
+        self.stieltjes_opt.setdefault('anchor_y_max', 10)
 
     # =============
     # generate grid

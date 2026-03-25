@@ -213,7 +213,7 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
         # Left axis
         ax[0].plot(x, rho[0], color=colors[0], label='Fitted', zorder=1)
 
-        supp_init = [numpy.min(eig_init), numpy.max(eig_init)]
+        supp_init = [numpy.nanmin(eig_init), numpy.nanmax(eig_init)]
         if log:
             bins = numpy.geomspace(supp_init[0], supp_init[1], nbins[0])
             vals, edges = numpy.histogram(eig_init, bins=bins, density=True)
@@ -231,7 +231,7 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
 
         # Right axis
         ax[2].plot(x, rho[-1], color=colors[-1], label='Prediction', zorder=1)
-        supp_final = [numpy.min(eig_final), numpy.max(eig_final)]
+        supp_final = [numpy.nanmin(eig_final), numpy.nanmax(eig_final)]
 
         if log:
             bins = numpy.geomspace(supp_final[0], supp_final[1], nbins[1])
@@ -258,8 +258,8 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
         if ylim is None:
             if log:
                 ylim = numpy.array([
-                    0.5 * float(numpy.min(rho)),
-                    2.0 * float(numpy.max(rho))])
+                    0.5 * float(numpy.nanmin(rho)),
+                    2.0 * float(numpy.nanmax(rho))])
             else:
                 ylim = numpy.array([1.1 * float(numpy.max(rho))])
         else:
@@ -282,7 +282,7 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
 
         # X limits
         if xlim is None:
-            xlim = [numpy.min(x), numpy.max(x)]
+            xlim = [numpy.nanmin(x), numpy.nanmax(x)]
 
         for i in range(len(ax)):
             ax[i].set_xlim(xlim)
@@ -680,8 +680,8 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
                 if nbins is None:
                     nbins = auto_bins(array, factor=bin_factor)
 
-                x_min = numpy.min(array)
-                x_max = numpy.max(array)
+                x_min = numpy.nanmin(array)
+                x_max = numpy.nanmax(array)
 
                 if log:
                     bins = numpy.geomspace(x_min, x_max, nbins)
@@ -701,8 +701,8 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
                            color="white", linewidth=0.5, zorder=3)
 
                 # Update min and max of y
-                min_y = numpy.min([min_y, numpy.nanmin(counts[counts > 0])])
-                max_y = numpy.max([max_y, numpy.nanmax(counts)])
+                min_y = numpy.nanmin([min_y, numpy.nanmin(counts[counts > 0])])
+                max_y = numpy.nanmax([max_y, numpy.nanmax(counts)])
 
             elif (x is not None) and (rho is not None):
                 ax[i].fill_between(x, y1=rho[i], y2=0, alpha=1,
@@ -731,7 +731,7 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
                                   labelsize=fontsize)
 
             if (xlim is None) and (x is not None):
-                xlim = [numpy.min(x), numpy.max(x)]
+                xlim = [numpy.nanmin(x), numpy.nanmax(x)]
             ax[i].set_xlim(xlim)
 
             if log:
@@ -746,13 +746,13 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
                                   labelbottom=False)
 
         if rho is not None:
-            max_y = numpy.max([max_y, numpy.max(rho)])
-            min_y = numpy.min([min_y, numpy.min(rho)])
+            max_y = numpy.nanmax([max_y, numpy.nanmax(rho)])
+            min_y = numpy.nanmin([min_y, numpy.nanmin(rho)])
 
         # max of y
         if log:
             log_max_y = numpy.log10(max_y)
-            log_min_y = numpy.log10(min_y)
+            log_min_y = numpy.nanmax([numpy.log10(min_y), numpy.log10(1e-16)])
             log_center_y = 0.5 * (log_max_y + log_min_y)
             log_radius_y = 0.5 * (log_max_y - log_min_y)
             max_y_ = 10.0**(log_center_y + (log_radius_y * 1.05))

@@ -76,7 +76,7 @@ def compute_eig(A, lower=False):
 # submatrix
 # =========
 
-def submatrix(matrix, size, paired=True, seed=None):
+def submatrix(matrix, size, block_size=None, paired=True, seed=None):
     """
     Randomly sample a submatrix from a larger matrix.
 
@@ -87,7 +87,12 @@ def submatrix(matrix, size, paired=True, seed=None):
         A 2D square array
 
     size : int
-        Number of rows and columns of the submatrix
+        Number of rows and columns of the output submatrix.
+
+    block_size : int, default=None
+        If given, sampling is performed at the block level where contiguous
+        blocks of size ``block_size`` are selected and preserved. The output
+        ``size`` should be an integer multiple of ``block_size``.
 
     paired : bool, default=True
         If `True`, the rows and columns are sampled with the same random
@@ -123,21 +128,46 @@ def submatrix(matrix, size, paired=True, seed=None):
     """
 
     if matrix.shape[0] != matrix.shape[1]:
-        raise ValueError("Matrix must be square")
+        raise ValueError('Matrix must be square.')
 
     n = matrix.shape[0]
+
     if size > n:
         raise ValueError("Submatrix size cannot exceed matrix size.")
 
+    if block_size is None:
+        block_size = 1
+    elif block_size <= 0:
+        raise ValueError('"block_size" must be positive.')
+    elif n % block_size != 0:
+        raise ValueError('Matrix size must be divisible by "block_size".')
+    elif size % block_size != 0:
+        raise ValueError('Submatrix size must be divisible by "block_size".')
+
+    n_blocks = n // block_size
+    size_blocks = size // block_size
+
+    if size_blocks > n_blocks:
+        raise ValueError(
+            'Requested number of blocks exceeds available blocks.')
+
     rng = numpy.random.default_rng(seed)
 
-    idx_row = rng.choice(n, size=size, replace=False)
-    idx_row = numpy.sort(idx_row)  # optional, preserves original ordering
+    blk_row = rng.choice(n_blocks, size=size_blocks, replace=False)
+    blk_row = numpy.sort(blk_row)  # optional, preserves original ordering
 
     if paired:
-        idx_col = idx_row
+        blk_col = blk_row
     else:
-        idx_col = rng.choice(n, size=size, replace=False)
-        idx_col = numpy.sort(idx_col)  # optional, preserves original ordering
+        blk_col = rng.choice(n_blocks, size=size_blocks, replace=False)
+        blk_col = numpy.sort(blk_col)  # optional, preserves original ordering
+
+    idx_row = (
+        blk_row[:, None] * block_size + numpy.arange(block_size)[None, :]
+    ).ravel()
+
+    idx_col = (
+        blk_col[:, None] * block_size + numpy.arange(block_size)[None, :]
+    ).ravel()
 
     return matrix[numpy.ix_(idx_row, idx_col)]

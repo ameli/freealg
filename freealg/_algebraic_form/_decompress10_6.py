@@ -41,6 +41,9 @@ except Exception:  # pragma: no cover
             return func
         return deco
 
+# Set to False to avoid crash at multiple runs
+numba_cache = False
+
 __all__ = ['decompress_newton']
 
 
@@ -48,7 +51,7 @@ __all__ = ['decompress_newton']
 # solve 2x2
 # =========
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _solve2x2(a11, a12, a21, a22, b1, b2):
     det = a11 * a22 - a12 * a21
     if abs(det) == 0.0:
@@ -62,7 +65,7 @@ def _solve2x2(a11, a12, a21, a22, b1, b2):
 # eval P dP scalar numba
 # ======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _eval_P_dP_scalar_numba(z, m, coeffs):
     """
     Evaluate P(z, m), dP/dz, dP/dm for one scalar pair.
@@ -100,7 +103,7 @@ def _eval_P_dP_scalar_numba(z, m, coeffs):
 # residual jacobian numba
 # =======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _residual_jacobian_numba(z_fixed, tau, coeffs, zeta, y):
     """
     Residual and Jacobian entries for the 2x2 system.
@@ -123,7 +126,7 @@ def _residual_jacobian_numba(z_fixed, tau, coeffs, zeta, y):
 # curve tangent tau numba
 # =======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _curve_tangent_tau_numba(tau, coeffs, zeta, y):
     """
     Tangent d(zeta, y)/d tau along the decompression system at fixed z.
@@ -141,7 +144,7 @@ def _curve_tangent_tau_numba(tau, coeffs, zeta, y):
 # newton project numba
 # ====================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _newton_project_numba(z_fixed, tau, coeffs, zeta0, y0,
                           max_iter, tol_res, tol_step,
                           armijo, min_lam, step_clip):
@@ -215,7 +218,7 @@ def _newton_project_numba(z_fixed, tau, coeffs, zeta0, y0,
 # predict heun numba
 # ==================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _predict_heun_numba(tau0, tau1, coeffs, zeta0, y0):
     """Embedded Euler/Heun predictor from tau0 to tau1."""
 
@@ -248,7 +251,7 @@ def _predict_heun_numba(tau0, tau1, coeffs, zeta0, y0):
 # safe rel delta
 # ==============
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _safe_rel_delta(a, b, eps):
     da = abs(a - b)
     sa = abs(a)
@@ -265,7 +268,7 @@ def _safe_rel_delta(a, b, eps):
 # metric pred scale numba
 # =======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _metric_pred_scale_numba(zeta, y, log_mode):
     if not log_mode:
         return max(1.0, abs(zeta), abs(y))
@@ -276,7 +279,7 @@ def _metric_pred_scale_numba(zeta, y, log_mode):
 # metric pred error numba
 # =======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _metric_pred_error_numba(zeta_h, y_h, zeta_e, y_e, raw_err, log_mode,
                              rel_eps):
     if not log_mode:
@@ -289,7 +292,7 @@ def _metric_pred_error_numba(zeta_h, y_h, zeta_e, y_e, raw_err, log_mode,
 # metric move numba
 # =================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _metric_move_numba(zeta_new, y_new, zeta_old, y_old, log_mode, rel_eps):
     if not log_mode:
         return max(abs(zeta_new - zeta_old), abs(y_new - y_old), 1.0)
@@ -301,7 +304,7 @@ def _metric_move_numba(zeta_new, y_new, zeta_old, y_old, log_mode, rel_eps):
 # metric corr numba
 # =================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _metric_corr_numba(zeta_corr, y_corr, zeta_pred, y_pred, corr_norm,
                        log_mode, rel_eps):
     if not log_mode:
@@ -314,7 +317,7 @@ def _metric_corr_numba(zeta_corr, y_corr, zeta_pred, y_pred, corr_norm,
 # advance one point numba
 # =======================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _advance_one_point_numba(z_fixed, t0, t1, coeffs, zeta0, y0,
                              max_iter, tol_res, tol_step,
                              armijo, min_lam, step_clip,
@@ -430,7 +433,7 @@ def _advance_one_point_numba(z_fixed, t0, t1, coeffs, zeta0, y0,
 # advance trajectory numba
 # ========================
 
-@njit(cache=True)
+@njit(cache=numba_cache)
 def _advance_trajectory_numba(z_fixed, t, coeffs, w0,
                               max_iter, tol_res, tol_step,
                               armijo, min_lam, step_clip,

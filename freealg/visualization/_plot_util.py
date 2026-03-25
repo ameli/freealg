@@ -112,15 +112,14 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
         fig, ax = plt.subplots(figsize=(6, 2.5))
 
-        ax.plot(x, rho, color='black', label=label, zorder=3)
-
-        # Remove zero rho for the plot in log-scale
-        if log:
-            rho[rho == 0.0] = numpy.nan
+        # Copy rho if later it might be overwritten
+        rho_ = numpy.copy(rho)
+        ax.plot(x, rho_, color='black', label=label, zorder=10)
 
         if log:
-            l_max = numpy.log10(numpy.nanmax(rho))
-            l_min = numpy.log10(numpy.nanmin(rho))
+            l_max = numpy.log10(numpy.nanmax(rho_))
+            l_min = numpy.nanmax([numpy.log10(numpy.nanmin(rho_)),
+                                  numpy.log10(1e-16)])
             l_cen = 0.5 * (l_max + l_min)
             l_rad = 0.5 * (l_max - l_min)
             max_y = 10.0**(l_cen + 1.1 * l_rad)
@@ -172,7 +171,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
             # ax.stairs(vals, edges, fill=True, color='silver', alpha=1.0,
             #           label='Empirical Histogram')
         else:
-            plt.fill_between(x, y1=rho, y2=min_y, color='silver', zorder=-1)
+            plt.fill_between(x, y1=rho_, y2=min_y, color='silver', zorder=-1)
 
         arrow_handle = None
         if (atoms is not None) and (len(atoms) > 0):

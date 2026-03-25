@@ -14,7 +14,7 @@
 import numpy
 from ._continuation_algebraic import powers
 
-__all__ = ['build_time_grid', 'eval_P_partials']
+__all__ = ['build_time_grid', 'eval_P_partials', 'inverse_stieltjes']
 
 
 # ===============
@@ -170,3 +170,361 @@ def eval_P_partials(z, m, coeffs):
             Pm += (j * aj) * mp[:, j - 1]
 
     return P.reshape(shp), Pz.reshape(shp), Pm.reshape(shp)
+
+
+# =================
+# inverse stieltjes
+# =================
+
+def inverse_stieltjes(m_stack, delta_ladder, x=None, log=False,
+                      nonnegative=True, **inv_stieltjes_opt):
+    """
+    Recover density from Stieltjes values sampled on a delta ladder.
+
+    Parameters
+    ----------
+
+    m_stack : numpy.ndarray
+        Complex-valued Stieltjes values sampled on a delta ladder.
+
+        Accepted shapes are:
+
+        * ``(n_levels, n_x)``
+        * ``(n_levels, n_req, n_x)``
+
+        where ``n_levels`` is the number of offsets in ``delta_ladder``.
+
+    delta_ladder : array_like
+        Positive imaginary offsets :math:`\\delta_j`.
+
+    method : {'direct', 'richardson'}, default='direct'
+        Density recovery method.
+
+        * ``'direct'`` uses only the smallest offset:
+          :math:`\\rho \\approx \\Im m(x + i\\delta_0)/\\pi`.
+        * ``'richardson'`` uses polynomial extrapolation in :math:`\\delta`
+          to estimate the :math:`\\delta \\to 0^+` limit.
+
+    nonnegative : bool, default=True
+        If `True`, clip the recovered density to be nonnegative.
+
+    Returns
+    -------
+
+    rho : numpy.ndarray
+        Recovered density. Shape is:
+
+        * ``(n_x,)`` if ``m_stack`` has shape ``(n_levels, n_x)``
+        * ``(n_req, n_x)`` if ``m_stack`` has shape ``(n_levels, n_req, n_x)``
+
+    Notes
+    -----
+
+    **Richardosn method:**
+
+    Neville table / polynomial extrapolation in delta, evaluated at 0.
+
+    R[k, j] is the extrapolated value using points j, ..., j+k.
+    Initialization: R[0, j] = G[j]
+
+    Recurrence:
+      R[k, j] =
+          ((0 - delta[j]) * R[k-1, j+1]
+           - (0 - delta[j+k]) * R[k-1, j]) / (delta[j+k] - delta[j])
+
+    which simplifies to
+      R[k, j] =
+          (-delta[j]   * R[k-1, j+1]
+           + delta[j+k] * R[k-1, j]) / (delta[j+k] - delta[j])
+
+    This uses all levels and is exact whenever G is a polynomial
+    in delta of degree <= n_levels - 1.
+    """
+
+    # Unpack options
+    method = inv_stieltjes_opt.get('method', 'direct')
+    reg = inv_stieltjes_opt.get('reg', 1e-10)
+    fit_degree = inv_stieltjes_opt.get('fit_degree', 1)
+    fit_weight = inv_stieltjes_opt.get('fit_weight', 'small_delta')
+
+    m_stack = numpy.asarray(m_stack)
+    delta_ladder = numpy.asarray(delta_ladder, dtype=float)
+
+    if m_stack.ndim not in (2, 3):
+        raise ValueError(
+            '"m_stack" must have shape (n_levels, n_x) or '
+            '(n_levels, n_req, n_x).')
+
+    if delta_ladder.ndim != 1:
+        raise ValueError('"delta_ladder" must be a 1D array.')
+
+    if m_stack.shape[0] != delta_ladder.size:
+        raise ValueError(
+            'First axis of "m_stack" must match size of "delta_ladder".')
+
+    if numpy.any(delta_ladder <= 0.0):
+        raise ValueError('"delta_ladder" must be strictly positive.')
+
+    n_levels = delta_ladder.size
+
+    # With one ladder point, do not use Richardson
+    if n_levels == 1:
+        method = 'direct'
+
+    # Use only the first (smallest) ladder levels
+    delta = delta_ladder[:n_levels]
+    G = m_stack[:n_levels].imag / numpy.pi
+
+    if method == 'direct':
+        rho = G[0]
+
+    elif method == 'richardson':
+        table = [G]
+
+        for k in range(1, n_levels):
+            prev = table[-1]
+            curr = numpy.empty_like(prev[:-1])
+
+            for j in range(n_levels - k):
+                dj = delta[j]
+                djk = delta[j + k]
+                curr[j] = (djk * prev[j] - dj * prev[j + 1]) / (djk - dj)
+
+            table.append(curr)
+
+        rho = table[-1][0]
+
+    elif method == 'polyfit':
+        fit_degree = int(fit_degree)
+        if fit_degree < 0 or fit_degree >= n_levels:
+            raise ValueError(
+                '"fit_degree" must be between 0 and n_levels - 1.')
+
+        # Scale deltas for conditioning
+        s = delta / delta[0]
+
+        # Vandermonde matrix: [1, s, s^2, ...]
+        A = numpy.vander(s, N=fit_degree + 1, increasing=True)
+
+        # Optional weighting: emphasize smaller deltas since we want y -> 0
+        if fit_weight == 'small_delta':
+            # weight_j ~ 1 / s_j
+            w = 1.0 / s
+        elif fit_weight == 'uniform' or fit_weight is None:
+            w = numpy.ones_like(s)
+        else:
+            raise ValueError('"fit_weight" must be "small_delta" or '
+                             '"uniform".')
+
+        sqrt_w = numpy.sqrt(w)
+        Aw = sqrt_w[:, None] * A
+
+        # Ridge penalty only on non-constant coefficients
+        R = numpy.eye(fit_degree + 1, dtype=float)
+        R[0, 0] = 0.0
+
+        lhs = Aw.T @ Aw + float(reg) * R
+
+        # Flatten all trailing dims of G and solve all x at once
+        G2 = G.reshape(n_levels, -1)
+        Gw = sqrt_w[:, None] * G2
+
+        coef = numpy.linalg.solve(lhs, Aw.T @ Gw)
+
+        # Intercept = estimate at delta = 0
+        rho = coef[0].reshape(G.shape[1:])
+
+    elif method == 'chebfit':
+        fit_degree = int(fit_degree)
+        if fit_degree < 0 or fit_degree >= n_levels:
+            raise ValueError(
+                '"fit_degree" must be between 0 and n_levels - 1.')
+
+        # Scale deltas by the smallest one, so s[0] = 1
+        s = delta / delta[0]
+
+        # Map s from [0, s_max] to xi in [-1, 1]
+        # This keeps the extrapolation target s = 0 at the boundary xi = -1.
+        s_max = float(s[-1])
+        if s_max <= 0.0:
+            raise ValueError('Scaled delta range must be positive.')
+
+        xi = (2.0 * s / s_max) - 1.0
+        xi0 = -1.0
+
+        # Chebyshev design matrix
+        A = numpy.polynomial.chebyshev.chebvander(xi, fit_degree)
+
+        # Optional weighting: emphasize smaller deltas since we want y -> 0
+        if fit_weight == 'small_delta':
+            w = 1.0 / s
+        elif fit_weight == 'uniform' or fit_weight is None:
+            w = numpy.ones_like(s)
+        else:
+            raise ValueError('"fit_weight" must be "small_delta" or '
+                             '"uniform".')
+
+        sqrt_w = numpy.sqrt(w)
+        Aw = sqrt_w[:, None] * A
+
+        # Flatten all trailing dims of G and solve all x at once
+        G2 = G.reshape(n_levels, -1)
+        Gw = sqrt_w[:, None] * G2
+
+        # Ridge penalty only on non-constant coefficients. We use augmented
+        # least squares instead of normal equations.
+        if reg > 0.0 and fit_degree > 0:
+            L = numpy.sqrt(float(reg)) * numpy.eye(fit_degree + 1,
+                                                   dtype=float)
+            L[0, 0] = 0.0
+
+            A_aug = numpy.vstack((Aw, L))
+            G_aug = numpy.vstack((
+                Gw,
+                numpy.zeros((fit_degree + 1, Gw.shape[1]), dtype=Gw.dtype)))
+
+        else:
+            A_aug = Aw
+            G_aug = Gw
+
+        coef, _, _, _ = numpy.linalg.lstsq(A_aug, G_aug, rcond=None)
+
+        # Evaluate fitted Chebyshev series at delta = 0 (xi0 = -1)
+        eval_row = numpy.polynomial.chebyshev.chebvander(
+            numpy.array([xi0], dtype=float), fit_degree)[0]
+
+        rho = (eval_row @ coef).reshape(G.shape[1:])
+
+    elif method == 'poisson':
+
+        if x is None:
+            raise ValueError('"x" must be provided for method="poisson".')
+
+        x = numpy.asarray(x, dtype=float)
+        if x.ndim != 1:
+            raise ValueError('"x" must be a 1D array.')
+
+        if x.size != G.shape[-1]:
+            raise ValueError('Last axis of "m_stack" must match size '
+                             'of "x".')
+
+        if x.size < 3:
+            raise ValueError('"x" must have at least 3 points.')
+
+        if log:
+            if numpy.any(x <= 0.0):
+                raise ValueError('"log=True" requires strictly positive x.')
+
+            # Uniform grid in v = log x is required
+            v = numpy.log(x)
+            dv = numpy.diff(v)
+            dv0 = float(numpy.mean(dv))
+            if not numpy.allclose(dv, dv0, rtol=1e-6, atol=0.0):
+                raise ValueError(
+                    'For log-grid Poisson inversion, x must be geometric '
+                    '(uniform in log x).')
+
+            n_x = x.size
+
+            # Flatten all batch dims except x
+            batch_shape = G.shape[1:-1]
+            n_batch = int(numpy.prod(batch_shape)) if batch_shape else 1
+            G2 = G.reshape(n_levels, n_batch, n_x)
+
+            # Zero-padding to reduce wrap-around
+            nfft = 1
+            while nfft < 4 * n_x:
+                nfft *= 2
+
+            # Grid for s = v - u
+            s = (numpy.arange(nfft) - (nfft // 2)) * dv0
+
+            numer = numpy.zeros((n_batch, nfft), dtype=complex)
+            denom = numpy.zeros(nfft, dtype=float)
+
+            for j in range(n_levels):
+                dj = float(delta[j])
+
+                ems = numpy.exp(-s)
+
+                # Correct kernel for psi(v) = rho(exp(v)):
+                # g(exp(v)) = (K_d * psi)(v)
+                K = (dj / numpy.pi) * ems / ((1.0 - ems)**2 + dj * dj)
+
+                # Put zero-lag at index 0 for FFT convolution
+                K = numpy.fft.ifftshift(K) * dv0
+                Khat = numpy.fft.fft(K)
+
+                Gpad = numpy.zeros((n_batch, nfft), dtype=complex)
+                Gpad[:, :n_x] = G2[j]
+                Ghat = numpy.fft.fft(Gpad, axis=-1)
+
+                numer += numpy.conjugate(Khat)[None, :] * Ghat
+                denom += numpy.abs(Khat)**2
+
+            # Regularized deconvolution in Fourier domain
+            Psi_hat = numer / (denom[None, :] + float(reg))
+            Psi = numpy.fft.ifft(Psi_hat, axis=-1).real[:, :n_x]
+
+            # Psi(v) = rho(exp(v))
+            rho2 = Psi
+            rho = rho2.reshape(G.shape[1:])
+
+        else:
+            # Linear case require a uniform linear grid
+            dx = numpy.diff(x)
+            dx0 = float(numpy.mean(dx))
+            if not numpy.allclose(dx, dx0, rtol=1e-6, atol=0.0):
+                raise ValueError(
+                    'For linear-grid Poisson inversion, x must be uniform '
+                    '(linearly spaced).')
+
+            n_x = x.size
+
+            # Flatten all batch dims except x
+            batch_shape = G.shape[1:-1]
+            n_batch = int(numpy.prod(batch_shape)) if batch_shape else 1
+            G2 = G.reshape(n_levels, n_batch, n_x)
+
+            # Zero-padding to reduce circular wrap-around
+            nfft = 1
+            while nfft < 4 * n_x:
+                nfft *= 2
+
+            # Centered grid for kernel variable s = x - y
+            s = (numpy.arange(nfft) - (nfft // 2)) * dx0
+
+            numer = numpy.zeros((n_batch, nfft), dtype=complex)
+            denom = numpy.zeros(nfft, dtype=float)
+
+            for j in range(n_levels):
+                dj = float(delta[j])
+
+                # Poisson kernel in linear coordinates:
+                # g(x) = (P_d * rho)(x),  P_d(s) = (d/pi)/(s^2 + d^2)
+                K = (dj / numpy.pi) / (s * s + dj * dj)
+
+                # Discrete convolution weight
+                K = numpy.fft.ifftshift(K) * dx0
+                Khat = numpy.fft.fft(K)
+
+                Gpad = numpy.zeros((n_batch, nfft), dtype=complex)
+                Gpad[:, :n_x] = G2[j]
+                Ghat = numpy.fft.fft(Gpad, axis=-1)
+
+                numer += numpy.conjugate(Khat)[None, :] * Ghat
+                denom += numpy.abs(Khat)**2
+
+            # Tikhonov-regularized least-squares deconvolution
+            Rho_hat = numer / (denom[None, :] + float(reg))
+            rho2 = numpy.fft.ifft(Rho_hat, axis=-1).real[:, :n_x]
+
+            rho = rho2.reshape(G.shape[1:])
+
+    else:
+        raise ValueError('"method" is invalid.')
+
+    if nonnegative:
+        rho = numpy.maximum(rho, 0.0)
+
+    return rho
