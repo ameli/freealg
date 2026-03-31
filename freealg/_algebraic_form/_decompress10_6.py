@@ -563,7 +563,7 @@ def _auto_detect_log_mode(z_query):
 
 def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
                       tol=1e-12, armijo=1e-4, min_lam=1e-6, w_min=1e-14,
-                      sweep=True, max_substeps=8, **kwargs):
+                      **kwargs):
     """
     Free decompression by geometric continuation on the spectral curve.
 
@@ -572,8 +572,6 @@ def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
     scale-aware relative metric; the continuation equations, Newton solve,
     and x-parallel execution model are unchanged.
     """
-
-    del sweep, max_substeps
 
     z_query = numpy.asarray(z_query, dtype=numpy.complex128).ravel()
     t = numpy.asarray(t, dtype=float).ravel()

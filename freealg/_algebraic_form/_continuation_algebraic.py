@@ -64,45 +64,46 @@ def _normalize_coefficients(arr):
 # sample z joukowski
 # ==================
 
-def sample_z_joukowski(a, b, n_samples=4096, r=1.25, n_r=3, r_min=None,
-                       log=False, dtype=complex):
+def sample_z_joukowski(support, n_samples=4096, r_min=1.8, r_max=2.2, n_r=5,
+                       y_scale=1.0, gamma=1.0, log=False, dtype=complex):
+    """
+    """
 
-    rdtype = numpy.empty((), dtype=dtype).real.dtype
+    if numpy.isscalar(n_samples):
+        n_samples = numpy.tile(n_samples, len(support))
 
-    if r_min is None:
-        r_min = 1.0 + 0.05 * (r - 1.0) if r > 1.0 else 1.0
-
-    if n_r is None or n_r < 1:
-        n_r = 1
-
-    if n_samples % 2 != 0:
-        raise ValueError('n_samples should be even.')
-
-    if n_r == 1:
-        rs = numpy.array([r], dtype=rdtype)
-    else:
-        rs = numpy.linspace(r_min, r, n_r)
-
-    n_half = n_samples // 2
-    theta = numpy.pi * (numpy.arange(n_half) + 0.5) / n_half
+    rs = numpy.linspace(r_min, r_max, n_r)
 
     z_list = []
-    for r_i in rs:
-        w = r_i * numpy.exp(1j * theta)
+    for i, supp in enumerate(support):
+        a, b = supp
 
-        if log:
-            z = joukowski_z(w, numpy.log(a), numpy.log(b))
+        if n_samples[i] % 2 != 0:
+            raise ValueError('n_samples should be even.')
 
-            # Option 1: Log only along x axis
-            z = numpy.exp(z.real) + 1j * z.imag
+        n_half = n_samples[i] // 2
+        theta = numpy.pi * (numpy.arange(n_half) + 0.5) / n_half
 
-            # Option 2: Full log in z plane
-            # z = numpy.exp(z)
-        else:
-            z = joukowski_z(w, a, b)
+        for r_i in rs:
+            w = r_i * numpy.exp(1j * theta)
 
-        z_list.append(z)
-        z_list.append(numpy.conjugate(z))
+            if log:
+                u = joukowski_z(w, numpy.log(a), numpy.log(b))
+
+                # Option 1: Log only along x axis
+                Delta = numpy.log(b / a)
+                x = numpy.exp(u.real)
+                shape = u.imag / numpy.median(numpy.abs(u.imag))
+                y = y_scale * (x ** gamma) * Delta * shape
+                z = x + 1j * y
+
+                # Option 2: Full log in z plane
+                # z = numpy.exp(u)
+            else:
+                z = joukowski_z(w, a, b)
+
+            z_list.append(z)
+            z_list.append(numpy.conjugate(z))
 
     return numpy.concatenate(z_list, dtype=dtype)
 
@@ -111,18 +112,68 @@ def sample_z_joukowski(a, b, n_samples=4096, r=1.25, n_r=3, r_min=None,
 # filter z away from cuts
 # =======================
 
-def filter_z_away_from_cuts(z, cuts, y_eps=1e-2, x_pad=0.0, dtype=complex):
+def filter_z_away_from_cuts(z, cuts, cut_eps=0.01, log=False):
+    """
+    Remove points that are too close to any real cut interval.
 
-    z = numpy.asarray(z, dtype=dtype).ravel()
-    x = numpy.real(z)
-    y = numpy.imag(z)
+    Parameters
+    ----------
+
+    z : array_like
+        Complex sample points.
+
+    cuts : sequence of (a, b)
+        Real cut intervals.
+
+    cut_eps : float, default=0.01
+        Fraction of cut width used as the distance threshold.
+
+        * log=False: threshold is ``cut_eps * (b - a)``, where ``(b - a)`` is
+          the linear width of the cut interval.
+
+        * log=True: threshold is ``cut_eps * log(b / a)``, where ``log(b / a)``
+          is the logarithmic width of the cut interval.
+
+    log : bool
+        If True, use a cut-dependent relative threshold:
+            eps_j = cut_eps * sqrt(a*b)
+        If False, use:
+            eps_j = cut_eps
+
+    Returns
+    -------
+
+    z_filt : ndarray
+        Filtered points.
+    """
+
+    z = numpy.asarray(z).ravel()
+
+    if cut_eps is None or cut_eps <= 0:
+        return z
+
+    x = z.real
+    y = numpy.abs(z.imag)
 
     keep = numpy.ones(z.size, dtype=bool)
+
     for a, b in cuts:
-        aa = a - x_pad
-        bb = b + x_pad
-        near_real_cut = (numpy.abs(y) <= y_eps) & (x >= aa) & (x <= bb)
-        keep &= ~near_real_cut
+        if log:
+            # log-aware coordinates: horizontal = log x, vertical = y/x
+            dx = numpy.where(x < a, numpy.log(a / x),
+                             numpy.where(x > b, numpy.log(x / b), 0.0))
+            dy = numpy.abs(numpy.arctan2(y, x))
+            dist = numpy.sqrt(dx**2 + dy**2)
+            eps_j = cut_eps * numpy.log(b / a)
+        else:
+            # ordinary linear geometry in z-plane
+            dx = numpy.where(x < a, a - x,
+                             numpy.where(x > b, x - b, 0.0))
+            dy = y
+            dist = numpy.sqrt(dx**2 + dy**2)
+            eps_j = cut_eps * (b - a)
+
+        keep &= (dist > eps_j)
 
     return z[keep]
 
@@ -280,10 +331,8 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
 
     # zp = powers(zs, deg_z, dtype=dtype)
     # mp = powers(ms, s, dtype=dtype)
-
     zp, tz = stable_powers(zs, deg_z, dtype=dtype)
     mp, tm = stable_powers(ms, s, dtype=dtype)
-    # -------------
 
     if weights is None:
         w = None

@@ -502,7 +502,7 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
               xlim=None, ylim_factor=1.0, scaley=True, log=False,
               text_side='left', atom_tol=0.0, cmap=None, c_range=None,
               hspace=-0.3, nbins=None, bin_factor=10, label_mode='int',
-              rho_color=None, save=False, latex=False):
+              rho_color=None, title='', save=False, latex=False):
     """
     Rideplot of a cascade of spectral density functions.
 
@@ -584,6 +584,9 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
 
     rho_color : str, default=None
         The color of ``rho`` curves.
+
+    title : str, default=''
+        Title of the plot.
 
     save : bool or str, default=False
         If `False`, the plot is not saved. If `True`, the plot is saved with a
@@ -777,6 +780,9 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
 
         ax[-1].set_xlabel(r'$\lambda$', fontsize=fontsize)
         fig.subplots_adjust(hspace=hspace)
+
+        if title != '':
+            fig.suptitle(title)
 
         if save is False:
             save_status = False

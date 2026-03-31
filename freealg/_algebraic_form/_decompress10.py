@@ -318,7 +318,8 @@ def _advance_one_point(z_fixed: complex,
 
         move = max(abs(zeta_pred - zeta), abs(y_pred - y), 1.0)
         corr_ok = (corr_norm <= float(corr_factor) * move)
-        det_ok = (abs(detJc) >= float(det_guard)) if numpy.isfinite(abs(detJc)) else False
+        det_ok = (abs(detJc) >= float(det_guard)) if \
+            numpy.isfinite(abs(detJc)) else False
 
         if ok and corr_ok and det_ok and yc != 0:
             zeta = zc
@@ -554,7 +555,8 @@ def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
                     wr = 0.0
 
             if (not numpy.isfinite(wi)) or (wi <= 0.0):
-                if k > 0 and numpy.isfinite(W[k - 1, j].imag) and W[k - 1, j].imag > 0.0:
+                if k > 0 and numpy.isfinite(W[k - 1, j].imag) and \
+                        W[k - 1, j].imag > 0.0:
                     wi = max(W[k - 1, j].imag, floor_im[j])
                 elif numpy.isfinite(w0_list[j].imag) and w0_list[j].imag > 0.0:
                     wi = max(w0_list[j].imag, floor_im[j])

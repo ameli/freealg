@@ -1,6 +1,11 @@
 # SPDX-FileCopyrightText: Copyright 2026, Siavash Ameli <sameli@berkeley.edu>
 # SPDX-License-Identifier: BSD-3-Clause
 # SPDX-FileType: SOURCE
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the license found in the LICENSE.txt file in the root directory
+# of this source tree.
+
 
 # =======
 # Imports
@@ -446,15 +451,16 @@ def _resplit_runs(stieltjes, runs, x_grid, delta, thr, log,
     return merged
 
 
-# ==============
-# main estimator
-# ==============
+# ================
+# estimate support
+# ================
 
 def estimate_support(stieltjes, x_min, x_max, n_scan=1024,
                      refine=True, resplit_density=16, merge_threshold=0.0,
                      thr_rel=1e-4,  min_log_width_mult=1.0, log=False,
                      delta=None, **kwargs):
-    """Estimate support intervals from the fitted Stieltjes transform.
+    """
+    Estimate support intervals from the fitted Stieltjes transform.
 
     Parameters
     ----------
