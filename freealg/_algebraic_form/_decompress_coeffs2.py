@@ -2,14 +2,75 @@
 # Imports
 # =======
 
+import math
 import numpy
 import matplotlib.pyplot as plt
-from scipy.special import comb
 import texplot
 from ._continuation_algebraic import _normalize_coefficients, eval_roots
 from ..visualization._hist_util import auto_bins
 
+try:
+    from numba import njit
+    HAS_NUMBA = True
+except Exception:  # pragma: no cover
+    HAS_NUMBA = False
+
+    def njit(*args, **kwargs):
+        def deco(func):
+            return func
+        return deco
+
 __all__ = ['decompress_coeffs', 'plot_candidates']
+
+numba_cache = False
+
+
+# ====
+# comb
+# ====
+
+@njit(cache=numba_cache)
+def comb(n, k):
+    if k < 0 or k > n:
+        return 0.0
+    if k == 0 or k == n:
+        return 1.0
+    kk = k
+    if kk > n - kk:
+        kk = n - kk
+    out = 1.0
+    for i in range(1, kk + 1):
+        out = out * (n - kk + i) / i
+    return out
+
+
+# ======================
+# decompress coeffs core
+# ======================
+
+@njit(cache=numba_cache)
+def _decompress_coeffs_core(a, t):
+    l_degree = a.shape[0] - 1
+    k_degree = a.shape[1] - 1
+
+    c = 1.0 - math.exp(-t)
+    a_out = numpy.zeros((l_degree + 1, l_degree + k_degree + 1),
+                        dtype=numpy.complex128)
+
+    for j in range(l_degree + 1):
+        for k in range(k_degree + 1):
+            coeff = a[j, k] * math.exp(k * t)
+            if coeff == 0.0:
+                continue
+
+            base0 = l_degree - j + k
+            for r in range(j + 1):
+                weight = comb(j, r) * (c ** (j - r))
+                if weight == 0.0:
+                    continue
+                a_out[r, base0 + r] += weight * coeff
+
+    return a_out
 
 
 # =================
@@ -38,52 +99,13 @@ def decompress_coeffs(a, t, normalize=True):
     """
 
     a = numpy.asarray(a)
-    a[-1, 0] = 0.0
     if a.ndim != 2:
         raise ValueError("a must be a 2D array-like of shape (L+1, K+1).")
 
-    l_degree = a.shape[0] - 1
-    k_degree = a.shape[1] - 1
+    a = numpy.array(a, dtype=numpy.complex128, copy=True)
+    a[-1, 0] = 0.0
 
-    c = 1.0 - numpy.exp(-t)
-
-    # Scale columns of a by e^{t k}: scaled[j, k] = a[j, k] e^{t k}.
-    exp_factors = numpy.exp(numpy.arange(k_degree + 1) * t)
-    scaled = a * exp_factors
-
-    # Output coefficients.
-    out_dtype = numpy.result_type(a, float)
-    a_out = numpy.zeros((l_degree + 1, l_degree + k_degree + 1),
-                        dtype=out_dtype)
-
-    # Precompute binomial(j, r) * c^{j-r} for all j, r (lower-triangular).
-    j_inds = numpy.arange(l_degree + 1)[:, None]
-    r_inds = numpy.arange(l_degree + 1)[None, :]
-    mask = r_inds <= j_inds
-
-    binom_weights = numpy.zeros((l_degree + 1, l_degree + 1), dtype=float)
-    binom_weights[mask] = comb(j_inds, r_inds, exact=False)[mask]
-    binom_weights[mask] *= (c ** (j_inds - r_inds))[mask]
-
-    # Main accumulation:
-    # For fixed j and r, add:
-    #   A[r, (L - j + r) + k] += binom_weights[j, r] * scaled[j, k],
-    # for k = 0..K.
-    for j in range(l_degree + 1):
-        row_scaled = scaled[j]
-        if numpy.all(row_scaled == 0):
-            continue
-
-        base0 = l_degree - j
-        row_b = binom_weights[j]
-
-        for r in range(j + 1):
-            coeff = row_b[r]
-            if coeff == 0:
-                continue
-
-            start = base0 + r
-            a_out[r, start:start + (k_degree + 1)] += coeff * row_scaled
+    a_out = _decompress_coeffs_core(a, float(t))
 
     if normalize:
         return _normalize_coefficients(a_out)

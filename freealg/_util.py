@@ -76,7 +76,8 @@ def compute_eig(A, lower=False):
 # submatrix
 # =========
 
-def submatrix(matrix, size, block_size=None, paired=True, seed=None):
+def submatrix(matrix, size, block_size=None, paired=True, haar=False,
+              seed=None):
     """
     Randomly sample a submatrix from a larger matrix.
 
@@ -98,6 +99,11 @@ def submatrix(matrix, size, block_size=None, paired=True, seed=None):
         If `True`, the rows and columns are sampled with the same random
         indices. If `False`, separate random indices are used for selecting
         rows and columns.
+
+    haar : bool, default=False
+        If `True`, apply a random orthogonal conjugation to the input matrix
+        before sampling, using a Haar-distributed orthogonal matrix. Note that
+        this can significantly increase the runtime for large matrices.
 
     seed : int, default=None
         Seed for random number generation. If `None`, results will not be
@@ -170,4 +176,9 @@ def submatrix(matrix, size, block_size=None, paired=True, seed=None):
         blk_col[:, None] * block_size + numpy.arange(block_size)[None, :]
     ).ravel()
 
-    return matrix[numpy.ix_(idx_row, idx_col)]
+    if haar:
+        orth = scipy.stats.ortho_group.rvs(n, random_state=rng)
+        matrix_conj = orth.T @ matrix @ orth
+        return matrix_conj[numpy.ix_(idx_row, idx_col)]
+    else:
+        return matrix[numpy.ix_(idx_row, idx_col)]

@@ -9,7 +9,7 @@
 from ._domain_coloring import domain_coloring
 from ._glue_util import glue_branches
 from ._hist_util import auto_bins, hist
-from ._api_plot_util import plot_flow, plot_mass, ridgeplot
+from ._api_plot_util import plot_flow, plot_mass, ridgeplot, plot_edges
 
 __all__ = ['domain_coloring', 'glue_branches', 'auto_bins', 'hist',
-           'plot_flow', 'plot_mass', 'ridgeplot']
+           'plot_flow', 'plot_mass', 'ridgeplot', 'plot_edges']

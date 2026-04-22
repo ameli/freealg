@@ -309,9 +309,9 @@ class FreeLevy(BaseDistribution):
 
         # Number of roots (branches)
         if self.sigma > 0.0:
-            self.num_roots = 4
+            self.num_roots = t.size + 2
         else:
-            self.num_roots = 3
+            self.num_roots = t.size + 1
 
     # ===================
     # roots poly m scalar

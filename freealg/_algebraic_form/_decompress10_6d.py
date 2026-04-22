@@ -30,6 +30,10 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 import numpy
 
+from ._decompress_coeffs2 import _decompress_coeffs_core
+# from ._roots import roots_m_numba, MODE_DIRECT
+from ._roots2 import roots_m_numba, MODE_DIRECT
+
 try:
     from numba import njit
     HAS_NUMBA = True
@@ -53,6 +57,7 @@ __all__ = ['decompress_newton']
 
 @njit(cache=numba_cache)
 def _solve2x2(a11, a12, a21, a22, b1, b2):
+
     det = a11 * a22 - a12 * a21
     if abs(det) == 0.0:
         return 0.0 + 0.0j, 0.0 + 0.0j, det, False
@@ -220,7 +225,9 @@ def _newton_project_numba(z_fixed, tau, coeffs, zeta0, y0,
 
 @njit(cache=numba_cache)
 def _predict_heun_numba(tau0, tau1, coeffs, zeta0, y0):
-    """Embedded Euler/Heun predictor from tau0 to tau1."""
+    """
+    Embedded Euler/Heun predictor from tau0 to tau1.
+    """
 
     h = tau1 - tau0
     dz0, dy0, J011, J012, J021, J022, ok0 = _curve_tangent_tau_numba(
@@ -253,6 +260,7 @@ def _predict_heun_numba(tau0, tau1, coeffs, zeta0, y0):
 
 @njit(cache=numba_cache)
 def _safe_rel_delta(a, b, eps):
+
     da = abs(a - b)
     sa = abs(a)
     sb = abs(b)
@@ -270,6 +278,7 @@ def _safe_rel_delta(a, b, eps):
 
 @njit(cache=numba_cache)
 def _metric_pred_scale_numba(zeta, y, log_mode):
+
     if not log_mode:
         return max(1.0, abs(zeta), abs(y))
     return 1.0
@@ -282,6 +291,7 @@ def _metric_pred_scale_numba(zeta, y, log_mode):
 @njit(cache=numba_cache)
 def _metric_pred_error_numba(zeta_h, y_h, zeta_e, y_e, raw_err, log_mode,
                              rel_eps):
+
     if not log_mode:
         return raw_err
     return max(_safe_rel_delta(zeta_h, zeta_e, rel_eps),
@@ -294,6 +304,7 @@ def _metric_pred_error_numba(zeta_h, y_h, zeta_e, y_e, raw_err, log_mode,
 
 @njit(cache=numba_cache)
 def _metric_move_numba(zeta_new, y_new, zeta_old, y_old, log_mode, rel_eps):
+
     if not log_mode:
         return max(abs(zeta_new - zeta_old), abs(y_new - y_old), 1.0)
     return max(_safe_rel_delta(zeta_new, zeta_old, rel_eps),
@@ -307,6 +318,7 @@ def _metric_move_numba(zeta_new, y_new, zeta_old, y_old, log_mode, rel_eps):
 @njit(cache=numba_cache)
 def _metric_corr_numba(zeta_corr, y_corr, zeta_pred, y_pred, corr_norm,
                        log_mode, rel_eps):
+
     if not log_mode:
         return corr_norm
     return max(_safe_rel_delta(zeta_corr, zeta_pred, rel_eps),
@@ -429,6 +441,122 @@ def _advance_one_point_numba(z_fixed, t0, t1, coeffs, zeta0, y0,
     return zeta, y, True
 
 
+# ==========================
+# eval P dP d2P scalar numba
+# ==========================
+
+@njit(cache=numba_cache)
+def _eval_P_dP_d2_scalar_numba(z, m, coeffs):
+
+    deg_z = coeffs.shape[0] - 1
+    s = coeffs.shape[1] - 1
+
+    a = numpy.empty(s + 1, dtype=numpy.complex128)
+    for j in range(s + 1):
+        val = coeffs[deg_z, j]
+        for i in range(deg_z - 1, -1, -1):
+            val = val * z + coeffs[i, j]
+        a[j] = val
+
+    P = a[s]
+    Pm = 0.0 + 0.0j
+    Pmm = 0.0 + 0.0j
+    for j in range(s - 1, -1, -1):
+        Pmm = Pmm * m + 2.0 * Pm
+        Pm = Pm * m + P
+        P = P * m + a[j]
+
+    return P, Pm, Pmm
+
+
+# ==================================
+# decompress coeffs raw helper numba
+# ==================================
+
+@njit(cache=numba_cache)
+def _decompress_coeffs_raw_numba(a, t):
+
+    a_copy = a.copy()
+    a_copy[-1, 0] = 0.0 + 0.0j
+    return _decompress_coeffs_core(a_copy, t)
+
+
+# =====================================
+# zeta and y from reconstructed w numba
+# =====================================
+
+@njit(cache=numba_cache)
+def _zeta_y_from_w_numba(z_fixed, tau, w, w_min):
+
+    y = tau * w
+    if abs(y) < w_min:
+        if y == 0:
+            y = complex(w_min, 0.0)
+        else:
+            y = y + (w_min * y / abs(y))
+    zeta = z_fixed + (tau - 1.0) / y
+    return zeta, y
+
+
+# ======================
+# roots at fixed z numba
+# ======================
+
+@njit(cache=numba_cache)
+def _roots_fixed_z_numba(coeffs_t, z_fixed):
+
+    return roots_m_numba(coeffs_t, z_fixed,
+                         0.0, 1e-14,
+                         MODE_DIRECT,
+                         True, 8, 1e-14, 1e-14,
+                         True)
+
+
+# ========================
+# nearest root index numba
+# ========================
+
+@njit(cache=numba_cache)
+def _nearest_root_index_numba(roots, w_ref, exclude_idx):
+
+    best_idx = -1
+    best_d = 0.0
+    found = False
+    for j in range(roots.size):
+        if exclude_idx >= 0 and j == exclude_idx:
+            continue
+        d = abs(roots[j] - w_ref)
+        if (not found) or (d < best_d):
+            best_d = d
+            best_idx = j
+            found = True
+    return best_idx
+
+
+# =====================================
+# closest real-lock partner index numba
+# =====================================
+
+@njit(cache=numba_cache)
+def _closest_real_partner_index_numba(roots, idx1):
+
+    if idx1 < 0:
+        return -1
+    r1 = roots[idx1]
+    best_idx = -1
+    best_d = 0.0
+    found = False
+    for j in range(roots.size):
+        if j == idx1:
+            continue
+        d = abs(roots[j].real - r1.real)
+        if (not found) or (d < best_d):
+            best_d = d
+            best_idx = j
+            found = True
+    return best_idx
+
+
 # ========================
 # advance trajectory numba
 # ========================
@@ -441,7 +569,8 @@ def _advance_trajectory_numba(z_fixed, t, coeffs, w0,
                               pred_atol, pred_rtol,
                               corr_factor, step_growth,
                               step_shrink, max_reject,
-                              det_guard, w_min, log_mode, rel_eps):
+                              det_guard, w_min, log_mode, rel_eps,
+                              pair_enable, pair_gap_factor):
     """
     Compute one full x-trajectory using the v10 continuation logic.
     """
@@ -483,10 +612,57 @@ def _advance_trajectory_numba(z_fixed, t, coeffs, w0,
         if success and numpy.isfinite(zeta1) and numpy.isfinite(y1):
             w = y1 / tau[k]
             if abs(w) >= w_min:
-                W[k] = w
-                ok[k] = True
-                zeta_state = zeta1
-                y_state = y1
+                w_use = w
+                zeta_use = zeta1
+                y_use = y1
+                ok_use = True
+
+                if pair_enable and (w.imag <= 0.0):
+                    coeffs_t = _decompress_coeffs_raw_numba(
+                        coeffs, float(t[k]))
+                    roots = _roots_fixed_z_numba(coeffs_t, z_fixed)
+                    if roots.size >= 2:
+                        idx1 = _nearest_root_index_numba(roots, w, -1)
+                        idx2 = _closest_real_partner_index_numba(roots, idx1)
+                        if idx1 >= 0 and idx2 >= 0:
+                            r1 = roots[idx1]
+                            r2 = roots[idx2]
+                            _P, Fm, Fmm = _eval_P_dP_d2_scalar_numba(
+                                z_fixed, r1, coeffs_t)
+                            if numpy.isfinite(abs(Fmm)) and abs(Fmm) > 0.0:
+                                gap_loc = abs(2.0 * Fm / Fmm)
+                                if numpy.isfinite(gap_loc) and (gap_loc > 0.0):
+
+                                    if (abs(r2 - r1) <= pair_gap_factor *
+                                            gap_loc) and (r2.imag > 0.0):
+
+                                        zeta_guess, y_guess = \
+                                            _zeta_y_from_w_numba(
+                                                z_fixed, tau[k], r2, w_min)
+
+                                        zeta_proj, y_proj, ok_proj, _itp, \
+                                            _resp, _corrp, _detp =  \
+                                            _newton_project_numba(
+                                                z_fixed, tau[k], coeffs,
+                                                zeta_guess, y_guess,
+                                                max_iter, tol_res, tol_step,
+                                                armijo, min_lam, step_clip)
+                                        if ok_proj and \
+                                                numpy.isfinite(zeta_proj) and \
+                                                numpy.isfinite(y_proj) and \
+                                                (abs(y_proj) >= w_min):
+                                            w_proj = y_proj / tau[k]
+                                            if numpy.isfinite(w_proj) and \
+                                                    (r2.imag > 0.0):
+                                                w_use = w_proj
+                                                zeta_use = zeta_proj
+                                                y_use = y_proj
+                                                ok_use = True
+
+                W[k] = w_use
+                ok[k] = ok_use
+                zeta_state = zeta_use
+                y_state = y_use
                 continue
 
         W[k] = W[k - 1]
@@ -522,7 +698,8 @@ def _run_chunk(args):
             float(common['corr_factor']), float(common['step_growth']),
             float(common['step_shrink']), int(common['max_reject']),
             float(common['det_guard']), float(common['w_min']),
-            bool(common['log_mode']), float(common['rel_eps']))
+            bool(common['log_mode']), float(common['rel_eps']),
+            bool(common['pair_enable']), float(common['pair_gap_factor']))
         W[:, j] = Wj
         ok[:, j] = okj
 
@@ -622,6 +799,9 @@ def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
 
     rel_eps = float(kwargs.get('rel_eps', 1e-12))
 
+    pair_enable = bool(kwargs.get('pair_enable', True))
+    pair_gap_factor = float(kwargs.get('pair_gap_factor', 10.0))
+
     n_t = t.size
     n_z = z_query.size
 
@@ -644,7 +824,8 @@ def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
         w_min=float(w_min),
         log_mode=bool(log_mode),
         rel_eps=rel_eps,
-    )
+        pair_enable=pair_enable,
+        pair_gap_factor=pair_gap_factor)
 
     if (not parallel) or (n_z <= 1):
         W, ok = _run_chunk((z_query, t, coeffs, w0_list, common))
@@ -655,66 +836,33 @@ def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
             n_jobs = int(n_jobs)
 
         if chunk_size <= 0:
-            chunk_size = max(1, (n_z + 4 * n_jobs - 1) // (4 * n_jobs))
+            chunk_size = max(1, 4 * n_jobs)
 
         futures = []
-        starts = []
+        index_chunks = []
+
         with ProcessPoolExecutor(max_workers=n_jobs) as ex:
-            for start in range(0, n_z, chunk_size):
-                end = min(n_z, start + chunk_size)
-                starts.append(start)
+            for offset in range(chunk_size):
+                idx = numpy.arange(offset, n_z, chunk_size, dtype=numpy.int64)
+                if idx.size == 0:
+                    continue
+                index_chunks.append(idx)
                 futures.append(ex.submit(
                     _run_chunk,
-                    (z_query[start:end], t, coeffs,
-                     w0_list[start:end], common),
+                    (z_query[idx], t, coeffs, w0_list[idx], common),
                 ))
 
             W = numpy.full((n_t, n_z), numpy.nan + 1j * numpy.nan,
                            dtype=numpy.complex128)
             ok = numpy.zeros((n_t, n_z), dtype=bool)
-            for start, fut in zip(starts, futures):
+
+            for idx, fut in zip(index_chunks, futures):
                 Wc, okc = fut.result()
-                end = start + Wc.shape[1]
-                W[:, start:end] = Wc
-                ok[:, start:end] = okc
+                W[:, idx] = Wc
+                ok[:, idx] = okc
 
     if verbose:
         for k in range(1, n_t):
             print(f't[{k}] success rate: {ok[k].mean():.3f}')
-
-    # Final cleanup copied from v10 so downstream plotting always receives
-    # finite positive densities in log mode.
-    # delta = float(abs(z_query[0].imag)) if n_z > 0 else 1e-8
-    # x_abs = numpy.abs(z_query.real)
-    # floor_im = delta / (x_abs * x_abs + delta * delta)
-    # floor_im = numpy.asarray(floor_im, dtype=float)
-    # floor_im[~numpy.isfinite(floor_im)] = 1.0
-    # floor_im = numpy.maximum(floor_im, 1e-300)
-    #
-    # for k in range(n_t):
-    #     for j in range(n_z):
-    #         w = W[k, j]
-    #         wr = w.real
-    #         wi = w.imag
-    #
-    #         if (not numpy.isfinite(wr)) or (k > 0 and not numpy.isfinite(wr)):
-    #             if k > 0 and numpy.isfinite(W[k - 1, j].real):
-    #                 wr = W[k - 1, j].real
-    #             elif numpy.isfinite(w0_list[j].real):
-    #                 wr = w0_list[j].real
-    #             else:
-    #                 wr = 0.0
-    #
-    #         if (not numpy.isfinite(wi)) or (wi <= 0.0):
-    #             if k > 0 and numpy.isfinite(W[k - 1, j].imag) and \
-    #                     W[k - 1, j].imag > 0.0:
-    #                 wi = max(W[k - 1, j].imag, floor_im[j])
-    #             elif numpy.isfinite(w0_list[j].imag) and w0_list[j].imag > 0.0:
-    #                 wi = max(w0_list[j].imag, floor_im[j])
-    #             else:
-    #                 wi = floor_im[j]
-    #             ok[k, j] = False
-    #
-    #         W[k, j] = complex(float(wr), float(wi))
 
     return W, ok

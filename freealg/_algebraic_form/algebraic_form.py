@@ -19,10 +19,14 @@ from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, eval_P
 
 # from ._edge import evolve_edges, merge_edges, evolve_edges_with_births
-# from ._edge3 import evolve_edges, merge_edges, evolve_edges_with_births
-from ._edge3_2 import evolve_edges, merge_edges, evolve_edges_with_births
+# from ._edge3_2 import evolve_edges, merge_edges, evolve_edges_with_births
+# from ._edge5 import evolve_edges, merge_edges, evolve_edges_with_births
+from ._edge7 import evolve_edges, merge_edges, evolve_edges_with_births
 
-from ._cusp_wrap import cusp_wrap
+# from ._cusp_wrap import cusp_wrap
+# from ._cusp_wrap5 import cusp_wrap
+from ._cusp_wrap11 import cusp_wrap
+
 from ._branch_points import estimate_branch_points, plot_branch_points
 from ._atoms import detect_atoms, evolve_atoms
 from ._support import estimate_support
@@ -30,7 +34,9 @@ from ._support import estimate_support
 from .._support import supp as estimate_broad_supp
 from ._decompressible import precheck_laurent
 from ._decompress_util import build_time_grid, inverse_stieltjes
-from ._decompress_coeffs import decompress_coeffs, plot_candidates
+# from ._decompress_coeffs import decompress_coeffs, plot_candidates
+from ._decompress_coeffs2 import decompress_coeffs, plot_candidates  # numba
+from ._decompress_debug import plot_decompress_vs_candidates
 
 # Stieltjes Poly
 # from ._stieltjes_poly1 import StieltjesPoly  # 1D horizontal Viterbi
@@ -38,15 +44,14 @@ from ._decompress_coeffs import decompress_coeffs, plot_candidates
 from ._stieltjes_poly3 import StieltjesPoly    # 1D vertical, parallel
 
 # Decompress with Newton
-# from ._decompress import decompress_newton
-# from ._decompress4 import decompress_newton
-# from ._decompress5 import decompress_newton
 # from ._decompress6 import decompress_newton
 # from ._decompress7 import decompress_newton
 # from ._decompress8 import decompress_newton
 # from ._decompress9 import decompress_newton   # With Predictor/Corrector
 # from ._decompress10 import decompress_newton  # log aware
-from ._decompress10_6 import decompress_newton  # like 10, parallel, log aware
+# from ._decompress10_6 import decompress_newton  # parallel, log
+# from ._decompress10_7 import decompress_newton  # parallel, log
+from ._decompress10_6d import decompress_newton  # pair mode, newton at switch
 
 # Deform
 # from ._deform import deform_newton
@@ -208,6 +213,9 @@ class AlgebraicForm(BaseForm):
 
     decompress
         Free decompression of spectral density
+
+    debug_decompress
+        Plots decompressed root versus all candidates over time
 
     deform
         Free deformation of spectral density
@@ -485,8 +493,7 @@ class AlgebraicForm(BaseForm):
                 stop = min(start + chunk_size, z.size)
                 zc = z[start:stop]
                 m[start:stop] = numpy.mean(
-                    1.0 / (self.eig[None, :] - zc[:, None]),
-                    axis=1)
+                    1.0 / (self.eig[None, :] - zc[:, None]), axis=1)
 
         else:
             raise RuntimeError('Neither "_stieltjes_emp_func" nor "eig" is '
@@ -501,7 +508,7 @@ class AlgebraicForm(BaseForm):
     def fit(self, deg_m, deg_z, reg=0.0, r_min=1.8, r_max=2.2, n_r=5,
             y_scale=1.0, gamma=1.0,  n_samples=4096, cut_eps=0.01,
             triangular=None, mu='auto', mu_reg=None, normalize=True,
-            verbose=False):
+            verbose=False, plot=False):
         """
         Fit an algebraic structure to the input data.
 
@@ -528,7 +535,7 @@ class AlgebraicForm(BaseForm):
             intervals are generated.
 
         n_r : array_like, default=1.8
-            Number of radia in Joukowski plane where contours around support
+            Number of radii in Joukowski plane where contours around support
             intervals are generated.
 
         y_scale : float, default=1.0
@@ -551,14 +558,24 @@ class AlgebraicForm(BaseForm):
             * log=True: threshold is ``cut_eps * log(b / a)``, where
               ``log(b / a)`` is the logarithmic width of the cut interval.
 
-        triangular : {``'upper'``, ``'lower'``, ``'antidiag'``}, or None, \
-                default=None
-            The index set :math:`\\mathcal{A}` of the polynomial coefficients
+        triangular : {None, tuple}, default=None
+            Structure of the coefficient index set.
 
-            * ``'upper'``: Upper triangular matrix of coefficients
-            * ``'lower'``: Lower triangular matrix of coefficients
-            * ``'antidiag'``: Anti-diagonal matrix of coefficients
-            * `None`: Full matrix
+            * ``None``: full rectangular index set.
+            * ``(a, b)``: banded support defined by
+              :math:`a \\le j - i \\le b`, where each of ``a`` and ``b`` may be
+              an integer or ``None``.
+
+              - ``a=None`` means there is no lower bound on :math:`j-i`.
+              - ``b=None`` means there is no upper bound on :math:`j-i`.
+
+            Examples:
+
+            * ``(0, None)`` keeps terms with :math:`j \\ge i`.
+            * ``(-E, None)`` reproduces the old upper-Hessenberg case
+              :math:`i \\le j + E`.
+            * ``(a, b)`` with both finite keeps only the two-sided band
+              :math:`a \\le j-i \\le b`.
 
         mu : array_like, default= ``'auto'``
             Constraint to fit polynomial coefficients based on moments:
@@ -587,6 +604,9 @@ class AlgebraicForm(BaseForm):
 
         verbose : bool, default=False
             If `True`, debugging info is printed.
+
+        plot : bool, default=False
+            If `True`, some diagnostic plots will be shown.
 
         Returns
         -------
@@ -686,7 +706,7 @@ class AlgebraicForm(BaseForm):
                                         log=self._log)
 
         # Automatically add mu constraints from eigenvalues
-        if mu == 'auto':
+        if isinstance(mu, str) and (mu == 'auto'):
             if self.eig is not None:
                 mu_0 = 1.0
                 mu_1 = numpy.mean(self.eig)
@@ -733,6 +753,30 @@ class AlgebraicForm(BaseForm):
 
             coeffs_img_norm = numpy.linalg.norm(self.coeffs.imag, ord='fro')
             print(f'\nCoefficients (imag) norm: {coeffs_img_norm:>0.4e}')
+
+        if plot:
+            edges = [[sup[0], sup[1]] for sup in possible_supp]
+            edges = numpy.concatenate(edges)
+
+            import matplotlib.pyplot as plt
+            import texplot
+            with texplot.theme(use_latex=False):
+                fig, ax = plt.subplots(figsize=(6, 4))
+                ax.plot(z_fit.real, z_fit.imag, 'o', color='black', ms=0.25,
+                        label='Sample point')
+                ax.plot(edges.real, edges.imag, 'o', color='maroon',
+                        label='Spectral edge')
+
+                if self._log:
+                    ax.set_xscale('log')
+                    ax.set_yscale('symlog', linthresh=1e-5)
+
+                ax.set_title('Sampling Stieltjes Transform')
+                ax.set_xlabel(r'$\mathrm{Re}(z)$')
+                ax.set_ylabel(r'$\mathrm{Im}(z)$')
+                ax.legend(fontsize='x-small')
+                ax.grid()
+                plt.show()
 
         return self.coeffs
 
@@ -1178,7 +1222,6 @@ class AlgebraicForm(BaseForm):
                 rho = rho_ac
 
         # Remove densities near Poisson kernel delta floor to zero
-        # TEST
         # if self._log:
         #     kernel_floor = (self.delta / numpy.pi) / (self.delta**2 + x**2)
         #     factor = 5.0
@@ -1634,7 +1677,9 @@ class AlgebraicForm(BaseForm):
             # Inverse Stieltjes transform
             rho_safe = inverse_stieltjes(
                 m_stack, self.delta_ladder, x=x_safe, log=self._log,
-                nonnegative=True, **self.inv_stieltjes_opt)
+                # nonnegative=True,
+                nonnegative=False,
+                **self.inv_stieltjes_opt)
 
             # Back into full x grid (fill with zero, may not be a good idea)
             rho = numpy.full((idx_req.size, x.size), 0.0, dtype=float)
@@ -1690,12 +1735,32 @@ class AlgebraicForm(BaseForm):
         else:
             return rho, x
 
+    # ================
+    # debug decompress
+    # ================
+
+    def debug_decompress(self, sizes, x, min_n_times=10, newton_opt=None,
+                         t_lim=None, re_lim=None, im_lim=None, pm_lim=None):
+        """
+        Plots tracked root at for point x by comparing the result from
+        decompression and the result from all candidate roots.
+        """
+
+        t_all, roots, w, eta = \
+            plot_decompress_vs_candidates(self, decompress_newton, sizes,
+                                          x, min_n_times=min_n_times,
+                                          newton_opt=newton_opt, t_lim=t_lim,
+                                          re_lim=re_lim, im_lim=im_lim,
+                                          pm_lim=pm_lim)
+
+        return t_all, roots, w, eta
+
     # ==========
     # candidates
     # ==========
 
     def candidates(self, size, x=None, eig=None, delta=None, markersize=1,
-                   latex=False, verbose=False):
+                   ylim=None, latex=False, verbose=False):
         """
         Candidate densities of free decompression from all possible roots
 
@@ -1723,6 +1788,9 @@ class AlgebraicForm(BaseForm):
 
         markersize : float, default=3
             Marker size of scatter plot.
+
+        ylim : tuple, default=None
+            Limits of the y axis. If `None`, it will be automatically set.
 
         latex : bool, default=False
             If `True`, the plot is rendered using LaTeX.
@@ -1832,7 +1900,7 @@ class AlgebraicForm(BaseForm):
             coeffs_i = decompress_coeffs(self.coeffs, t_i)
             plot_candidates(coeffs_i, x, eig=eig, delta=delta_,
                             size=int(alpha[i]*self.n), log=self._log,
-                            markersize=markersize, latex=latex,
+                            markersize=markersize, ylim=ylim, latex=latex,
                             verbose=verbose)
 
     # =================
@@ -2021,8 +2089,8 @@ class AlgebraicForm(BaseForm):
     # edge
     # ====
 
-    def edge(self, t, dt_max=0.1, max_iter=30, tol=1e-12, verbose=False,
-             plot=False, latex=False, save=False):
+    def edge(self, t, supp=None, dt_max=0.1, max_iter=30, tol=1e-12,
+             verbose=False, plot=False, latex=False, save=False):
         """
         Evolves spectral edges.
 
@@ -2032,6 +2100,10 @@ class AlgebraicForm(BaseForm):
         t : float or array_like
             Single scalar or an array of time :math:`t`. Edges are evolved at
             these time points.
+
+        supp : list, default=None
+            Estimated support of density as a list of tuples. If not given,
+            support is estimated from the fitted polynomial.
 
         dt_max : float, default=0.1
             Maximum time step during the continuous time evolution.
@@ -2129,7 +2201,9 @@ class AlgebraicForm(BaseForm):
             >>> ce, rc, ne = af.evolve_edges(t)
         """
 
-        if self.est_supp is not None:
+        if supp is not None:
+            known_supp = supp
+        elif self.est_supp is not None:
             known_supp = self.est_supp
         else:
             known_supp = self.support(return_info=False)
@@ -2145,13 +2219,14 @@ class AlgebraicForm(BaseForm):
                     stieltjes=self._stieltjes_poly,
                     delta=self.delta,
                     dt_max=dt_max, max_iter=max_iter, tol=tol, log=self._log)
+                cusps = []
             else:
                 # Use an internal grid so bifurcations (newborn edges) can be
                 # detected
                 n_internal = 64  # small, but enough to pass cusp/birth
                 t_grid = numpy.linspace(0.0, t1, n_internal)
 
-                _, cusps_sol = self.cusp(t_grid, return_info=True)
+                cusps, cusps_sol = self.cusp(t_grid, return_info=True)
                 complex_edges2, ok_edges2 = evolve_edges_with_births(
                     t_grid, self.coeffs, support=known_supp, cusps=cusps_sol,
                     stieltjes=self._stieltjes_poly,
@@ -2161,7 +2236,7 @@ class AlgebraicForm(BaseForm):
                 complex_edges = complex_edges2[-1:, :]
                 ok_edges = ok_edges2[-1:, :]
         else:
-            _, cusps_sol = self.cusp(t, return_info=True)
+            cusps, cusps_sol = self.cusp(t, return_info=True)
             complex_edges, ok_edges = evolve_edges_with_births(
                 t, self.coeffs, support=known_supp, cusps=cusps_sol,
                 stieltjes=self._stieltjes_poly,
@@ -2179,7 +2254,7 @@ class AlgebraicForm(BaseForm):
                 numpy.count_nonzero(m_exist)
             print("edge success rate:", rate)
 
-        return complex_edges, real_merged_edges, active_k
+        return complex_edges, real_merged_edges, active_k, cusps
 
     # ====
     # cusp
@@ -2266,9 +2341,16 @@ class AlgebraicForm(BaseForm):
         else:
             raise RuntimeError('Call "fit" first.')
 
+        # TEST
+        # sol = cusp_wrap(self.coeffs, t_grid, support=known_supp,
+        #                 max_iter=max_iter, tol=tol, dedup_t_tol=dedup_t_tol,
+        #                 dedup_x_tol=dedup_x_tol,
+        #                 stieltjes=self._stieltjes_poly, log=self._log)
         sol = cusp_wrap(self.coeffs, t_grid, support=known_supp,
-                        max_iter=max_iter, tol=tol, dedup_t_tol=dedup_t_tol,
-                        dedup_x_tol=dedup_x_tol)
+                        stieltjes=self._stieltjes_poly, log=self._log,
+                        delta=self.delta, edge_dt_max=0.1, edge_max_iter=30,
+                        edge_tol=1e-12, max_iter=max_iter, tol=tol,
+                        dedup_t_tol=dedup_t_tol, dedup_x_tol=dedup_x_tol)
 
         # Extract x and t from solution
         cusps = []

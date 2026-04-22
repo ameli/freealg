@@ -30,6 +30,9 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 import numpy
 
+from ._decompress_coeffs2 import decompress_coeffs
+from ._roots import roots_m
+
 try:
     from numba import njit
     HAS_NUMBA = True
@@ -495,6 +498,195 @@ def _advance_trajectory_numba(z_fixed, t, coeffs, w0,
     return W, ok
 
 
+# ==================================
+# normalized isolation indicator (py)
+# ==================================
+
+def _normalized_isolation_indicator_py(coeffs_t, z_fixed, w):
+    coeffs_t = numpy.asarray(coeffs_t, dtype=numpy.complex128)
+    deg_z, deg_m1 = coeffs_t.shape
+    deg_m = deg_m1 - 1
+    a = numpy.zeros(deg_m + 1, dtype=numpy.complex128)
+    z_pows = numpy.array([z_fixed ** i for i in range(deg_z)], dtype=numpy.complex128)
+    for j in range(deg_m + 1):
+        a[j] = numpy.sum(coeffs_t[:, j] * z_pows)
+    # derivative and scale
+    Pm = 0.0 + 0.0j
+    if deg_m >= 1:
+        P = a[deg_m]
+        for j in range(deg_m - 1, -1, -1):
+            Pm = Pm * w + P
+            P = P * w + a[j]
+    aw = abs(w)
+    denom = 0.0
+    pw = 1.0
+    for j in range(1, deg_m + 1):
+        denom += j * abs(a[j]) * pw
+        pw *= aw
+    if (not numpy.isfinite(denom)) or denom <= 0.0:
+        return 1.0
+    return abs(Pm) / denom
+
+
+# ================================
+# zeta and y from reconstructed w
+# ================================
+
+def _zeta_y_from_w_py(z_fixed, tau, w, w_min):
+    y = tau * w
+    if abs(y) < w_min:
+        if y == 0:
+            y = complex(w_min, 0.0)
+        else:
+            y = y + (w_min * y / abs(y))
+    zeta = z_fixed + (tau - 1.0) / y
+    return zeta, y
+
+
+# =========================
+# select pair by continuity
+# =========================
+
+def _select_pair_by_history_py(roots, p_prev, q_prev):
+    roots = numpy.asarray(roots, dtype=numpy.complex128)
+    best = None
+    best_pair = None
+    n = roots.size
+    for i in range(n):
+        for j in range(i + 1, n):
+            a = roots[i]
+            b = roots[j]
+            s1 = abs(a - p_prev) + abs(b - q_prev)
+            s2 = abs(a - q_prev) + abs(b - p_prev)
+            if s2 < s1:
+                score = s2
+                pair = (b, a)
+            else:
+                score = s1
+                pair = (a, b)
+            if best is None or score < best:
+                best = score
+                best_pair = pair
+    return best_pair
+
+
+# ==================================
+# advance trajectory mixed-mode (py)
+# ==================================
+
+def _advance_trajectory_mixed(z_fixed, t, coeffs, w0,
+                              max_iter, tol_res, tol_step,
+                              armijo, min_lam, step_clip,
+                              dt_max, dt_min,
+                              pred_atol, pred_rtol,
+                              corr_factor, step_growth,
+                              step_shrink, max_reject,
+                              det_guard, w_min, log_mode, rel_eps,
+                              pair_enable, pair_enter_eta,
+                              pair_rearm_eta, pair_exit_eta,
+                              pair_min_steps):
+    n_t = t.size
+    W = numpy.empty(n_t, dtype=numpy.complex128)
+    ok = numpy.zeros(n_t, dtype=bool)
+    tau = numpy.exp(t)
+
+    W[0] = w0
+    ok[0] = numpy.isfinite(w0)
+
+    zeta_state = z_fixed
+    y_state = tau[0] * w0
+    if abs(y_state) < w_min:
+        y_state = y_state + w_min
+
+    in_pair_mode = False
+    pair_seen_wide = False
+    pair_steps = 0
+    pair_p = None
+    pair_q = None
+    d_prev = None
+
+    for k in range(1, n_t):
+        if in_pair_mode:
+            coeffs_t = decompress_coeffs(coeffs, float(t[k]), normalize=False)
+            try:
+                roots = roots_m(coeffs_t, z_fixed, use_reverse='direct', sort_roots=True)
+            except Exception:
+                roots = numpy.array([], dtype=numpy.complex128)
+            if roots.size >= 2:
+                a, b = _select_pair_by_history_py(roots, pair_p, pair_q)
+                c = 0.5 * (a + b)
+                d1 = 0.5 * (a - b)
+                d2 = -d1
+                d_new = d1 if abs(d1 - d_prev) <= abs(d2 - d_prev) else d2
+                w_pair = c + d_new
+                other_pair = c - d_new
+                W[k] = w_pair
+                ok[k] = True
+                pair_p, pair_q, d_prev = w_pair, other_pair, d_new
+                zeta_state, y_state = _zeta_y_from_w_py(z_fixed, tau[k], w_pair, w_min)
+                eta_pair = _normalized_isolation_indicator_py(coeffs_t, z_fixed, w_pair)
+                pair_steps += 1
+                if eta_pair > pair_rearm_eta:
+                    pair_seen_wide = True
+                if pair_seen_wide and (pair_steps >= pair_min_steps) and (eta_pair < pair_exit_eta):
+                    in_pair_mode = False
+                continue
+            else:
+                in_pair_mode = False
+
+        # original v10_6 single-root step
+        zeta0 = zeta_state
+        y0 = y_state
+        if (not numpy.isfinite(zeta0)) or (not numpy.isfinite(y0)) or (abs(y0) < w_min):
+            zeta0 = z_fixed
+            y0 = tau[k - 1] * w0
+            if abs(y0) < w_min:
+                y0 = y0 + w_min
+
+        zeta1, y1, success = _advance_one_point_numba(
+            z_fixed, t[k - 1], t[k], coeffs, zeta0, y0,
+            max_iter, tol_res, tol_step,
+            armijo, min_lam, step_clip,
+            dt_max, dt_min,
+            pred_atol, pred_rtol,
+            corr_factor, step_growth,
+            step_shrink, max_reject,
+            det_guard, log_mode, rel_eps)
+
+        if success and numpy.isfinite(zeta1) and numpy.isfinite(y1):
+            w = y1 / tau[k]
+            if abs(w) >= w_min:
+                W[k] = w
+                ok[k] = True
+                zeta_state = zeta1
+                y_state = y1
+                if pair_enable:
+                    coeffs_t = decompress_coeffs(coeffs, float(t[k]), normalize=False)
+                    eta = _normalized_isolation_indicator_py(coeffs_t, z_fixed, w)
+                    if eta < pair_enter_eta:
+                        try:
+                            roots = roots_m(coeffs_t, z_fixed, use_reverse='direct', sort_roots=True)
+                        except Exception:
+                            roots = numpy.array([], dtype=numpy.complex128)
+                        if roots.size >= 2:
+                            d = numpy.abs(roots - w)
+                            idx = numpy.argmin(d)
+                            d[idx] = numpy.inf
+                            jdx = numpy.argmin(d)
+                            pair_p = roots[idx]
+                            pair_q = roots[jdx]
+                            d_prev = 0.5 * (pair_p - pair_q)
+                            in_pair_mode = True
+                            pair_seen_wide = False
+                            pair_steps = 0
+                continue
+
+        W[k] = W[k - 1]
+        ok[k] = False
+
+    return W, ok
+
+
 # =========
 # run chunk
 # =========
@@ -512,17 +704,33 @@ def _run_chunk(args):
     ok = numpy.zeros((n_t, m), dtype=bool)
 
     for j in range(m):
-        Wj, okj = _advance_trajectory_numba(
-            z_chunk[j], t, coeffs, w0_chunk[j],
-            int(common['max_iter']), float(common['tol_res']),
-            float(common['tol_step']), float(common['armijo']),
-            float(common['min_lam']), float(common['step_clip']),
-            float(common['dt_max']), float(common['dt_min']),
-            float(common['pred_atol']), float(common['pred_rtol']),
-            float(common['corr_factor']), float(common['step_growth']),
-            float(common['step_shrink']), int(common['max_reject']),
-            float(common['det_guard']), float(common['w_min']),
-            bool(common['log_mode']), float(common['rel_eps']))
+        if bool(common['pair_enable']):
+            Wj, okj = _advance_trajectory_mixed(
+                z_chunk[j], t, coeffs, w0_chunk[j],
+                int(common['max_iter']), float(common['tol_res']),
+                float(common['tol_step']), float(common['armijo']),
+                float(common['min_lam']), float(common['step_clip']),
+                float(common['dt_max']), float(common['dt_min']),
+                float(common['pred_atol']), float(common['pred_rtol']),
+                float(common['corr_factor']), float(common['step_growth']),
+                float(common['step_shrink']), int(common['max_reject']),
+                float(common['det_guard']), float(common['w_min']),
+                bool(common['log_mode']), float(common['rel_eps']),
+                bool(common['pair_enable']), float(common['pair_enter_eta']),
+                float(common['pair_rearm_eta']), float(common['pair_exit_eta']),
+                int(common['pair_min_steps']))
+        else:
+            Wj, okj = _advance_trajectory_numba(
+                z_chunk[j], t, coeffs, w0_chunk[j],
+                int(common['max_iter']), float(common['tol_res']),
+                float(common['tol_step']), float(common['armijo']),
+                float(common['min_lam']), float(common['step_clip']),
+                float(common['dt_max']), float(common['dt_min']),
+                float(common['pred_atol']), float(common['pred_rtol']),
+                float(common['corr_factor']), float(common['step_growth']),
+                float(common['step_shrink']), int(common['max_reject']),
+                float(common['det_guard']), float(common['w_min']),
+                bool(common['log_mode']), float(common['rel_eps']))
         W[:, j] = Wj
         ok[:, j] = okj
 
@@ -622,6 +830,12 @@ def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
 
     rel_eps = float(kwargs.get('rel_eps', 1e-12))
 
+    pair_enable = bool(kwargs.get('pair_enable', True))
+    pair_enter_eta = float(kwargs.get('pair_enter_eta', 1e-4))
+    pair_rearm_eta = float(kwargs.get('pair_rearm_eta', 1e-2))
+    pair_exit_eta = float(kwargs.get('pair_exit_eta', 1e-4))
+    pair_min_steps = int(kwargs.get('pair_min_steps', 8))
+
     n_t = t.size
     n_z = z_query.size
 
@@ -644,6 +858,11 @@ def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
         w_min=float(w_min),
         log_mode=bool(log_mode),
         rel_eps=rel_eps,
+        pair_enable=pair_enable,
+        pair_enter_eta=pair_enter_eta,
+        pair_rearm_eta=pair_rearm_eta,
+        pair_exit_eta=pair_exit_eta,
+        pair_min_steps=pair_min_steps,
     )
 
     if (not parallel) or (n_z <= 1):
@@ -684,37 +903,37 @@ def decompress_newton(z_query, t, coeffs, w0_list=None, max_iter=50,
 
     # Final cleanup copied from v10 so downstream plotting always receives
     # finite positive densities in log mode.
-    # delta = float(abs(z_query[0].imag)) if n_z > 0 else 1e-8
-    # x_abs = numpy.abs(z_query.real)
-    # floor_im = delta / (x_abs * x_abs + delta * delta)
-    # floor_im = numpy.asarray(floor_im, dtype=float)
-    # floor_im[~numpy.isfinite(floor_im)] = 1.0
-    # floor_im = numpy.maximum(floor_im, 1e-300)
-    #
-    # for k in range(n_t):
-    #     for j in range(n_z):
-    #         w = W[k, j]
-    #         wr = w.real
-    #         wi = w.imag
-    #
-    #         if (not numpy.isfinite(wr)) or (k > 0 and not numpy.isfinite(wr)):
-    #             if k > 0 and numpy.isfinite(W[k - 1, j].real):
-    #                 wr = W[k - 1, j].real
-    #             elif numpy.isfinite(w0_list[j].real):
-    #                 wr = w0_list[j].real
-    #             else:
-    #                 wr = 0.0
-    #
-    #         if (not numpy.isfinite(wi)) or (wi <= 0.0):
-    #             if k > 0 and numpy.isfinite(W[k - 1, j].imag) and \
-    #                     W[k - 1, j].imag > 0.0:
-    #                 wi = max(W[k - 1, j].imag, floor_im[j])
-    #             elif numpy.isfinite(w0_list[j].imag) and w0_list[j].imag > 0.0:
-    #                 wi = max(w0_list[j].imag, floor_im[j])
-    #             else:
-    #                 wi = floor_im[j]
-    #             ok[k, j] = False
-    #
-    #         W[k, j] = complex(float(wr), float(wi))
+    delta = float(abs(z_query[0].imag)) if n_z > 0 else 1e-8
+    x_abs = numpy.abs(z_query.real)
+    floor_im = delta / (x_abs * x_abs + delta * delta)
+    floor_im = numpy.asarray(floor_im, dtype=float)
+    floor_im[~numpy.isfinite(floor_im)] = 1.0
+    floor_im = numpy.maximum(floor_im, 1e-300)
+
+    for k in range(n_t):
+        for j in range(n_z):
+            w = W[k, j]
+            wr = w.real
+            wi = w.imag
+
+            if (not numpy.isfinite(wr)) or (k > 0 and not numpy.isfinite(wr)):
+                if k > 0 and numpy.isfinite(W[k - 1, j].real):
+                    wr = W[k - 1, j].real
+                elif numpy.isfinite(w0_list[j].real):
+                    wr = w0_list[j].real
+                else:
+                    wr = 0.0
+
+            if (not numpy.isfinite(wi)) or (wi <= 0.0):
+                if k > 0 and numpy.isfinite(W[k - 1, j].imag) and \
+                        W[k - 1, j].imag > 0.0:
+                    wi = max(W[k - 1, j].imag, floor_im[j])
+                elif numpy.isfinite(w0_list[j].imag) and w0_list[j].imag > 0.0:
+                    wi = max(w0_list[j].imag, floor_im[j])
+                else:
+                    wi = floor_im[j]
+                ok[k, j] = False
+
+            W[k, j] = complex(float(wr), float(wi))
 
     return W, ok

@@ -11,7 +11,6 @@
 # =======
 
 import numpy
-# import numba
 from scipy.stats import gaussian_kde
 
 __all__ = ['support_from_density', 'supp']
@@ -21,10 +20,6 @@ __all__ = ['support_from_density', 'supp']
 # support from density
 # ====================
 
-# @numba.njit(numba.types.UniTuple(numba.types.int64, 2)(
-#     numba.types.float64,
-#     numba.types.float64[::1]
-# ))
 def support_from_density(dx, density):
     """
     Estimates the support from a collection of noisy observations of a
@@ -103,7 +98,8 @@ def support_from_density(dx, density):
 # supp
 # ====
 
-def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False):
+def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False,
+         print_info=False):
     """
     Estimates the support of the eigenvalue density.
 
@@ -148,6 +144,9 @@ def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False):
     log : bool, default=False
         If  `True`, the data is assumed to span on logarithmic scale.
 
+    print_info : bool, default=False
+        If `True`, information about mass of the bulks is printed.
+
     Returns
     -------
 
@@ -176,18 +175,18 @@ def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False):
     if method == 'range':
         lam_m = eigs.min()
         lam_p = eigs.max()
-        support = [(lam_m, lam_p)]
+        support = [(float(lam_m), float(lam_p))]
 
     elif method == 'asymp':
         lam_m = eigs.min() - abs(eigs.min()) / len(eigs)
         lam_p = eigs.max() + abs(eigs.max()) / len(eigs)
-        support = [(lam_m, lam_p)]
+        support = [(float(lam_m), float(lam_p))]
 
     elif method == 'jackknife':
         x, n = numpy.sort(eigs), len(eigs)
         lam_m = x[0] - (n - 1)/n * (x[1] - x[0])
         lam_p = x[-1] + (n - 1)/n * (x[-1] - x[-2])
-        support = [(lam_m, lam_p)]
+        support = [(float(lam_m), float(lam_p))]
 
     elif method == 'regression':
         x, n = numpy.sort(eigs), len(eigs)
@@ -205,11 +204,11 @@ def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False):
         # Right edge: regress x_{(n-i+1)} on y
         _, lam_p = numpy.polyfit(y, x[-k:][::-1], 1)
 
-        support = [(lam_m, lam_p)]
+        support = [(float(lam_m), float(lam_p))]
 
     elif method == 'interior':
         lam_m, lam_p = numpy.quantile(eigs, [p, 1-p])
-        support = [(lam_m, lam_p)]
+        support = [(float(lam_m), float(lam_p))]
 
     elif method == 'interior_smooth':
         kde = gaussian_kde(eigs)
@@ -221,7 +220,7 @@ def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False):
 
         lam_m = numpy.interp(p, cdf, xs)
         lam_p = numpy.interp(1-p, cdf, xs)
-        support = [(lam_m, lam_p)]
+        support = [(float(lam_m), float(lam_p))]
 
     elif method == 'hist':
 
@@ -229,11 +228,10 @@ def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False):
         x_max = numpy.max(eigs)
 
         if log:
-            x = numpy.geomspace(x_min, x_max, nbins)
+            bins = numpy.geomspace(x_min, x_max, nbins)
         else:
-            x = numpy.geomspace(x_min, x_max, nbins)
+            bins = numpy.linspace(x_min, x_max, nbins)
 
-        bins = numpy.geomspace(x_min, x_max, nbins)
         vals, edges = numpy.histogram(eigs, bins=bins, density=True)
 
         nz = vals > tol
@@ -258,5 +256,36 @@ def supp(eigs, method='asymp', k=None, p=0.001, tol=0.0, nbins=150, log=False):
 
     else:
         raise NotImplementedError("Unknown method")
+
+    if print_info:
+        # Compute mass of each interval
+        masses = []
+        for a, b in support:
+            mass = numpy.mean((eigs >= a) & (eigs <= b))
+            masses.append(mass)
+        masses = numpy.array(masses)
+
+        # Trend of mass over center of bulks
+        if log:
+            # geometric centers
+            xc = numpy.array([numpy.sqrt(a*b) for a, b in support])
+            slope, intercept = numpy.polyfit(
+                numpy.log(xc), numpy.log(masses), 1)
+        else:
+            # Arithmetic centers
+            xc = numpy.array([0.5 * (a + b) for a, b in support])
+            slope, intercept = numpy.polyfit(xc, masses, 1)
+
+        for j, (sup, mass) in enumerate(zip(support, masses)):
+            print(f'| bulk {j+1} | '
+                  f'interval: ({sup[0]:>9.5f}, {sup[1]:>9.5f}) | '
+                  f'center: {xc[j]:>9.5f} | ',
+                  f'mass: {100*mass:5.2f}% |')
+
+        if log:
+            c = numpy.exp(intercept)
+            print(f"mass(x) ~ {c:.4g} * x^({slope:.4f})")
+        else:
+            print(f"mass(x) ~ {intercept:.4g} + {slope:.4f} * x")
 
     return support
