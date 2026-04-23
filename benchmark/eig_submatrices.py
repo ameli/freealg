@@ -283,7 +283,7 @@ def main():
     # How to generate submatrix sizes:
     base_factor = 1000    # Smallest submatrix (such as 1K)
     base_exp = 2          # Exponential base (such as 1K, 2K, 4K, ...)
-    exp_incr = 1          # Exponential increment (2^0, 2^1, 2^2, ...)
+    exp_incr = 0.5        # Exponential increment (2^0, 2^0.5, 2^1, ...)
     num_sizes = None      # Number of sizes. "None" samples till full matrix
 
     # ---------------------------------------

@@ -485,9 +485,30 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
         s_col[s_col == 0.0] = 1.0
         As = numpy.asarray(Ar / s_col[None, :], dtype=numpy.float64)
 
+        # Map basis coefficients -> raw monomial coefficients so that moment
+        # constraints are enforced in the same coordinates in which they are
+        # derived. For column-major vec ordering with
+        #     pairs = [(i, j) for j in range(s+1) for i in range(deg_z+1)],
+        # the back-transform is
+        #     C_scaled = inv(tz) @ C_basis @ inv(tm).T,
+        # followed by undoing variable scaling
+        #     C_raw[i, j] = C_scaled[i, j] / (z_scale**i * m_scale**j).
+        tzr = numpy.asarray(tz, dtype=rdtype)
+        tmr = numpy.asarray(tm, dtype=rdtype)
+        inv_tz = numpy.linalg.inv(tzr)
+        inv_tm = numpy.linalg.inv(tmr)
+        W_back = numpy.kron(inv_tm, inv_tz)
+
+        scale_vec = numpy.empty(n_coef, dtype=numpy.float64)
+        for k, (i, j) in enumerate(pairs):
+            scale_vec[k] = 1.0 / ((z_scale ** i) * (m_scale ** j))
+        W_raw_from_basis = scale_vec[:, None] * W_back
+
         if mu is not None:
-            B = build_moment_constraint_matrix(pairs, deg_z, s, mu)
-            if B.shape[0] > 0:
+            B_raw = build_moment_constraint_matrix(pairs, deg_z, s, mu)
+            if B_raw.shape[0] > 0:
+                B = numpy.asarray(B_raw @ W_raw_from_basis,
+                                  dtype=numpy.float64)
                 Bs = numpy.asarray(B / s_col[None, :], dtype=numpy.float64)
 
                 if mu_reg is None:
@@ -717,12 +738,24 @@ def fit_polynomial_relation(z, m, s, deg_z, ridge_lambda=0.0, weights=None,
         s_col[s_col == 0.0] = 1.0
         As = numpy.asarray(Ar / s_col[None, :], dtype=numpy.float64)
 
-        # Moment constraints are applied on raw selected coefficients.
-        # If c_raw = W @ b, then B_raw c_raw = 0 becomes (B_raw W) b = 0.
+        # Moment constraints are specified for the original raw monomial
+        # coefficients in (z, m). Here, W maps basis coefficients to the
+        # selected raw coefficients in the scaled variables (zs, ms), i.e.
+        # c_scaled = W @ b. Since
+        #     z^i m^j = (z_scale^i m_scale^j) * zs^i ms^j,
+        # the original coefficients satisfy
+        #     c_raw = D_scale @ c_scaled,
+        # with D_scale = diag(1 / (z_scale^i m_scale^j)). Therefore
+        #     B_raw c_raw = 0  =>  (B_raw D_scale W) b = 0.
         if mu is not None:
             B_raw = build_moment_constraint_matrix(raw_pairs, deg_z, s, mu)
             if B_raw.shape[0] > 0:
-                B = numpy.asarray(B_raw @ W, dtype=numpy.float64)
+                scale_vec = numpy.array([
+                    1.0 / ((z_scale ** i) * (m_scale ** j))
+                    for (i, j) in raw_pairs
+                ], dtype=rdtype)
+                W_raw = scale_vec[:, None] * W
+                B = numpy.asarray(B_raw @ W_raw, dtype=numpy.float64)
                 Bs = numpy.asarray(B / s_col[None, :], dtype=numpy.float64)
 
                 if mu_reg is None:

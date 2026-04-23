@@ -6,14 +6,14 @@
 # the terms of the license found in the LICENSE.txt file in the root directory
 # of this source tree.
 
-
 # =======
 # Imports
 # =======
 
 import numpy
 from ._cusp import solve_cusp
-from ._edge import evolve_edges, merge_edges
+from ._edge7 import evolve_edges, evolve_edges_from_states, \
+        scan_edges_at_time, third_cusp_residual
 
 __all__ = ['cusp_wrap']
 
@@ -23,9 +23,6 @@ __all__ = ['cusp_wrap']
 # ========
 
 def _norm_inf(vec):
-    """
-    """
-
     if vec is None:
         return numpy.inf
     v = numpy.asarray(vec, dtype=float).ravel()
@@ -34,309 +31,277 @@ def _norm_inf(vec):
     return float(numpy.max(numpy.abs(v)))
 
 
-# ========
-# seed key
-# ========
-
-def _seed_key(t0, z0, zb0, zb1, nd=12):
-    """
-    """
-
-    # used only to reduce identical seeds; not for cusp dedup
-    return (round(float(t0), nd), round(float(z0), nd),
-            round(float(zb0), 8), round(float(zb1), 8))
-
-
 # ===========
 # dedup cusps
 # ===========
 
 def _dedup_cusps(cusps, t_tol=1e-6, x_tol=1e-6):
-    """
-    Deduplicate cusps by clustering in (t, x).
-    Keeps the lowest-residual representative per cluster.
-    """
-
     if not cusps:
         return []
 
-    # sort by (t, x) for stable clustering
-    cusps = sorted(cusps, key=lambda c: (c["t"], c["x"]))
-
-    clusters = []  # each: {"rep": cusp, "members": [...]}
-
+    cusps = sorted(cusps, key=lambda c: (c['t'], c['x']))
+    clusters = []
     for c in cusps:
         placed = False
         for cl in clusters:
-            r = cl["rep"]
-            if abs(c["t"] - r["t"]) <= t_tol and abs(c["x"] - r["x"]) <= x_tol:
-                cl["members"].append(c)
-                # keep best (smallest norm_inf_F)
-                if c["info"]["norm_inf_F"] < r["info"]["norm_inf_F"]:
-                    cl["rep"] = c
+            r = cl['rep']
+            if abs(c['t'] - r['t']) <= t_tol and abs(c['x'] - r['x']) <= x_tol:
+                cl['members'].append(c)
+                if c['info']['norm_inf_F'] < r['info']['norm_inf_F']:
+                    cl['rep'] = c
                 placed = True
                 break
         if not placed:
-            clusters.append({"rep": c, "members": [c]})
-
-    return [cl["rep"] for cl in clusters]
-
-
-# ====
-# edge
-# ====
-
-def _edge(t, coeffs, support=None):
-    """
-    Returns edges that is already merged and real.
-    """
-
-    # TEST
-    delta = 1e-3
-    dt_max = 0.1
-    max_iter = 30
-    tol = 1e-12
-
-    complex_edges, _ = evolve_edges(t, coeffs, support=support, delta=delta,
-                                    dt_max=dt_max, max_iter=max_iter, tol=tol)
-
-    real_edges = complex_edges.real
-
-    # Remove spurious edges / merges for plotting
-    real_merged_edges, _ = merge_edges(real_edges, tol=1e-4)
-
-    return complex_edges, real_merged_edges
-
-
-# =====================
-# make edge based seeds
-# =====================
-
-def _make_edge_based_seeds(coeffs, t_grid, support=None, max_take=10):
-    """
-    Build seeds from all adjacent gaps if edges show >=2 bulks at any time.
-    Seed zeta at the midpoint of the smallest gaps.
-    """
-
-    seeds = []
-
-    try:
-        ce, re = _edge(t_grid, coeffs, support=support)
-    except Exception:
-        return seeds
-
-    if re is None or re.ndim != 2 or re.shape[0] == 0:
-        return seeds
-
-    if re.shape[1] < 4:
-        return seeds  # no adjacent gaps exist
-
-    m = re.shape[1]
-    kmax = m // 2
-
-    gap_list = []
-    meta = []  # (i, j, b, a)
-
-    for i in range(re.shape[0]):
-        row = re[i, :]
-        for j in range(kmax - 1):
-            b = row[2*j + 1]
-            a = row[2*j + 2]
-            if numpy.isfinite(a) and numpy.isfinite(b) and (a > b):
-                gap_list.append(float(a - b))
-                meta.append((i, j, float(b), float(a)))
-
-    if not gap_list:
-        return seeds
-
-    order = numpy.argsort(numpy.asarray(gap_list, dtype=float))
-    take = min(max_take, order.size)
-
-    for idx in order[:take]:
-        i, j, b, a = meta[int(idx)]
-        t0 = float(t_grid[i])
-        z0 = 0.5 * (a + b)
-        seeds.append((t0, z0, None, (b, a)))
-
-    return seeds
+            clusters.append({'rep': c, 'members': [c]})
+    return [cl['rep'] for cl in clusters]
 
 
 # ==================
-# make generic seeds
-# ==================
-
-def _make_generic_seeds(coeffs, t_grid, support=None, t_count=9,
-                        q=(0.2, 0.5, 0.8)):
-    """
-    Generic multistart: choose a few t0 values and zeta quantiles in the outer
-    support. Works for split (k=1 -> 2) as well as a fallback for anything.
-    """
-
-    seeds = []
-    t_min = float(numpy.min(t_grid))
-    t_max = float(numpy.max(t_grid))
-
-    t_seeds = numpy.linspace(t_min, t_max, min(t_count, t_grid.size))
-    for t0 in t_seeds:
-        try:
-            ce0, re0 = _edge(numpy.array([float(t0)]), coeffs, support=support)
-            row = re0[0] if (re0 is not None and re0.shape[1] >= 2) else \
-                numpy.real(ce0[0])
-            a0 = float(row[0])
-            b0 = float(row[1])
-        except Exception:
-            continue
-
-        if not (numpy.isfinite(a0) and numpy.isfinite(b0) and (b0 > a0)):
-            continue
-
-        for qq in q:
-            z0 = a0 + float(qq) * (b0 - a0)
-            seeds.append((float(t0), float(z0), None, (a0, b0)))
-
-    return seeds
-
-
-# ============
-# unique seeds
-# ============
-
-def _unique_seeds(seeds):
-    """
-    """
-
-    uniq = []
-    seen = set()
-    for (t0, z0, y0, zb) in seeds:
-        key = _seed_key(t0, z0, zb[0], zb[1])
-        if key not in seen:
-            seen.add(key)
-            uniq.append((t0, z0, y0, zb))
-    return uniq
-
-
-# ==============
 # run solve cusp
-# ==============
+# ==================
 
-def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, zeta_bounds, max_iter, tol):
-    """
-    Calls solve_cusp and extracts compact debugging info.
-    """
+def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, max_iter, tol):
+    if y0 is not None:
+        try:
+            y0 = float(numpy.real(y0))
+        except Exception:
+            y0 = None
 
     out = solve_cusp(coeffs, t_init=float(t0), zeta_init=float(z0), y_init=y0,
-                     t_bounds=t_bounds, zeta_bounds=zeta_bounds,
+                     t_bounds=t_bounds, zeta_bounds=None,
                      max_iter=max_iter, tol=tol)
 
-    success = bool(out.get("success", False))
-    ok = bool(out.get("ok", False)) if "ok" in out else success
-
+    success = bool(out.get('success', False))
+    ok = bool(out.get('ok', False)) if 'ok' in out else success
     info = {
-        "success": success,
-        "ok": ok,
-        "norm_inf_F": _norm_inf(out.get("F", None)),
-        "message": out.get("message", None),
+        'success': success,
+        'ok': ok,
+        'norm_inf_F': _norm_inf(out.get('F', None)),
+        'message': out.get('message', None),
     }
-
-    # If solve_cusp reports iterations, keep it (optional)
-    if "n_iter" in out:
-        info["n_iter"] = out["n_iter"]
+    if 'n_iter' in out:
+        info['n_iter'] = out['n_iter']
 
     if not success:
         return None
 
-    # Minimal actionable payload
     return {
-        "t": float(out["t"]),
-        "x": float(out["x"]),
-        "info": info,
-        # keep a few internal vars only if useful for debugging
-        "debug": {
-            "tau": float(out["tau"]) if "tau" in out else None,
-            "zeta": float(out["zeta"]) if "zeta" in out else None,
-            "y": float(out["y"]) if "y" in out else None,
+        't': float(out['t']),
+        'x': float(out['x']),
+        'info': info,
+        'debug': {
+            'tau': float(out['tau']) if 'tau' in out else None,
+            'zeta': float(out['zeta']) if 'zeta' in out else None,
+            'y': float(out['y']) if 'y' in out else None,
         },
     }
+
+
+# =====================
+# branch local minima
+# =====================
+
+def _branch_candidate_indices(vals, ok_mask):
+    vals = numpy.asarray(vals, dtype=float)
+    ok_mask = numpy.asarray(ok_mask, dtype=bool)
+    idx_valid = numpy.where(ok_mask & numpy.isfinite(vals))[0]
+    if idx_valid.size == 0:
+        return []
+
+    out = []
+    # local minima among valid interior points
+    for p in range(1, idx_valid.size - 1):
+        i0 = idx_valid[p - 1]
+        i1 = idx_valid[p]
+        i2 = idx_valid[p + 1]
+        if (vals[i1] <= vals[i0]) and (vals[i1] <= vals[i2]):
+            out.append(int(i1))
+
+    # if none found, include the global minimum on the valid segment
+    if not out:
+        out.append(int(idx_valid[numpy.argmin(vals[idx_valid])]))
+
+    # also include endpoints of each valid segment: births/deaths happen there
+    seg_starts = [idx_valid[0]]
+    seg_ends = []
+    for p in range(1, idx_valid.size):
+        if idx_valid[p] != idx_valid[p - 1] + 1:
+            seg_ends.append(idx_valid[p - 1])
+            seg_starts.append(idx_valid[p])
+    seg_ends.append(idx_valid[-1])
+
+    out.extend(int(v) for v in seg_starts)
+    out.extend(int(v) for v in seg_ends)
+
+    out = sorted(set(out))
+    return out
+
+
+# ========================
+# collect edge candidates
+# ========================
+
+def _collect_edge_candidates(t_grid, zeta_hist, y_hist, ok, coeffs, tag):
+    cand = []
+    nt, m = zeta_hist.shape
+    for j in range(m):
+        vals = numpy.full(nt, numpy.nan, dtype=float)
+        for it in range(nt):
+            if not ok[it, j]:
+                continue
+            z = zeta_hist[it, j]
+            y = y_hist[it, j]
+            if not (numpy.isfinite(z.real) and numpy.isfinite(z.imag) and
+                    numpy.isfinite(y.real) and numpy.isfinite(y.imag)):
+                continue
+            vals[it] = third_cusp_residual(z.real, y.real, coeffs)
+
+        for it in _branch_candidate_indices(vals, ok[:, j]):
+            if not numpy.isfinite(vals[it]):
+                continue
+            cand.append({
+                't0': float(t_grid[it]),
+                'z0': float(numpy.real(zeta_hist[it, j])),
+                'y0': float(numpy.real(y_hist[it, j])),
+                'metric': float(vals[it]),
+                'branch': int(j),
+                'source': tag,
+            })
+    return cand
+
+
+# =====================
+# dedup raw candidates
+# =====================
+
+def _dedup_raw_candidates(cands, t_tol=1e-4, z_tol=1e-4):
+    if not cands:
+        return []
+    cands = sorted(cands, key=lambda c: (c['t0'], c['z0'], c['metric']))
+    kept = []
+    for c in cands:
+        placed = False
+        for k in kept:
+            if abs(c['t0'] - k['t0']) <= t_tol and \
+                    abs(c['z0'] - k['z0']) <= z_tol:
+                if c['metric'] < k['metric']:
+                    k.update(c)
+                placed = True
+                break
+        if not placed:
+            kept.append(dict(c))
+    return kept
 
 
 # =========
 # cusp_wrap
 # =========
 
-def cusp_wrap(coeffs, t_grid, support=None, max_iter=80, tol=1e-12,
-              verbose=False, dedup_t_tol=1e-6, dedup_x_tol=1e-6,
-              max_solutions=None):
+def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None,
+              log=False, delta=1e-5, edge_dt_max=0.1,
+              edge_max_iter=30, edge_tol=1e-12,
+              max_iter=80, tol=1e-12, verbose=False,
+              dedup_t_tol=1e-6, dedup_x_tol=1e-6, max_solutions=None):
     """
-    Find cusp points and return a list of independent cusps.
+    Edge-driven cusp search.
 
-    Returns
-    -------
-
-    cusps : list of dict
-        Each item has:
-          - 't': float
-          - 'x': float
-          - 'info': dict (compact diagnostics)
-          - 'debug': dict (optional internal vars)
+    This wrapper does not scan the whole (t, x) domain. It uses the edge
+    equations to generate candidate cusp seeds, then refines those seeds with
+    the exact 3-equation cusp solve.
     """
 
     t_grid = numpy.asarray(t_grid, dtype=float).ravel()
     if t_grid.size < 2:
-        raise ValueError("t_grid must contain at least two points")
+        raise ValueError('t_grid must contain at least two points')
+    if numpy.any(numpy.diff(t_grid) <= 0.0):
+        raise ValueError('t_grid must be strictly increasing')
+    if support is None:
+        raise ValueError('support must be provided')
 
     t_min = float(numpy.min(t_grid))
     t_max = float(numpy.max(t_grid))
     t_bounds = (t_min, t_max)
 
-    # Build seeds
-    seeds = []
-    seeds += _make_edge_based_seeds(coeffs, t_grid, support=support,
-                                    max_take=12)
-    seeds += _make_generic_seeds(coeffs, t_grid, support=support, t_count=9)
+    # Forward edge evolution from t=0 support.
+    f_edges, f_ok, f_zeta, f_y = evolve_edges(
+        t_grid, coeffs, support=support, stieltjes=stieltjes,
+        delta=delta, dt_max=edge_dt_max, max_iter=edge_max_iter,
+        tol=edge_tol, return_preimage=True, log=log)
 
-    seeds = _unique_seeds(seeds)
+    # x-span for final-time scan.
+    # x_fin = numpy.real(f_edges[-1, numpy.isfinite(f_edges[-1, :].real)])
+    x_all = numpy.real(f_edges[numpy.isfinite(f_edges.real)])
+    if x_all.size == 0:
+        return []
+    x_min = float(numpy.min(x_all))
+    x_max = float(numpy.max(x_all))
+    pad = 0.05 * max(1.0, x_max - x_min)
+
+    # Scan all edges at final time directly from the fixed-time edge equations.
+    x_scan, z_scan, y_scan = scan_edges_at_time(
+        t_max, coeffs, (x_min - pad, x_max + pad), n_scan=2048,
+        stieltjes=stieltjes, delta=delta, max_iter=edge_max_iter,
+        tol=edge_tol, log=log, dedup_x_tol=max(dedup_x_tol, 1e-6))
+
+    # Backward edge evolution from the scanned final-time states.
+    if z_scan.size > 0:
+        t_rev = t_grid[::-1].copy()
+        b_edges_rev, b_ok_rev, b_zeta_rev, b_y_rev = evolve_edges_from_states(
+            t_rev, coeffs, z_scan, y_scan, max_iter=edge_max_iter,
+            tol=edge_tol, return_preimage=True, log=log)
+        # b_edges = b_edges_rev[::-1, :]
+        b_ok = b_ok_rev[::-1, :]
+        b_zeta = b_zeta_rev[::-1, :]
+        b_y = b_y_rev[::-1, :]
+    else:
+        # b_edges = numpy.empty((t_grid.size, 0), dtype=numpy.complex128)
+        b_ok = numpy.empty((t_grid.size, 0), dtype=bool)
+        b_zeta = numpy.empty((t_grid.size, 0), dtype=numpy.complex128)
+        b_y = numpy.empty((t_grid.size, 0), dtype=numpy.complex128)
+
+    raw = []
+    raw += _collect_edge_candidates(t_grid, f_zeta, f_y, f_ok, coeffs,
+                                    'forward')
+    raw += _collect_edge_candidates(t_grid, b_zeta, b_y, b_ok, coeffs,
+                                    'backward')
+    raw = _dedup_raw_candidates(raw, t_tol=max(dedup_t_tol, 1e-4),
+                                z_tol=max(dedup_x_tol, 1e-4))
+
+    # Sort by edge-based third-equation residual and keep a modest candidate
+    # set.
+    raw = sorted(raw, key=lambda c: (c['metric'], c['t0'], c['z0']))
+    if max_solutions is None:
+        max_candidates = min(32, len(raw))
+    else:
+        max_candidates = min(max(8, 4 * int(max_solutions)), len(raw))
+    raw = raw[:max_candidates]
 
     if verbose:
-        print(f"[cusp_wrap] seeds={len(seeds)}  t in [{t_min}, {t_max}]")
+        print(f'[cusp_wrap] forward branches={f_zeta.shape[1]} '
+              f'backward branches={b_zeta.shape[1]} candidates={len(raw)}')
 
-    # Run solver on all seeds
     sols = []
-    for (t0, z0, y0, zb) in seeds:
-        sol = _run_solve_cusp(coeffs, t0=t0, z0=z0, y0=y0, t_bounds=t_bounds,
-                              zeta_bounds=zb, max_iter=max_iter, tol=tol)
-
+    F_tol = max(1e-10, 100.0 * tol)
+    for c in raw:
+        sol = _run_solve_cusp(coeffs, t0=c['t0'], z0=c['z0'], y0=c['y0'],
+                              t_bounds=t_bounds, max_iter=max_iter, tol=tol)
         if sol is None:
             continue
-
-        # Optional quality filter: reject very weak convergences (May need to
-        # tune this; this is a safe-ish default.)
-        if not numpy.isfinite(sol["info"]["norm_inf_F"]):
+        if not numpy.isfinite(sol['info']['norm_inf_F']):
             continue
-
-        # Require true convergence
-        F_tol = max(1e-10, 1e4 * tol)
-        if not sol["info"].get("ok", False):
-            if sol["info"]["norm_inf_F"] > F_tol:
-                continue
-
-        # ignore boundary-hugging solutions
-        t_eps = 1e-8 * (t_max - t_min)
-        if sol["t"] <= t_min + t_eps or sol["t"] >= t_max - t_eps:
+        if sol['info']['norm_inf_F'] > F_tol:
             continue
-
+        # allow t very near the lower boundary but not outside range
+        if sol['t'] < t_min - 1e-12 or sol['t'] > t_max + 1e-12:
+            continue
         sols.append(sol)
 
-    # De-duplicate independent cusps
     sols = _dedup_cusps(sols, t_tol=dedup_t_tol, x_tol=dedup_x_tol)
-
-    # Sort by time for stable output
-    sols = sorted(sols, key=lambda s: (s["t"], s["x"]))
-
-    # Optionally cap number of reported solutions
+    sols = sorted(sols, key=lambda s: (s['t'], s['x']))
     if max_solutions is not None:
         sols = sols[:int(max_solutions)]
 
     if verbose:
-        print(f"[cusp_wrap] solutions={len(sols)}")
+        print(f'[cusp_wrap] solutions={len(sols)}')
 
     return sols

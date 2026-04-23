@@ -12,7 +12,6 @@
 
 import numpy
 
-# TEST
 # from ._roots import roots_m as _roots_backend_m
 # from ._roots import roots_m_numba as _roots_backend_m_numba
 # from ._roots import MODE_AUTO as _ROOTS_MODE_AUTO

@@ -23,9 +23,7 @@ from ._continuation_algebraic import sample_z_joukowski, \
 # from ._edge5 import evolve_edges, merge_edges, evolve_edges_with_births
 from ._edge7 import evolve_edges, merge_edges, evolve_edges_with_births
 
-# from ._cusp_wrap import cusp_wrap
-# from ._cusp_wrap5 import cusp_wrap
-from ._cusp_wrap11 import cusp_wrap
+from ._cusp_wrap import cusp_wrap
 
 from ._branch_points import estimate_branch_points, plot_branch_points
 from ._atoms import detect_atoms, evolve_atoms
@@ -1531,6 +1529,11 @@ class AlgebraicForm(BaseForm):
         density
         deform
 
+        Notes
+        -----
+
+        Free Decompression.
+
         Examples
         --------
 
@@ -1553,10 +1556,6 @@ class AlgebraicForm(BaseForm):
             >>> y = numpy.linspace(-2, 2, 300)
             >>> m = af.stieltjes(x, y, plot=True)
         """
-
-        # Create x if not given
-        # if x is None:
-        #     x = self._generate_grid(1.25, log=self._log)
 
         # Check size argument
         if numpy.isscalar(size):
@@ -2341,11 +2340,6 @@ class AlgebraicForm(BaseForm):
         else:
             raise RuntimeError('Call "fit" first.')
 
-        # TEST
-        # sol = cusp_wrap(self.coeffs, t_grid, support=known_supp,
-        #                 max_iter=max_iter, tol=tol, dedup_t_tol=dedup_t_tol,
-        #                 dedup_x_tol=dedup_x_tol,
-        #                 stieltjes=self._stieltjes_poly, log=self._log)
         sol = cusp_wrap(self.coeffs, t_grid, support=known_supp,
                         stieltjes=self._stieltjes_poly, log=self._log,
                         delta=self.delta, edge_dt_max=0.1, edge_max_iter=30,
@@ -2369,8 +2363,10 @@ class AlgebraicForm(BaseForm):
     # ======
 
     def deform(self, size, x=None, method='moc', atom_eps=None,
-               return_atoms=False, min_n_times=10, newton_opt={}, plot=False,
-               latex=False, save=False, verbose=False):
+               return_atoms=False, min_n_times=10,
+               newton_opt={'max_iter': 50, 'tol': 1e-12, 'armijo': 1e-4,
+                           'min_lam': 1e-6, 'w_min': 1e-14},
+               plot=False, latex=False, save=False, verbose=False):
         """
         Free deformation of spectral density.
 
@@ -2448,10 +2444,6 @@ class AlgebraicForm(BaseForm):
             >>> from freealg import AlgebraicForm
         """
 
-        # Create x if not given
-        if x is None:
-            x = self._generate_grid(1.25, log=self._log)
-
         # Check size argument
         if numpy.isscalar(size):
             size = int(size)
@@ -2461,8 +2453,14 @@ class AlgebraicForm(BaseForm):
             if not (numpy.all(diff >= 0) or numpy.all(diff <= 0)):
                 raise ValueError('"size" increment should be monotonic.')
 
-        # Decompression ratio
+        # Decompression ratio equal to e^{t}.
         alpha = numpy.atleast_1d(size) / self.n
+
+        # Create x if not given
+        if x is None:
+            x = self._generate_grid(1.25, log=self._log)
+        else:
+            x = numpy.asarray(x)
 
         # Epsilon-neighborhood to exclude atoms from x
         if atom_eps is None:
@@ -2475,7 +2473,6 @@ class AlgebraicForm(BaseForm):
         # Remove points too close to atoms to avoid Newton stall at poles
         near_atom = numpy.zeros(x.size, dtype=bool)
         if len(atoms0) > 0:
-
             # Exclude x grid near atoms
             for x0, _w0 in (atoms0 or []):
                 near_atom |= (numpy.abs(x - float(x0)) <= float(atom_eps))
@@ -2493,33 +2490,68 @@ class AlgebraicForm(BaseForm):
             t_all, idx_req = build_time_grid(
                 size, self.n, min_n_times=min_n_times)
 
-            # Query grid on the real axis + a small imaginary buffer
-            z_query = x_safe + 1j * self.delta
+            # # Primary options (more important to tune)
+            # newton_opt.setdefault('dt_max', 0.01)
+            # newton_opt.setdefault('tol', 1e-10)
+            # newton_opt.setdefault('max_iter', 1000)
+            # newton_opt.setdefault('parallel', True)
+            # newton_opt.setdefault('n_jobs', None)  # uses all CPUs
+            # newton_opt.setdefault('log_mode', self._log)
+            #
+            # # Secondary options (less important to tune)
+            # newton_opt.setdefault('dt_min', 1e-6)
+            # newton_opt.setdefault('pred_atol', 1e-8)
+            # newton_opt.setdefault('pred_rtol', 5e-3)
+            # newton_opt.setdefault('corr_factor', 5.0)
+            # newton_opt.setdefault('max_reject', 30)
+            # newton_opt.setdefault('det_guard', 1e-14)
+            # newton_opt.setdefault('tol_step', 0.1 * float(newton_opt['tol']))
 
-            # Initial condition at t = 0 (physical branch)
-            w0_list = self._stieltjes_poly(z_query)
+            # Stack all output indexed by (delta ladder, requested time, x)
+            m_stack = numpy.zeros(
+                (self.delta_ladder.size, idx_req.size, x_safe.size),
+                dtype=self.dtype)
 
-            # Remove atom from Stieltjes transform (Experimental)
-            # if len(atoms0) > 0:
-            #     for x0, w0 in atoms0:
-            #         w0_list = w0_list - (float(w0) / (float(x0) - z_query))
+            for i in range(self.delta_ladder.size):
+                # Query grid on the real axis + a small imaginary buffer
+                if self.inv_stieltjes_opt['z_query_delta'] == 'linear':
+                    z_query = x_safe.astype(complex) * \
+                        (1.0 + 1j * self.delta_ladder[i])
+                elif self.inv_stieltjes_opt['z_query_delta'] == 'const':
+                    z_query = x_safe.astype(complex) + \
+                        1j * self.delta_ladder[i]
+                else:
+                    raise ValueError('z_query_delta is invalid.')
 
-            # Evolve
-            W, ok = deform_newton(
-                z_query, t_all, self.coeffs, self.ratio, w0_list=w0_list,
-                **newton_opt)
+                # Initial condition at t = 0 (physical branch)
+                w0_list = self._stieltjes_poly(z_query)
 
-            rho_all_safe = W.imag / numpy.pi
+                # Remove atom from Stieltjes transform (Experimental)
+                # if len(atoms0) > 0:
+                #     for x0, w0 in atoms0:
+                #         w0_list -= (float(w0) / (float(x0) - z_query))
 
-            # Back into full grid (fill with zero, may not be a good idea)
-            rho_all = numpy.full((t_all.size, x.size), 0.0, dtype=float)
-            rho_all[:, ~near_atom] = rho_all_safe
+                # Evolve. Output is Stieltjes m(t_all, x_safe)
+                m, ok = deform_newton(
+                    z_query, t_all, self.coeffs, self.ratio, w0_list=w0_list,
+                    **newton_opt)
 
-            # return only the user-requested ones
-            rho = rho_all[idx_req]
+                # Keep only the requested times
+                m_stack[i, :, :] = m[idx_req, :]
 
-            if verbose:
-                print("success rate per t:", ok.mean(axis=1))
+                if verbose:
+                    print("success rate per t:", ok.mean(axis=1))
+
+            # Inverse Stieltjes transform
+            rho_safe = inverse_stieltjes(
+                m_stack, self.delta_ladder, x=x_safe, log=self._log,
+                # nonnegative=True,
+                nonnegative=False,
+                **self.inv_stieltjes_opt)
+
+            # Back into full x grid (fill with zero, may not be a good idea)
+            rho = numpy.full((idx_req.size, x.size), 0.0, dtype=float)
+            rho[:, ~near_atom] = rho_safe
 
         elif method == 'coeffs':
             raise NotImplementedError('"coeff" method is not implemented.')
@@ -2548,7 +2580,7 @@ class AlgebraicForm(BaseForm):
 
             # Plot only the last time of atoms and density
             plot_density(x, rho_last, atoms=atoms_last, support=None,
-                         label='Decompression', log=self._log, latex=latex,
+                         label='Deformation', log=self._log, latex=latex,
                          save=save)
 
         if return_atoms:
