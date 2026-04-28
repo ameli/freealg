@@ -9,7 +9,7 @@ import texplot
 from ._continuation_algebraic import _normalize_coefficients, eval_roots
 from ..visualization._hist_util import auto_bins
 
-__all__ = ['decompress_coeffs', 'plot_candidates']
+__all__ = ['decompress_coeffs', 'plot_decompress_candidates']
 
 
 # =================
@@ -91,12 +91,13 @@ def decompress_coeffs(a, t, normalize=True):
     return a_out
 
 
-# ===============
-# plot candidates
-# ===============
+# ==========================
+# plot decompress candidates
+# ==========================
 
-def plot_candidates(a, x, eig=None, delta=1e-4, size=None, log=False,
-                    markersize=3, ylim=None, latex=False, verbose=False):
+def plot_decompress_candidates(a, x, eig=None, delta=1e-4, size=None,
+                               log=False, markersize=3, ylim=None, latex=False,
+                               verbose=False):
     """
     Plot candidate roots.
     """

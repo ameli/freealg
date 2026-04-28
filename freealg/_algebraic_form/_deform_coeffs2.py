@@ -20,7 +20,7 @@ except Exception:  # pragma: no cover
             return func
         return deco
 
-__all__ = ['decompress_coeffs', 'plot_decompress_candidates']
+__all__ = ['deform_coeffs', 'plot_deform_candidates']
 
 numba_cache = False
 
@@ -44,43 +44,93 @@ def comb(n, k):
     return out
 
 
-# ======================
-# decompress coeffs core
-# ======================
+# ==================
+# deform coeffs core
+# ==================
 
 @njit(cache=numba_cache)
-def _decompress_coeffs_core(a, t):
+def _deform_coeffs_core(a, t, c0):
     l_degree = a.shape[0] - 1
     k_degree = a.shape[1] - 1
 
-    c = 1.0 - math.exp(-t)
-    a_out = numpy.zeros((l_degree + 1, l_degree + k_degree + 1),
+    tau = math.exp(t)
+    a_shift = 1.0 - tau
+    b_shift = 1.0 - tau * c0
+
+    z_degree = l_degree + k_degree
+    eta_degree = l_degree + 2 * k_degree
+    a_out = numpy.zeros((z_degree + 1, eta_degree + 1),
                         dtype=numpy.complex128)
 
     for j in range(l_degree + 1):
+        tau_weight = tau ** (-j)
         for k in range(k_degree + 1):
-            coeff = a[j, k] * math.exp(k * t)
+            coeff = a[j, k] * tau_weight * (c0 ** (-k))
             if coeff == 0.0:
                 continue
 
-            base0 = l_degree - j + k
-            for r in range(j + 1):
-                weight = comb(j, r) * (c ** (j - r))
-                if weight == 0.0:
+            # The cleared deformation polynomial is
+            #
+            #   eta^L (z eta + 1 - tau)^K
+            #       P((z eta + 1 - tau) / (tau eta),
+            #         eta (z eta + 1 - tau c0)
+            #             / (c0 (z eta + 1 - tau))).
+            #
+            # Therefore each monomial a[j,k] zeta^j m^k contributes
+            #
+            #   a[j,k] tau^(-j) c0^(-k)
+            #   eta^(L + k - j)
+            #   (z eta + 1 - tau)^(j + K - k)
+            #   (z eta + 1 - tau c0)^k.
+            p_degree = j + k_degree - k
+            eta_base = l_degree + k - j
+
+            for r in range(p_degree + 1):
+                weight_r = comb(p_degree, r) * \
+                    (a_shift ** (p_degree - r))
+                if weight_r == 0.0:
                     continue
-                a_out[r, base0 + r] += weight * coeff
+
+                for q in range(k + 1):
+                    weight_q = comb(k, q) * (b_shift ** (k - q))
+                    if weight_q == 0.0:
+                        continue
+
+                    z_pow = r + q
+                    eta_pow = eta_base + r + q
+                    a_out[z_pow, eta_pow] += coeff * weight_r * weight_q
 
     return a_out
 
 
-# =================
-# decompress_coeffs
-# =================
+# =============
+# deform_coeffs
+# =============
 
-def decompress_coeffs(a, t, normalize=True):
+def deform_coeffs(a, t, c0, normalize=True):
     """
-    Compute the decompressed coefficients A[r, s](t) induced by
-    the transform Q_t(z, m) = m^L P(z + (1 - e^{-t}) / m, e^t m).
+    Compute the deformed coefficients A[r, s](t) induced by the
+    companion-coordinate deformation transform.
+
+    The input polynomial is
+
+        P(z, m) = sum_{j=0..L} sum_{k=0..K} a[j, k] z^j m^k.
+
+    The deformation relation uses the target companion variable eta and
+    the initial aspect ratio c0:
+
+        zeta = (z eta + 1 - tau) / (tau eta),
+        m0   = eta (z eta + 1 - tau c0)
+               / (c0 (z eta + 1 - tau)),
+        tau  = exp(t).
+
+    The returned polynomial is the denominator-cleared relation
+
+        Q_t(z, eta)
+            = eta^L (z eta + 1 - tau)^K P(zeta, m0),
+
+    whose roots in eta are candidate companion Stieltjes branches at the
+    target aspect ratio c = tau c0.
 
     Parameters
     ----------
@@ -88,24 +138,32 @@ def decompress_coeffs(a, t, normalize=True):
         Coefficients defining P(z, m) in the monomial basis:
             P(z, m) = sum_{j=0..L} sum_{k=0..K} a[j, k] z^j m^k.
     t : float
-        Time parameter.
+        Time parameter, with tau = exp(t).
+    c0 : float
+        Initial aspect ratio. Must be positive.
+    normalize : bool, default=True
+        If True, normalize the output coefficients using
+        ``_normalize_coefficients``.
 
     Returns
     -------
-    A : ndarray, shape (L+1, L+K+1)
+    A : ndarray, shape (L+K+1, L+2K+1)
         Coefficients A[r, s](t) such that
-            sum_{r=0..L} sum_{s=0..L+K} A[r, s](t) z^r m^s = 0,
-        normalized by normalize_coefficients.
+            sum_{r=0..L+K} sum_{s=0..L+2K} A[r, s](t) z^r eta^s = 0,
+        normalized by normalize_coefficients when ``normalize`` is True.
     """
 
     a = numpy.asarray(a)
     if a.ndim != 2:
         raise ValueError("a must be a 2D array-like of shape (L+1, K+1).")
 
+    if not (isinstance(c0, (float, int)) and c0 > 0):
+        raise ValueError("c0 must be a positive scalar.")
+
     a = numpy.array(a, dtype=numpy.complex128, copy=True)
     a[-1, 0] = 0.0
 
-    a_out = _decompress_coeffs_core(a, float(t))
+    a_out = _deform_coeffs_core(a, float(t), float(c0))
 
     if normalize:
         return _normalize_coefficients(a_out)
@@ -113,19 +171,22 @@ def decompress_coeffs(a, t, normalize=True):
     return a_out
 
 
-# ==========================
-# plot decompress candidates
-# ==========================
+# ======================
+# plot deform candidates
+# ======================
 
-def plot_decompress_candidates(a, x, eig=None, delta=1e-4, size=None,
-                               log=False, markersize=3, ylim=None,
-                               latex=False, verbose=False):
+def plot_deform_candidates(a, x, c=1.0, eig=None, delta=1e-4, size=None,
+                           log=False, markersize=3, ylim=None, latex=False,
+                           verbose=False):
     """
     Plot candidate roots.
     """
 
     if not (isinstance(delta, (float, int)) and delta > 0):
         raise ValueError("delta must be a positive scalar.")
+
+    if not (isinstance(c, (float, int)) and c > 0):
+        raise ValueError("c must be a positive scalar.")
 
     x = numpy.asarray(x)
     if x.ndim != 1:
@@ -145,7 +206,11 @@ def plot_decompress_candidates(a, x, eig=None, delta=1e-4, size=None,
     roots = eval_roots(z, a, dtype=complex)
 
     for idx in range(x.size):
-        im = numpy.imag(roots[idx])
+        # Roots are companion branches eta. Convert to the target
+        # non-companion Stieltjes branch m = (eta - (c - 1) / z) / c
+        # before plotting densities.
+        m_roots = (roots[idx] - (float(c) - 1.0) / z[idx]) / float(c)
+        im = numpy.imag(m_roots)
         mask = im > 0
 
         if numpy.any(mask):

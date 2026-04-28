@@ -15,15 +15,23 @@ import numpy
 from .._base_form import BaseForm
 from .._util import compute_eig
 
+# Option 1. Use this version for diffusion example
+# from ._continuation_algebraic_old import sample_z_joukowski, \
+#         filter_z_away_from_cuts, fit_polynomial_relation, eval_P
+
+# Option 2. This version fixes moment constrains on orthogonal basis
 from ._continuation_algebraic import sample_z_joukowski, \
         filter_z_away_from_cuts, fit_polynomial_relation, eval_P
 
-# from ._edge import evolve_edges, merge_edges, evolve_edges_with_births
-# from ._edge3_2 import evolve_edges, merge_edges, evolve_edges_with_births
-# from ._edge5 import evolve_edges, merge_edges, evolve_edges_with_births
-from ._edge7 import evolve_edges, merge_edges, evolve_edges_with_births
-
+# Edges and cups for decompress
+from ._edge import evolve_edges, merge_edges, evolve_edges_with_births
 from ._cusp_wrap import cusp_wrap
+
+# Edges and cups for deform
+from ._deform_edge import evolve_edges as deform_evolve_edges
+from ._deform_edge import evolve_edges_with_births as \
+    deform_evolve_edges_with_births
+from ._deform_cusp_wrap import cusp_wrap as deform_cusp_wrap
 
 from ._branch_points import estimate_branch_points, plot_branch_points
 from ._atoms import detect_atoms, evolve_atoms
@@ -32,8 +40,9 @@ from ._support import estimate_support
 from .._support import supp as estimate_broad_supp
 from ._decompressible import precheck_laurent
 from ._decompress_util import build_time_grid, inverse_stieltjes
-# from ._decompress_coeffs import decompress_coeffs, plot_candidates
-from ._decompress_coeffs2 import decompress_coeffs, plot_candidates  # numba
+# from ._decompress_coeffs import decompress_coeffs, plot_decompress_candidates
+from ._decompress_coeffs2 import decompress_coeffs, plot_decompress_candidates
+from ._deform_coeffs2 import deform_coeffs, plot_deform_candidates
 from ._decompress_debug import plot_decompress_vs_candidates
 
 # Stieltjes Poly
@@ -52,11 +61,8 @@ from ._stieltjes_poly3 import StieltjesPoly    # 1D vertical, parallel
 from ._decompress10_6d import decompress_newton  # pair mode, newton at switch
 
 # Deform
-# from ._deform import deform_newton
-# from ._deform2 import deform_newton
-# from ._deform3 import deform_newton
-# from ._deform4 import deform_newton
-from ._deform5 import deform_newton  # predictor-corrector
+# from ._deform5 import deform_newton  # predictor-corrector
+from ._deform10_6d import deform_newton  # based on _decompress10_6d, _deform5
 
 from ._moments import Moments, AlgebraicStieltjesMoments
 from ..visualization._plot_util import plot_density, plot_hilbert, \
@@ -210,13 +216,10 @@ class AlgebraicForm(BaseForm):
         Compute Stieltjes transform of the spectral density
 
     decompress
-        Free decompression of spectral density
+        Free or deformed decompression of spectral density
 
     debug_decompress
         Plots decompressed root versus all candidates over time
-
-    deform
-        Free deformation of spectral density
 
     candidates
         Candidate densities of free decompression from all possible roots
@@ -1460,8 +1463,8 @@ class AlgebraicForm(BaseForm):
     # decompress
     # ==========
 
-    def decompress(self, size, x=None, method='moc', atom_eps=None,
-                   return_atoms=False, min_n_times=10,
+    def decompress(self, size, x=None, kind='free', method='moc',
+                   atom_eps=None, return_atoms=False, min_n_times=10,
                    newton_opt={'max_iter': 50, 'tol': 1e-12, 'armijo': 1e-4,
                                'min_lam': 1e-6, 'w_min': 1e-14},
                    plot=False, latex=False, save=False, verbose=False):
@@ -1479,6 +1482,12 @@ class AlgebraicForm(BaseForm):
         x : numpy.array, default=None
             Positions where density to be evaluated at. If `None`, an interval
             slightly larger than the support interval will be used.
+
+        kind : {``'free'``, ``'deformed'``}, default= ``'free'``
+            The type of operation:
+            * ``'free'``: evolve the spectral curve using free decompression
+            * ``'deformed'``: evolve the spectral curve using deformed
+              deformation.
 
         method : {``'moc'``, ``'coeffs'``}, default= ``'moc'``
             Method of decompression:
@@ -1527,12 +1536,13 @@ class AlgebraicForm(BaseForm):
         --------
 
         density
-        deform
+        edge
+        cusp
 
         Notes
         -----
 
-        Free Decompression.
+        Free or deformed Decompression.
 
         Examples
         --------
@@ -1557,6 +1567,14 @@ class AlgebraicForm(BaseForm):
             >>> m = af.stieltjes(x, y, plot=True)
         """
 
+        if kind not in ['free', 'deformed']:
+            raise ValueError('"kind" should be "free" or "deformed".')
+
+        if kind == 'deformed':
+            if self.ratio is None:
+                raise ValueError(
+                    'In "deformed" kind, "ratio" must be provided.')
+
         # Check size argument
         if numpy.isscalar(size):
             size = int(size)
@@ -1569,32 +1587,9 @@ class AlgebraicForm(BaseForm):
         # Decompression ratio equal to e^{t}.
         alpha = numpy.atleast_1d(size) / self.n
 
-        # Lower and upper bound on new support
-        m_lb = self._stieltjes_poly(self.lam_m + self.delta * 1j).item()
-        m_ub = self._stieltjes_poly(self.lam_p + self.delta * 1j).item()
-        hilb_lb = (1.0 / m_lb).real
-        hilb_ub = (1.0 / m_ub).real
-        lb = self.lam_m - (numpy.max(alpha) - 1) * hilb_lb
-        ub = self.lam_p - (numpy.max(alpha) - 1) * hilb_ub
-
         # Create x if not given
         if x is None:
-            if self._log:
-                # Geometric mean in log scale
-                radius = numpy.sqrt(ub / lb)
-                center = numpy.sqrt(ub * lb)
-                scale = 1.25
-                x_min = center / (radius ** scale)
-                x_max = center * (radius ** scale)
-                x = numpy.geomspace(x_min, x_max, 200)
-            else:
-                # Arithmetic mean in linear scale
-                radius = 0.5 * (ub - lb)
-                center = 0.5 * (ub + lb)
-                scale = 1.25
-                x_min = numpy.floor(center - radius * scale)
-                x_max = numpy.ceil(center + radius * scale)
-                x = numpy.linspace(x_min, x_max, 200)
+            x = self._generate_grid(1.25, log=self._log)
         else:
             x = numpy.asarray(x)
 
@@ -1612,6 +1607,12 @@ class AlgebraicForm(BaseForm):
             # Exclude x grid near atoms
             for x0, _w0 in (atoms0 or []):
                 near_atom |= (numpy.abs(x - float(x0)) <= float(atom_eps))
+
+        # The companion Stieltjes introduces a fake pole at zero, which should
+        # theoretically cancel perfectly, nut numerically, it wont.
+        if kind == 'deformed':
+            zero_eps = 50.0 * float(self.delta)
+            near_atom |= (numpy.abs(x) <= zero_eps)
 
         x_safe = x[~near_atom]
 
@@ -1664,8 +1665,13 @@ class AlgebraicForm(BaseForm):
                 #         w0_list -= (float(w0) / (float(x0) - z_query))
 
                 # Evolve. Output is Stieltjes m(t_all, x_safe)
-                m, ok = decompress_newton(
-                    z_query, t_all, self.coeffs, w0_list=w0_list, **newton_opt)
+                if kind == 'free':
+                    m, ok = decompress_newton(z_query, t_all, self.coeffs,
+                                              w0_list=w0_list, **newton_opt)
+                elif kind == 'deformed':
+                    m, ok = deform_newton(z_query, t_all, self.coeffs,
+                                          self.ratio, w0_list=w0_list,
+                                          **newton_opt)
 
                 # Keep only the requested times
                 m_stack[i, :, :] = m[idx_req, :]
@@ -1686,21 +1692,25 @@ class AlgebraicForm(BaseForm):
 
         elif method == 'coeffs':
 
-            # Preallocate density to zero
-            rho = numpy.zeros((alpha.size, x.size), dtype=float)
+            if kind == 'free':
+                # Preallocate density to zero
+                rho = numpy.zeros((alpha.size, x.size), dtype=float)
 
-            # Decompress to each alpha
-            for i in range(alpha.size):
-                t_i = numpy.log(alpha[i])
-                coeffs_i = decompress_coeffs(self.coeffs, t_i)
+                # Decompress to each alpha
+                for i in range(alpha.size):
+                    t_i = numpy.log(alpha[i])
+                    coeffs_i = decompress_coeffs(self.coeffs, t_i)
 
-                def mom(k):
-                    return self.moments(k, t_i)
+                    def mom(k):
+                        return self.moments(k, t_i)
 
-                stieltjes_i = StieltjesPoly(coeffs_i, mom)
-                rho[i, :] = stieltjes_i(x).imag
+                    stieltjes_i = StieltjesPoly(coeffs_i, mom)
+                    rho[i, :] = stieltjes_i(x).imag
 
-            rho = rho / numpy.pi
+                rho = rho / numpy.pi
+
+            elif kind == 'deformed':
+                raise NotImplementedError('"coeff" method is not implemented.')
 
         else:
             raise ValueError('"method" is invalid.')
@@ -1724,10 +1734,14 @@ class AlgebraicForm(BaseForm):
             else:
                 atoms_last = None
 
+            if kind == 'free':
+                label = 'Free Decompression'
+            elif kind == 'deformed':
+                label = 'Deformed Decompression'
+
             # Plot only the last time of atoms and density
-            plot_density(x, rho_last, atoms=atoms_last, support=(lb, ub),
-                         label='Decompression', log=self._log, latex=latex,
-                         save=save)
+            plot_density(x, rho_last, atoms=atoms_last, support=None,
+                         label=label, log=self._log, latex=latex, save=save)
 
         if return_atoms:
             return rho, x, atoms_t
@@ -1758,17 +1772,23 @@ class AlgebraicForm(BaseForm):
     # candidates
     # ==========
 
-    def candidates(self, size, x=None, eig=None, delta=None, markersize=1,
-                   ylim=None, latex=False, verbose=False):
+    def candidates(self, size, kind='free', x=None, eig=None, delta=None,
+                   markersize=1, ylim=None, latex=False, verbose=False):
         """
         Candidate densities of free decompression from all possible roots
 
         Parameters
         ----------
 
-        a : array_like of complex or float, shape (I+1, J+1)
-            Coefficients defining P(z, m) in the monomial basis (see notes
-            below).
+        size : int
+            The size of matrix to compute the candidate roots of its spectral
+            curve.
+
+        kind : {``'free'``, ``'deformed'``}, default= ``'free'``
+            The type of operation:
+            * ``'free'``: evolve the spectral curve using free decompression
+            * ``'deformed'``: evolve the spectral curve using deformed
+              deformation.
 
         x : array_like of float, shape (N,)
             1D array of real x-values (evaluation grid).
@@ -1780,10 +1800,6 @@ class AlgebraicForm(BaseForm):
             Small positive imaginary offset used to evaluate
             :math:`m(x + i \\delta)`. If `None`, the ``delta`` attribute of the
             object is used.
-
-        size : integer, optional
-            For labelling purposes, the size of the corresponding matrix can
-            be provided.
 
         markersize : float, default=3
             Marker size of scatter plot.
@@ -1896,11 +1912,31 @@ class AlgebraicForm(BaseForm):
 
         for i in range(alpha.size):
             t_i = numpy.log(alpha[i])
-            coeffs_i = decompress_coeffs(self.coeffs, t_i)
-            plot_candidates(coeffs_i, x, eig=eig, delta=delta_,
-                            size=int(alpha[i]*self.n), log=self._log,
-                            markersize=markersize, ylim=ylim, latex=latex,
-                            verbose=verbose)
+
+            if kind == 'free':
+                coeffs_i = decompress_coeffs(self.coeffs, t_i)
+                plot_decompress_candidates(coeffs_i, x, eig=eig, delta=delta_,
+                                           size=int(alpha[i]*self.n),
+                                           log=self._log,
+                                           markersize=markersize, ylim=ylim,
+                                           latex=latex, verbose=verbose)
+
+            elif kind == 'deformed':
+                if self.ratio is None:
+                    raise ValueError(
+                        '"ratio" must be provided for kind="deformed".')
+
+                # Initial and target ratios (for deformation)
+                c_0 = self.ratio
+                c_i = c_0 * alpha[i]
+
+                coeffs_i = deform_coeffs(self.coeffs, t_i, c_0)
+                plot_deform_candidates(coeffs_i, x, c=c_i, eig=eig,
+                                       delta=delta_, size=int(alpha[i]*self.n),
+                                       log=self._log, markersize=markersize,
+                                       ylim=ylim, latex=latex, verbose=verbose)
+            else:
+                raise ValueError('"kind" should be "free" or "deformed".')
 
     # =================
     # is decompressible
@@ -2088,8 +2124,8 @@ class AlgebraicForm(BaseForm):
     # edge
     # ====
 
-    def edge(self, t, supp=None, dt_max=0.1, max_iter=30, tol=1e-12,
-             verbose=False, plot=False, latex=False, save=False):
+    def edge(self, t, kind='free', supp=None, dt_max=0.1, max_iter=30,
+             tol=1e-12, verbose=False, plot=False, latex=False, save=False):
         """
         Evolves spectral edges.
 
@@ -2099,6 +2135,12 @@ class AlgebraicForm(BaseForm):
         t : float or array_like
             Single scalar or an array of time :math:`t`. Edges are evolved at
             these time points.
+
+        kind : {``'free'``, ``'deformed'``}, default= ``'free'``
+            The type of operation:
+            * ``'free'``: evolve the spectral curve using free decompression
+            * ``'deformed'``: evolve the spectral curve using deformed
+              deformation.
 
         supp : list, default=None
             Estimated support of density as a list of tuples. If not given,
@@ -2200,6 +2242,14 @@ class AlgebraicForm(BaseForm):
             >>> ce, rc, ne = af.evolve_edges(t)
         """
 
+        if kind not in ['free', 'deformed']:
+            raise ValueError('"kind" should be "free" or "deformed".')
+
+        if kind == 'deformed':
+            if self.ratio is None:
+                raise ValueError(
+                    'In "deformed" kind, "ratio" must be provided.')
+
         if supp is not None:
             known_supp = supp
         elif self.est_supp is not None:
@@ -2213,11 +2263,19 @@ class AlgebraicForm(BaseForm):
             t1 = float(t[0])
             if t1 == 0.0:
                 t_grid = numpy.array([0.0], dtype=float)
-                complex_edges, ok_edges = evolve_edges(
-                    t_grid, self.coeffs, support=known_supp,
-                    stieltjes=self._stieltjes_poly,
-                    delta=self.delta,
-                    dt_max=dt_max, max_iter=max_iter, tol=tol, log=self._log)
+
+                if kind == 'free':
+                    complex_edges, ok_edges = evolve_edges(
+                        t_grid, self.coeffs, support=known_supp,
+                        stieltjes=self._stieltjes_poly, delta=self.delta,
+                        dt_max=dt_max, max_iter=max_iter, tol=tol,
+                        log=self._log)
+                elif kind == 'deformed':
+                    complex_edges, ok_edges = deform_evolve_edges(
+                        t_grid, self.coeffs, support=known_supp,
+                        stieltjes=self._stieltjes_poly, c0=self.ratio,
+                        delta=self.delta, dt_max=dt_max, max_iter=max_iter,
+                        tol=tol, log=self._log)
                 cusps = []
             else:
                 # Use an internal grid so bifurcations (newborn edges) can be
@@ -2225,22 +2283,44 @@ class AlgebraicForm(BaseForm):
                 n_internal = 64  # small, but enough to pass cusp/birth
                 t_grid = numpy.linspace(0.0, t1, n_internal)
 
-                cusps, cusps_sol = self.cusp(t_grid, return_info=True)
-                complex_edges2, ok_edges2 = evolve_edges_with_births(
-                    t_grid, self.coeffs, support=known_supp, cusps=cusps_sol,
-                    stieltjes=self._stieltjes_poly,
-                    delta=self.delta, dt_max=dt_max, max_iter=max_iter,
-                    tol=tol, split_tol=0.0, seed_eps=1e-6, log=self._log)
+                cusps, cusps_sol = self.cusp(t_grid, kind=kind,
+                                             supp=known_supp, return_info=True)
+
+                if kind == 'free':
+                    complex_edges2, ok_edges2 = evolve_edges_with_births(
+                        t_grid, self.coeffs, support=known_supp,
+                        cusps=cusps_sol, stieltjes=self._stieltjes_poly,
+                        delta=self.delta, dt_max=dt_max, max_iter=max_iter,
+                        tol=tol, split_tol=0.0, seed_eps=1e-6, log=self._log)
+                elif kind == 'deformed':
+                    complex_edges2, ok_edges2 = \
+                            deform_evolve_edges_with_births(
+                                t_grid, self.coeffs, support=known_supp,
+                                cusps=cusps_sol,
+                                stieltjes=self._stieltjes_poly, c0=self.ratio,
+                                delta=self.delta, dt_max=dt_max,
+                                max_iter=max_iter, tol=tol, split_tol=0.0,
+                                seed_eps=1e-6, log=self._log)
 
                 complex_edges = complex_edges2[-1:, :]
                 ok_edges = ok_edges2[-1:, :]
         else:
-            cusps, cusps_sol = self.cusp(t, return_info=True)
-            complex_edges, ok_edges = evolve_edges_with_births(
-                t, self.coeffs, support=known_supp, cusps=cusps_sol,
-                stieltjes=self._stieltjes_poly,
-                delta=self.delta, dt_max=dt_max, max_iter=max_iter, tol=tol,
-                split_tol=0.0, seed_eps=1e-6, log=self._log)
+            cusps, cusps_sol = self.cusp(t, kind=kind, supp=known_supp,
+                                         return_info=True)
+
+            if kind == 'free':
+                complex_edges, ok_edges = evolve_edges_with_births(
+                    t, self.coeffs, support=known_supp, cusps=cusps_sol,
+                    stieltjes=self._stieltjes_poly, delta=self.delta,
+                    dt_max=dt_max, max_iter=max_iter, tol=tol,
+                    split_tol=0.0, seed_eps=1e-6, log=self._log)
+
+            elif kind == 'deformed':
+                complex_edges, ok_edges = deform_evolve_edges_with_births(
+                    t, self.coeffs, support=known_supp, cusps=cusps_sol,
+                    stieltjes=self._stieltjes_poly, c0=self.ratio,
+                    delta=self.delta, dt_max=dt_max, max_iter=max_iter,
+                    tol=tol, split_tol=0.0, seed_eps=1e-6, log=self._log)
 
         real_edges = complex_edges.real
 
@@ -2259,8 +2339,8 @@ class AlgebraicForm(BaseForm):
     # cusp
     # ====
 
-    def cusp(self, t_grid, max_iter=50, tol=1e-12, dedup_t_tol=1e-6,
-             dedup_x_tol=1e-6, return_info=False):
+    def cusp(self, t_grid, kind='free', supp=None, max_iter=50, tol=1e-12,
+             dedup_t_tol=1e-6, dedup_x_tol=1e-6, return_info=False):
         """
         Find cusp (merge/split) point of evolving spectral edges.
 
@@ -2269,6 +2349,16 @@ class AlgebraicForm(BaseForm):
 
         t_grid : array_like
             A time grid to search for cusp points.
+
+        kind : {``'free'``, ``'deformed'``}, default= ``'free'``
+            The type of operation:
+            * ``'free'``: evolve the spectral curve using free decompression
+            * ``'deformed'``: evolve the spectral curve using deformed
+              deformation.
+
+        supp : list, default=None
+            Estimated support of density as a list of tuples. If not given,
+            support is estimated from the fitted polynomial.
 
         max_iter : int, default=50
             Maximum number of Newton iterations
@@ -2333,18 +2423,33 @@ class AlgebraicForm(BaseForm):
             >>> cusps = af.cusp(t)
         """
 
-        if self.supp is not None:
-            known_supp = self.supp
+        if supp is not None:
+            known_supp = supp
         elif self.est_supp is not None:
             known_supp = self.est_supp
         else:
-            raise RuntimeError('Call "fit" first.')
+            known_supp = self.support(return_info=False)
 
-        sol = cusp_wrap(self.coeffs, t_grid, support=known_supp,
-                        stieltjes=self._stieltjes_poly, log=self._log,
-                        delta=self.delta, edge_dt_max=0.1, edge_max_iter=30,
-                        edge_tol=1e-12, max_iter=max_iter, tol=tol,
-                        dedup_t_tol=dedup_t_tol, dedup_x_tol=dedup_x_tol)
+        if kind == 'free':
+            sol = cusp_wrap(self.coeffs, t_grid, support=known_supp,
+                            stieltjes=self._stieltjes_poly, log=self._log,
+                            delta=self.delta, edge_dt_max=0.1,
+                            edge_max_iter=30, edge_tol=1e-12,
+                            max_iter=max_iter, tol=tol,
+                            dedup_t_tol=dedup_t_tol, dedup_x_tol=dedup_x_tol)
+
+        elif kind == 'deformed':
+            sol = deform_cusp_wrap(self.coeffs, t_grid, support=known_supp,
+                                   stieltjes=self._stieltjes_poly,
+                                   c0=self.ratio, log=self._log,
+                                   delta=self.delta, edge_dt_max=0.1,
+                                   edge_max_iter=30, edge_tol=1e-12,
+                                   max_iter=max_iter, tol=tol,
+                                   dedup_t_tol=dedup_t_tol,
+                                   dedup_x_tol=dedup_x_tol)
+
+        else:
+            raise ValueError('"kind" should be "free" or "deformed".')
 
         # Extract x and t from solution
         cusps = []
@@ -2357,233 +2462,3 @@ class AlgebraicForm(BaseForm):
             return cusps, sol
         else:
             return cusps
-
-    # ======
-    # deform
-    # ======
-
-    def deform(self, size, x=None, method='moc', atom_eps=None,
-               return_atoms=False, min_n_times=10,
-               newton_opt={'max_iter': 50, 'tol': 1e-12, 'armijo': 1e-4,
-                           'min_lam': 1e-6, 'w_min': 1e-14},
-               plot=False, latex=False, save=False, verbose=False):
-        """
-        Free deformation of spectral density.
-
-        Parameters
-        ----------
-
-        size : int or array_like
-            Size(s) of the decompressed matrix. This can be a scalar or an
-            array of sizes. For each matrix size in ``size`` array, a density
-            is produced.
-
-        x : numpy.array, default=None
-            Positions where density to be evaluated at. If `None`, an interval
-            slightly larger than the support interval will be used.
-
-        method : {``'moc'``, ``'coeffs'``}, default= ``'moc'``
-            Method of decompression:
-
-            * ``'moc'``: Method of characteristics with Newton iterations.
-            * ``'coeffs'``: Evolving polynomial coefficients directly.
-
-        min_n_times : int, default=10
-            Minimum number of inner sizes to evolve.
-
-        newton_opt : dict
-            A dictionary of settings to pass to Newton iteration solver.
-
-        plot : bool, default=False
-            If `True`, density is plotted.
-
-        latex : bool, default=False
-            If `True`, the plot is rendered using LaTeX. This option is
-            relevant only if ``plot=True``.
-
-        save : bool, default=False
-            If not `False`, the plot is saved. If a string is given, it is
-            assumed to the save filename (with the file extension). This option
-            is relevant only if ``plot=True``.
-
-        verbose : bool, default=False
-            If `True`, it prints verbose be bugging information.
-
-        Returns
-        -------
-
-        rho : numpy.array or numpy.ndarray
-            Estimated spectral density at locations x. ``rho`` can be a 1D or
-            2D array output:
-
-            * If ``size`` is a scalar, ``rho`` is a 1D array of the same size
-              as ``x``.
-            * If ``size`` is an array of size `n`, ``rho`` is a 2D array with
-              `n` rows, where each row corresponds to decompression to a size.
-              Number of columns of ``rho`` is the same as the size of ``x``.
-
-        x : numpy.array
-            Locations where the spectral density is estimated
-
-        See Also
-        --------
-
-        density
-        decompress
-
-        Notes
-        -----
-
-        Deformation solver for sample-covariance / Silverstein-type scaling.
-
-        Examples
-        --------
-
-        .. code-block:: python
-
-            >>> from freealg import AlgebraicForm
-        """
-
-        # Check size argument
-        if numpy.isscalar(size):
-            size = int(size)
-        else:
-            # Check monotonic increment (either all increasing or decreasing)
-            diff = numpy.diff(size)
-            if not (numpy.all(diff >= 0) or numpy.all(diff <= 0)):
-                raise ValueError('"size" increment should be monotonic.')
-
-        # Decompression ratio equal to e^{t}.
-        alpha = numpy.atleast_1d(size) / self.n
-
-        # Create x if not given
-        if x is None:
-            x = self._generate_grid(1.25, log=self._log)
-        else:
-            x = numpy.asarray(x)
-
-        # Epsilon-neighborhood to exclude atoms from x
-        if atom_eps is None:
-            atom_eps = 50.0 * float(self.delta)
-
-        # Evolve atoms
-        atoms0 = self.atoms()
-        atoms_t = evolve_atoms(atoms0, alpha)
-
-        # Remove points too close to atoms to avoid Newton stall at poles
-        near_atom = numpy.zeros(x.size, dtype=bool)
-        if len(atoms0) > 0:
-            # Exclude x grid near atoms
-            for x0, _w0 in (atoms0 or []):
-                near_atom |= (numpy.abs(x - float(x0)) <= float(atom_eps))
-
-        # The companion Stieltjes introduces a fake pole at zero, which should
-        # theoretically cancel perfectly, nut numerically, it wont.
-        zero_eps = 50.0 * float(self.delta)
-        near_atom |= (numpy.abs(x) <= zero_eps)
-        x_safe = x[~near_atom]
-
-        if method == 'moc':
-
-            # Ensure there are at least min_n_times time t, including requested
-            # times, and especially time t = 0
-            t_all, idx_req = build_time_grid(
-                size, self.n, min_n_times=min_n_times)
-
-            # # Primary options (more important to tune)
-            # newton_opt.setdefault('dt_max', 0.01)
-            # newton_opt.setdefault('tol', 1e-10)
-            # newton_opt.setdefault('max_iter', 1000)
-            # newton_opt.setdefault('parallel', True)
-            # newton_opt.setdefault('n_jobs', None)  # uses all CPUs
-            # newton_opt.setdefault('log_mode', self._log)
-            #
-            # # Secondary options (less important to tune)
-            # newton_opt.setdefault('dt_min', 1e-6)
-            # newton_opt.setdefault('pred_atol', 1e-8)
-            # newton_opt.setdefault('pred_rtol', 5e-3)
-            # newton_opt.setdefault('corr_factor', 5.0)
-            # newton_opt.setdefault('max_reject', 30)
-            # newton_opt.setdefault('det_guard', 1e-14)
-            # newton_opt.setdefault('tol_step', 0.1 * float(newton_opt['tol']))
-
-            # Stack all output indexed by (delta ladder, requested time, x)
-            m_stack = numpy.zeros(
-                (self.delta_ladder.size, idx_req.size, x_safe.size),
-                dtype=self.dtype)
-
-            for i in range(self.delta_ladder.size):
-                # Query grid on the real axis + a small imaginary buffer
-                if self.inv_stieltjes_opt['z_query_delta'] == 'linear':
-                    z_query = x_safe.astype(complex) * \
-                        (1.0 + 1j * self.delta_ladder[i])
-                elif self.inv_stieltjes_opt['z_query_delta'] == 'const':
-                    z_query = x_safe.astype(complex) + \
-                        1j * self.delta_ladder[i]
-                else:
-                    raise ValueError('z_query_delta is invalid.')
-
-                # Initial condition at t = 0 (physical branch)
-                w0_list = self._stieltjes_poly(z_query)
-
-                # Remove atom from Stieltjes transform (Experimental)
-                # if len(atoms0) > 0:
-                #     for x0, w0 in atoms0:
-                #         w0_list -= (float(w0) / (float(x0) - z_query))
-
-                # Evolve. Output is Stieltjes m(t_all, x_safe)
-                m, ok = deform_newton(
-                    z_query, t_all, self.coeffs, self.ratio, w0_list=w0_list,
-                    **newton_opt)
-
-                # Keep only the requested times
-                m_stack[i, :, :] = m[idx_req, :]
-
-                if verbose:
-                    print("success rate per t:", ok.mean(axis=1))
-
-            # Inverse Stieltjes transform
-            rho_safe = inverse_stieltjes(
-                m_stack, self.delta_ladder, x=x_safe, log=self._log,
-                # nonnegative=True,
-                nonnegative=False,
-                **self.inv_stieltjes_opt)
-
-            # Back into full x grid (fill with zero, may not be a good idea)
-            rho = numpy.full((idx_req.size, x.size), 0.0, dtype=float)
-            rho[:, ~near_atom] = rho_safe
-
-        elif method == 'coeffs':
-            raise NotImplementedError('"coeff" method is not implemented.')
-
-        else:
-            raise ValueError('"method" is invalid.')
-
-        # If the input size was only a scalar, return a 1D rho, otherwise 2D.
-        if numpy.isscalar(size):
-            rho = numpy.squeeze(rho)
-
-        # Plot only the last size
-        if plot:
-
-            # Density (absolutely-continuous part) at the last time
-            if numpy.isscalar(size):
-                rho_last = rho
-            else:
-                rho_last = rho[-1, :]
-
-            # Atoms at the last time
-            if len(atoms0) > 0:
-                atoms_last = [(loc, w[-1]) for loc, w in atoms_t]
-            else:
-                atoms_last = None
-
-            # Plot only the last time of atoms and density
-            plot_density(x, rho_last, atoms=atoms_last, support=None,
-                         label='Deformation', log=self._log, latex=latex,
-                         save=save)
-
-        if return_atoms:
-            return rho, x, atoms_t
-        else:
-            return rho, x

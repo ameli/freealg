@@ -11,8 +11,8 @@
 # =======
 
 import numpy
-from ._cusp import solve_cusp
-from ._edge import evolve_edges, evolve_edges_from_states, \
+from ._deform_cusp import solve_cusp
+from ._deform_edge import evolve_edges, evolve_edges_from_states, \
         scan_edges_at_time, third_cusp_residual
 
 __all__ = ['cusp_wrap']
@@ -60,7 +60,7 @@ def _dedup_cusps(cusps, t_tol=1e-6, x_tol=1e-6):
 # run solve cusp
 # ==============
 
-def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, max_iter, tol):
+def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, max_iter, tol, c0):
     if y0 is not None:
         try:
             y0 = float(numpy.real(y0))
@@ -68,7 +68,7 @@ def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, max_iter, tol):
             y0 = None
 
     out = solve_cusp(coeffs, t_init=float(t0), zeta_init=float(z0), y_init=y0,
-                     t_bounds=t_bounds, zeta_bounds=None,
+                     c0=c0, t_bounds=t_bounds, zeta_bounds=None,
                      max_iter=max_iter, tol=tol)
 
     success = bool(out.get('success', False))
@@ -97,9 +97,9 @@ def _run_solve_cusp(coeffs, t0, z0, y0, t_bounds, max_iter, tol):
     }
 
 
-# ===================
-# branch local minima
-# ===================
+# ========================
+# branch candidate indices
+# ========================
 
 def _branch_candidate_indices(vals, ok_mask):
     vals = numpy.asarray(vals, dtype=float)
@@ -141,7 +141,7 @@ def _branch_candidate_indices(vals, ok_mask):
 # collect edge candidates
 # =======================
 
-def _collect_edge_candidates(t_grid, zeta_hist, y_hist, ok, coeffs, tag):
+def _collect_edge_candidates(t_grid, zeta_hist, y_hist, ok, coeffs, tag, c0):
     cand = []
     nt, m = zeta_hist.shape
     for j in range(m):
@@ -154,7 +154,9 @@ def _collect_edge_candidates(t_grid, zeta_hist, y_hist, ok, coeffs, tag):
             if not (numpy.isfinite(z.real) and numpy.isfinite(z.imag) and
                     numpy.isfinite(y.real) and numpy.isfinite(y.imag)):
                 continue
-            vals[it] = third_cusp_residual(z.real, y.real, coeffs)
+            vals[it] = third_cusp_residual(
+                z.real, y.real, coeffs, c0=c0,
+                tau=float(numpy.exp(float(t_grid[it]))))
 
         for it in _branch_candidate_indices(vals, ok[:, j]):
             if not numpy.isfinite(vals[it]):
@@ -193,11 +195,212 @@ def _dedup_raw_candidates(cands, t_tol=1e-4, z_tol=1e-4):
     return kept
 
 
+# ====================
+# interp edges at time
+# ====================
+
+def _interp_edges_at_time(t_grid, edges, t_query):
+    """
+    Interpolate finite physical edge columns at a query time.
+    """
+
+    out = []
+    tq = float(t_query)
+    t_grid = numpy.asarray(t_grid, dtype=float).ravel()
+    e = numpy.real(numpy.asarray(edges))
+
+    if e.ndim != 2:
+        return out
+
+    for j in range(e.shape[1]):
+        col = e[:, j]
+        mask = numpy.isfinite(col)
+        if numpy.count_nonzero(mask) < 2:
+            continue
+
+        tj = t_grid[mask]
+        xj = col[mask]
+        if tq < float(tj[0]) or tq > float(tj[-1]):
+            continue
+
+        out.append((float(numpy.interp(tq, tj, xj)), int(j)))
+
+    return out
+
+
+# ======================
+# is physical merge cusp
+# ======================
+
+def _is_physical_merge_cusp(sol, t_grid, edges, gap_tol, x_tol):
+    """
+    Accept only cusps where two adjacent physical edge trajectories collide.
+
+    The deformation cusp equations may have algebraic solutions on nonphysical
+    sheets. For deformed decompression, a physical cusp is a merge/death event:
+    two adjacent physical support edges must meet near the solved (t, x).
+    """
+
+    if sol is None:
+        return False
+
+    tc = float(sol['t'])
+    xc = float(sol['x'])
+    cols = _interp_edges_at_time(t_grid, edges, tc)
+    if len(cols) < 2:
+        return False
+
+    cols.sort(key=lambda item: item[0])
+    xs = numpy.array([item[0] for item in cols], dtype=float)
+
+    if not numpy.all(numpy.isfinite(xs)):
+        return False
+
+    gaps = numpy.diff(xs)
+    if gaps.size == 0:
+        return False
+
+    k = int(numpy.argmin(numpy.abs(gaps)))
+    x_mid = 0.5 * (xs[k] + xs[k + 1])
+
+    return bool((abs(gaps[k]) <= float(gap_tol)) and
+                (abs(x_mid - xc) <= float(x_tol)))
+
+
+# ======================
+# collect gap candidates
+# ======================
+
+def _collect_gap_candidates(t_grid, edges, zeta_hist, y_hist, ok):
+    """
+    Candidate seeds from small/local-minimum gaps of adjacent physical edges.
+
+    Deformed cusps are merge/death events, so the most direct physical
+    signature is that two adjacent physical edge trajectories approach each
+    other. This adds seeds from the gap geometry, without changing the exact
+    cusp solve or the edge equations.
+    """
+
+    t_grid = numpy.asarray(t_grid, dtype=float).ravel()
+    e = numpy.real(numpy.asarray(edges))
+    zeta_hist = numpy.asarray(zeta_hist)
+    y_hist = numpy.asarray(y_hist)
+    ok = numpy.asarray(ok, dtype=bool)
+
+    nt, m = e.shape
+    pair_data = {}
+
+    for it in range(nt):
+        row = []
+        for j in range(m):
+            if not ok[it, j]:
+                continue
+            xj = e[it, j]
+            if not numpy.isfinite(xj):
+                continue
+            row.append((float(xj), int(j)))
+
+        if len(row) < 2:
+            continue
+
+        row.sort(key=lambda item: item[0])
+        for k in range(len(row) - 1):
+            x0, j0 = row[k]
+            x1, j1 = row[k + 1]
+            pair = tuple(sorted((j0, j1)))
+            gap = abs(x1 - x0)
+            pair_data.setdefault(pair, []).append((it, gap, j0, j1))
+
+    cand = []
+    for _pair, vals in pair_data.items():
+        if not vals:
+            continue
+
+        gaps = numpy.array([v[1] for v in vals], dtype=float)
+        if gaps.size == 0 or not numpy.any(numpy.isfinite(gaps)):
+            continue
+
+        idxs = set()
+        # global minimum of this adjacent physical gap
+        idxs.add(int(numpy.nanargmin(gaps)))
+
+        # local minima of the gap
+        for q in range(1, gaps.size - 1):
+            if gaps[q] <= gaps[q - 1] and gaps[q] <= gaps[q + 1]:
+                idxs.add(int(q))
+
+        for q in sorted(idxs):
+            it, gap, j0, j1 = vals[q]
+            for jj in (j0, j1):
+                z0 = zeta_hist[it, jj]
+                y0 = y_hist[it, jj]
+                if not (numpy.isfinite(z0.real) and numpy.isfinite(z0.imag) and
+                        numpy.isfinite(y0.real) and numpy.isfinite(y0.imag)):
+                    continue
+                cand.append({
+                    't0': float(t_grid[it]),
+                    'z0': float(numpy.real(z0)),
+                    'y0': float(numpy.real(y0)),
+                    'metric': float(gap),
+                    'branch': int(jj),
+                    'source': 'physical_gap',
+                })
+
+    return cand
+
+
+# ===============================
+# is physical merge cusp near gap
+# ===============================
+
+def _is_physical_merge_cusp_near_gap(sol, t_grid, edges, x_tol):
+    """
+    Softer validation for true merges missed between grid points.
+
+    This does not require the sampled gap to be nearly zero. It only accepts a
+    solved cusp if its x-location lies near the midpoint of some adjacent
+    physical edge gap at the solved time, and that gap is a local/global small
+    gap. This is used after the exact algebraic solve has already succeeded.
+    """
+
+    if sol is None:
+        return False
+
+    tc = float(sol['t'])
+    xc = float(sol['x'])
+    cols = _interp_edges_at_time(t_grid, edges, tc)
+    if len(cols) < 2:
+        return False
+
+    cols.sort(key=lambda item: item[0])
+    xs = numpy.array([item[0] for item in cols], dtype=float)
+    if not numpy.all(numpy.isfinite(xs)):
+        return False
+
+    gaps = numpy.diff(xs)
+    if gaps.size == 0:
+        return False
+
+    mids = 0.5 * (xs[:-1] + xs[1:])
+    k = int(numpy.argmin(numpy.abs(mids - xc)))
+
+    if abs(mids[k] - xc) > float(x_tol):
+        return False
+
+    # The candidate should correspond to one of the smallest adjacent gaps at
+    # this time; this rejects cusps sitting on an outer edge/nonphysical sheet.
+    finite_gaps = gaps[numpy.isfinite(gaps)]
+    if finite_gaps.size == 0:
+        return False
+    small_ref = numpy.min(finite_gaps)
+    return bool(gaps[k] <= 2.0 * max(small_ref, 1e-14))
+
+
 # =========
 # cusp_wrap
 # =========
 
-def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None,
+def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None, c0=1.0,
               log=False, delta=1e-5, edge_dt_max=0.1,
               edge_max_iter=30, edge_tol=1e-12,
               max_iter=80, tol=1e-12, verbose=False,
@@ -224,7 +427,7 @@ def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None,
 
     # Forward edge evolution from t=0 support.
     f_edges, f_ok, f_zeta, f_y = evolve_edges(
-        t_grid, coeffs, support=support, stieltjes=stieltjes,
+        t_grid, coeffs, support=support, stieltjes=stieltjes, c0=c0,
         delta=delta, dt_max=edge_dt_max, max_iter=edge_max_iter,
         tol=edge_tol, return_preimage=True, log=log)
 
@@ -240,14 +443,14 @@ def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None,
     # Scan all edges at final time directly from the fixed-time edge equations.
     x_scan, z_scan, y_scan = scan_edges_at_time(
         t_max, coeffs, (x_min - pad, x_max + pad), n_scan=2048,
-        stieltjes=stieltjes, delta=delta, max_iter=edge_max_iter,
+        stieltjes=stieltjes, c0=c0, delta=delta, max_iter=edge_max_iter,
         tol=edge_tol, log=log, dedup_x_tol=max(dedup_x_tol, 1e-6))
 
     # Backward edge evolution from the scanned final-time states.
     if z_scan.size > 0:
         t_rev = t_grid[::-1].copy()
         b_edges_rev, b_ok_rev, b_zeta_rev, b_y_rev = evolve_edges_from_states(
-            t_rev, coeffs, z_scan, y_scan, max_iter=edge_max_iter,
+            t_rev, coeffs, z_scan, y_scan, c0=c0, max_iter=edge_max_iter,
             tol=edge_tol, return_preimage=True, log=log)
         # b_edges = b_edges_rev[::-1, :]
         b_ok = b_ok_rev[::-1, :]
@@ -261,9 +464,16 @@ def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None,
 
     raw = []
     raw += _collect_edge_candidates(t_grid, f_zeta, f_y, f_ok, coeffs,
-                                    'forward')
+                                    'forward', c0)
     raw += _collect_edge_candidates(t_grid, b_zeta, b_y, b_ok, coeffs,
-                                    'backward')
+                                    'backward', c0)
+
+    # For deformed decompression, physical cusps are merge/death events. Add
+    # seeds directly from small/local-minimum physical gaps. This preserves the
+    # original algebraic candidate mechanism, but helps when the true merge is
+    # missed by the third-residual scan or occurs between grid points.
+    raw += _collect_gap_candidates(t_grid, f_edges, f_zeta, f_y, f_ok)
+
     raw = _dedup_raw_candidates(raw, t_tol=max(dedup_t_tol, 1e-4),
                                 z_tol=max(dedup_x_tol, 1e-4))
 
@@ -271,9 +481,9 @@ def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None,
     # set.
     raw = sorted(raw, key=lambda c: (c['metric'], c['t0'], c['z0']))
     if max_solutions is None:
-        max_candidates = min(32, len(raw))
+        max_candidates = min(64, len(raw))
     else:
-        max_candidates = min(max(8, 4 * int(max_solutions)), len(raw))
+        max_candidates = min(max(16, 6 * int(max_solutions)), len(raw))
     raw = raw[:max_candidates]
 
     if verbose:
@@ -284,7 +494,8 @@ def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None,
     F_tol = max(1e-10, 100.0 * tol)
     for c in raw:
         sol = _run_solve_cusp(coeffs, t0=c['t0'], z0=c['z0'], y0=c['y0'],
-                              t_bounds=t_bounds, max_iter=max_iter, tol=tol)
+                              t_bounds=t_bounds, max_iter=max_iter, tol=tol,
+                              c0=c0)
         if sol is None:
             continue
         if not numpy.isfinite(sol['info']['norm_inf_F']):
@@ -297,7 +508,31 @@ def cusp_wrap(coeffs, t_grid, support=None, stieltjes=None,
         sols.append(sol)
 
     sols = _dedup_cusps(sols, t_tol=dedup_t_tol, x_tol=dedup_x_tol)
-    sols = sorted(sols, key=lambda s: (s['t'], s['x']))
+
+    # Deformed cusps are physical merge/death events. The algebraic cusp
+    # equations can also find higher-order critical points on nonphysical
+    # sheets; reject them unless two adjacent physical edges collide near the
+    # solved (t, x). This keeps the caller/API unchanged and prevents false
+    # cusps from creating artificial edge events downstream.
+    x_span = float(numpy.max(x_all) - numpy.min(x_all)) if x_all.size else 1.0
+    gap_tol = max(1e-3, 1e-6 * max(1.0, x_span), 10.0 * dedup_x_tol)
+    # x-location matching should be less strict than dedup tolerance because
+    # the solved cusp time is continuous while edge trajectories are sampled.
+    x_tol = max(5e-3, 1e-4 * max(1.0, x_span), 20.0 * dedup_x_tol)
+
+    sols_valid = []
+    for sol in sols:
+        strict_ok = _is_physical_merge_cusp(
+            sol, t_grid, f_edges, gap_tol, x_tol)
+        near_gap_ok = _is_physical_merge_cusp_near_gap(
+            sol, t_grid, f_edges, x_tol)
+        if strict_ok or near_gap_ok:
+            sols_valid.append(sol)
+        elif verbose:
+            print('[cusp_wrap] rejected nonphysical cusp '
+                  f"t={sol['t']:.6g} x={sol['x']:.6g}")
+
+    sols = sorted(sols_valid, key=lambda s: (s['t'], s['x']))
     if max_solutions is not None:
         sols = sols[:int(max_solutions)]
 

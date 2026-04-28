@@ -142,9 +142,71 @@ def _state_move(zeta_new, y_new, zeta_old, y_old, log=False,
         float(rel_eps))
 
 
-# ==============================
-# residual jacobian branchpoint
-# ==============================
+# ====================
+# outside support seed
+# ====================
+
+def _outside_support_seed(x_edge, side, width, log=False, frac=0.02):
+    """
+    Return a seed point slightly outside a supplied support endpoint.
+
+    Histogram/support endpoints can be slightly inside the true polynomial
+    support.  Seeding Newton from the inside can latch to a nearby ghost
+    branch point.  For physical edge initialization, probe from the gap side:
+    left endpoints from the left, right endpoints from the right.
+    """
+
+    x_edge = float(x_edge)
+    width = float(abs(width))
+    frac = float(frac)
+
+    if log and x_edge > 0.0 and width > 0.0:
+        # width is interpreted as log-width by the caller in log mode.
+        shift = numpy.exp(frac * width)
+        if side < 0:
+            return x_edge / shift
+        return x_edge * shift
+
+    shift = frac * max(width, abs(x_edge), 1.0e-12)
+    if side < 0:
+        return x_edge - shift
+    return x_edge + shift
+
+
+# ==================
+# deform pushforward
+# ==================
+
+def _deform_pushforward(tau, zeta, y, c0, w_min=1e-14):
+    """
+    Physical edge coordinate for free deformation.
+
+    On the initial curve P(zeta, y)=0, define the companion coordinate
+        wbar = c0*y + (c0 - 1)/zeta.
+    The target physical coordinate is
+        x = tau*zeta + (tau - 1)/wbar.
+    This is written as tau*zeta + (tau - 1)*zeta/A with
+        A = c0*y*zeta + c0 - 1.
+    """
+
+    zeta = complex(zeta)
+    y = complex(y)
+    c0 = float(c0)
+    tau = float(tau)
+
+    A = c0 * y * zeta + (c0 - 1.0)
+    if abs(A) < float(w_min):
+        if A == 0.0:
+            A = complex(float(w_min), 0.0)
+        else:
+            A = A + float(w_min) * A / abs(A)
+
+    return tau * zeta + (tau - 1.0) * zeta / A
+
+
+# ========================
+# residual jacobian branch
+# ========================
 
 def _residual_jacobian_branch(zeta, y, coeffs):
     """
@@ -170,34 +232,140 @@ def _residual_jacobian_branch(zeta, y, coeffs):
 # residual jacobian edge tau
 # ==========================
 
-def _residual_jacobian_edge_tau(tau, zeta, y, coeffs):
+def _residual_jacobian_edge_tau(tau, zeta, y, coeffs, c0):
     """
-    Residual/Jacobian for edge continuation system:
-        P(zeta, y) = 0,
-        y^2 Py(zeta, y) - (tau - 1) Pz(zeta, y) = 0.
+    Residual/Jacobian for the free-deformation edge system.
+
+    The projection restricted to P(zeta, y)=0 is
+
+        x = tau*zeta + (tau - 1) / wbar,
+        wbar = c0*y + (c0 - 1)/zeta.
+
+    With A = c0*y*zeta + c0 - 1, an algebraically cleared critical
+    equation is
+
+        tau*A**2*Py
+        + (tau - 1)*((c0 - 1)*Py + c0*zeta**2*Pz) = 0.
+
+    At tau=1 this reduces to A**2*Py=0, and the initialized physical
+    branch points satisfy Py=0.
     """
 
-    c = float(tau) - 1.0
+    tau = float(tau)
+    c0 = float(c0)
     P, Pz, Py, Pzz, Pzy, Pyy = _eval_P_all_partials(zeta, y, coeffs)
 
+    A = c0 * y * zeta + (c0 - 1.0)
+    B = (c0 - 1.0) * Py + c0 * (zeta * zeta) * Pz
+
     F1 = P
-    F2 = (y * y) * Py - c * Pz
+    F2 = tau * (A * A) * Py + (tau - 1.0) * B
+
+    Az = c0 * y
+    Ay = c0 * zeta
+
+    Bz = (c0 - 1.0) * Pzy + c0 * (2.0 * zeta * Pz +
+                                  (zeta * zeta) * Pzz)
+    By = (c0 - 1.0) * Pyy + c0 * (zeta * zeta) * Pzy
 
     J11 = Pz
     J12 = Py
-    J21 = (y * y) * Pzy - c * Pzz
-    J22 = 2.0 * y * Py + (y * y) * Pyy - c * Pzy
+    J21 = tau * (2.0 * A * Az * Py + (A * A) * Pzy) + \
+        (tau - 1.0) * Bz
+    J22 = tau * (2.0 * A * Ay * Py + (A * A) * Pyy) + \
+        (tau - 1.0) * By
 
-    return F1, F2, J11, J12, J21, J22, Pz
+    Ftau = (A * A) * Py + B
+
+    return F1, F2, J11, J12, J21, J22, Ftau
+
+
+# ===================
+# newton project real
+# ===================
+
+def _newton_project_real(zeta0, y0, residual_jacobian,
+                         max_iter=50, tol_res=1e-12, tol_step=None,
+                         armijo=1e-4, min_lam=1e-6,
+                         det_guard=1e-14, rel_eps=1e-12):
+    """
+    Damped Newton projection for real edge states.
+
+    For Hermitian/real covariance laws, physical spectral edges live on the
+    real slice of the spectral curve. This real projection prevents a nearly
+    real physical edge from drifting onto a nearby complex/ghost critical
+    branch when the fitted polynomial has small numerical imperfections.
+    """
+
+    if tol_step is None:
+        tol_step = 0.1 * float(tol_res)
+
+    zeta = float(numpy.real(zeta0))
+    y = float(numpy.real(y0))
+
+    for _ in range(int(max_iter)):
+        F1, F2, J11, J12, J21, J22 = residual_jacobian(
+            complex(zeta), complex(y))
+
+        F1 = float(numpy.real(F1))
+        F2 = float(numpy.real(F2))
+        J11 = float(numpy.real(J11))
+        J12 = float(numpy.real(J12))
+        J21 = float(numpy.real(J21))
+        J22 = float(numpy.real(J22))
+
+        z_scale = max(1.0, abs(zeta))
+        y_scale = max(1.0, abs(y))
+        row1_scale = 1.0 + abs(J11) * z_scale + abs(J12) * y_scale
+        row2_scale = 1.0 + abs(J21) * z_scale + abs(J22) * y_scale
+        res_rel = max(abs(F1) / row1_scale, abs(F2) / row2_scale)
+        res_norm = max(abs(F1), abs(F2))
+        if (res_norm <= float(tol_res)) or (res_rel <= float(tol_res)):
+            return complex(zeta), complex(y), True
+
+        det = J11 * J22 - J12 * J21
+        scale = max(abs(J11), abs(J12), abs(J21), abs(J22), 1.0)
+        if abs(det) <= float(det_guard) * scale * scale:
+            return complex(zeta), complex(y), False
+
+        dzeta = (-F1 * J22 + J12 * F2) / det
+        dy = (-J11 * F2 + F1 * J21) / det
+
+        step_norm = max(abs(dzeta) / max(abs(zeta), rel_eps),
+                        abs(dy) / max(abs(y), rel_eps))
+        if step_norm <= float(tol_step):
+            return complex(zeta + dzeta), complex(y + dy), True
+
+        lam = 1.0
+        accepted = False
+        while lam >= float(min_lam):
+            z_try = zeta + lam * dzeta
+            y_try = y + lam * dy
+            F1_t, F2_t, *_ = residual_jacobian(complex(z_try), complex(y_try))
+            res_try = max(abs(float(numpy.real(F1_t))),
+                          abs(float(numpy.real(F2_t))))
+            if res_try <= (1.0 - float(armijo) * lam) * res_norm:
+                zeta = z_try
+                y = y_try
+                accepted = True
+                break
+            lam *= 0.5
+
+        if not accepted:
+            return complex(zeta), complex(y), False
+
+        if not (numpy.isfinite(zeta) and numpy.isfinite(y)):
+            return complex(zeta), complex(y), False
+
+    return complex(zeta), complex(y), False
 
 
 # ==============
 # newton project
 # ==============
 
-def _newton_project(zeta0, y0, residual_jacobian,
-                    max_iter=50, tol_res=1e-12, tol_step=None,
-                    armijo=1e-4, min_lam=1e-6, step_clip=-1.0,
+def _newton_project(zeta0, y0, residual_jacobian, max_iter=50, tol_res=1e-12,
+                    tol_step=None, armijo=1e-4, min_lam=1e-6, step_clip=-1.0,
                     det_guard=1e-14, log=False, rel_eps=1e-12):
     """
     Damped Newton projection for a 2x2 complex system.
@@ -307,9 +475,8 @@ def _branch_root_from_real_curve(x_edge, coeffs, target=None):
 # init edge point from support
 # ============================
 
-def _init_edge_point_from_support(x_edge, coeffs, stieltjes=None,
-                                  delta=1e-5, log=False,
-                                  max_iter=80, tol=1e-12):
+def _init_edge_point_from_support(x_edge, coeffs, stieltjes=None, delta=1e-5,
+                                  log=False, max_iter=80, tol=1e-12):
     """
     Initialize (zeta, y) at t=0 for an edge near x_edge.
 
@@ -344,6 +511,16 @@ def _init_edge_point_from_support(x_edge, coeffs, stieltjes=None,
     def residual_jacobian(zeta, y):
         return _residual_jacobian_branch(zeta, y, coeffs)
 
+    # First try the real physical slice.  For real spectral edges, this avoids
+    # initializing on a nearby complex ghost branch.
+    zeta_r, y_r, ok_r = _newton_project_real(
+        zeta0.real, y_seed.real, residual_jacobian,
+        max_iter=max_iter, tol_res=tol, tol_step=0.1 * tol,
+        armijo=1e-4, min_lam=1e-6,
+        det_guard=1e-14, rel_eps=1e-12)
+    if ok_r:
+        return complex(zeta_r.real), complex(y_r.real), True
+
     zeta, y, ok = _newton_project(
         zeta0, y_seed, residual_jacobian,
         max_iter=max_iter, tol_res=tol, tol_step=0.1 * tol,
@@ -365,15 +542,15 @@ def _init_edge_point_from_support(x_edge, coeffs, stieltjes=None,
 # edge tangent in tau
 # ===================
 
-def _edge_tangent_tau(tau, zeta, y, coeffs, det_guard=1e-14):
+def _edge_tangent_tau(tau, zeta, y, coeffs, c0, det_guard=1e-14):
     """
     Tangent d(zeta, y)/d tau along the edge continuation system.
     """
 
-    _F1, _F2, J11, J12, J21, J22, Pz = _residual_jacobian_edge_tau(
-        tau, zeta, y, coeffs)
+    _F1, _F2, J11, J12, J21, J22, Ftau = _residual_jacobian_edge_tau(
+        tau, zeta, y, coeffs, c0)
     rhs1 = 0.0 + 0.0j
-    rhs2 = Pz
+    rhs2 = -Ftau
     dzeta, dy, _det, ok = _solve2x2(
         J11, J12, J21, J22, rhs1, rhs2, det_guard=det_guard)
     return dzeta, dy, ok
@@ -383,13 +560,13 @@ def _edge_tangent_tau(tau, zeta, y, coeffs, det_guard=1e-14):
 # predict Heun tau
 # ================
 
-def _predict_heun_tau(tau0, tau1, zeta0, y0, coeffs, det_guard=1e-14):
+def _predict_heun_tau(tau0, tau1, zeta0, y0, coeffs, c0, det_guard=1e-14):
     """
     Heun predictor in tau.
     """
 
     h = float(tau1) - float(tau0)
-    dz0, dy0, ok0 = _edge_tangent_tau(tau0, zeta0, y0, coeffs,
+    dz0, dy0, ok0 = _edge_tangent_tau(tau0, zeta0, y0, coeffs, c0,
                                       det_guard=det_guard)
     if not ok0:
         return zeta0, y0, False
@@ -397,7 +574,7 @@ def _predict_heun_tau(tau0, tau1, zeta0, y0, coeffs, det_guard=1e-14):
     z_e = zeta0 + h * dz0
     y_e = y0 + h * dy0
 
-    dz1, dy1, ok1 = _edge_tangent_tau(tau1, z_e, y_e, coeffs,
+    dz1, dy1, ok1 = _edge_tangent_tau(tau1, z_e, y_e, coeffs, c0,
                                       det_guard=det_guard)
     if not ok1:
         return z_e, y_e, False
@@ -411,7 +588,7 @@ def _predict_heun_tau(tau0, tau1, zeta0, y0, coeffs, det_guard=1e-14):
 # edge newton step
 # ================
 
-def _edge_newton_step(t, zeta, y, coeffs, max_iter=50, tol=1e-12,
+def _edge_newton_step(t, zeta, y, coeffs, c0, max_iter=50, tol=1e-12,
                       log=False):
     """
     Newton projection onto the edge system at fixed time `t`.
@@ -421,8 +598,17 @@ def _edge_newton_step(t, zeta, y, coeffs, max_iter=50, tol=1e-12,
 
     def residual_jacobian(zeta_, y_):
         F1, F2, J11, J12, J21, J22, _Pz = \
-            _residual_jacobian_edge_tau(tau, zeta_, y_, coeffs)
+            _residual_jacobian_edge_tau(tau, zeta_, y_, coeffs, c0)
         return F1, F2, J11, J12, J21, J22
+
+    zeta1, y1, ok = _newton_project_real(
+        zeta, y, residual_jacobian,
+        max_iter=max_iter, tol_res=tol, tol_step=0.1 * tol,
+        armijo=1e-4, min_lam=1e-6,
+        det_guard=1e-14, rel_eps=1e-12)
+
+    if ok:
+        return complex(zeta1.real), complex(y1.real), True
 
     zeta1, y1, ok = _newton_project(
         zeta, y, residual_jacobian,
@@ -437,7 +623,7 @@ def _edge_newton_step(t, zeta, y, coeffs, max_iter=50, tol=1e-12,
 # advance edge step
 # =================
 
-def _advance_edge_step(t0, t1, zeta0, y0, coeffs, max_iter=50, tol=1e-12,
+def _advance_edge_step(t0, t1, zeta0, y0, coeffs, c0, max_iter=50, tol=1e-12,
                        log=False):
     """
     One predictor/corrector continuation step from t0 to t1.
@@ -447,18 +633,18 @@ def _advance_edge_step(t0, t1, zeta0, y0, coeffs, max_iter=50, tol=1e-12,
     tau1 = float(numpy.exp(float(t1)))
 
     z_pred, y_pred, ok_pred = _predict_heun_tau(
-        tau0, tau1, zeta0, y0, coeffs, det_guard=1e-14)
+        tau0, tau1, zeta0, y0, coeffs, c0, det_guard=1e-14)
     if not ok_pred:
         z_pred, y_pred = zeta0, y0
 
     zeta1, y1, ok = _edge_newton_step(
-        t1, z_pred, y_pred, coeffs,
+        t1, z_pred, y_pred, coeffs, c0,
         max_iter=max_iter, tol=tol, log=log)
 
     if not ok:
         # Fallback: project old state directly at the new time.
         zeta1, y1, ok = _edge_newton_step(
-            t1, zeta0, y0, coeffs,
+            t1, zeta0, y0, coeffs, c0,
             max_iter=max_iter, tol=tol, log=log)
 
     return zeta1, y1, ok
@@ -468,11 +654,11 @@ def _advance_edge_step(t0, t1, zeta0, y0, coeffs, max_iter=50, tol=1e-12,
 # evolve edges
 # ============
 
-def evolve_edges(t_grid, coeffs, support=None, stieltjes=None,
+def evolve_edges(t_grid, coeffs, support=None, stieltjes=None, c0=1.0,
                  delta=1e-5, dt_max=0.1, max_iter=50, tol=1e-12,
                  return_preimage=False, log=False):
     """
-    Evolve spectral edges under free decompression using the fitted polynomial
+    Evolve spectral edges under free deformation using the fitted polynomial
     P.
 
     Solves for (zeta(t), y(t)) on the spectral curve:
@@ -504,9 +690,37 @@ def evolve_edges(t_grid, coeffs, support=None, stieltjes=None,
                          'implemented).')
 
     endpoints0 = []
-    for a, b in support:
-        endpoints0.append(float(a))
-        endpoints0.append(float(b))
+    seedpoints0 = []
+    support_list = [(float(a), float(b)) for a, b in support]
+    n_bulk = len(support_list)
+
+    for ib, (a, b) in enumerate(support_list):
+        endpoints0.append(a)
+        endpoints0.append(b)
+
+        if log and a > 0.0 and b > 0.0:
+            width = numpy.log(b / a)
+        else:
+            width = b - a
+
+        # Use outside probes only for the two global exterior edges.
+        #
+        # For histogram-based support, the global exterior endpoints may be
+        # slightly inside the true algebraic support; probing from the exterior
+        # avoids latching to a ghost branch. For internal gap endpoints, the
+        # same gap-side probe can jump to a nonphysical branch point in the
+        # gap, so keep the old exact-endpoint behavior.
+        if ib == 0:
+            seedpoints0.append(_outside_support_seed(
+                a, side=-1, width=width, log=log))
+        else:
+            seedpoints0.append(a)
+
+        if ib == n_bulk - 1:
+            seedpoints0.append(_outside_support_seed(
+                b, side=+1, width=width, log=log))
+        else:
+            seedpoints0.append(b)
 
     m = len(endpoints0)
     complex_edges = numpy.empty((t_grid.size, m), dtype=numpy.complex128)
@@ -524,8 +738,15 @@ def evolve_edges(t_grid, coeffs, support=None, stieltjes=None,
 
     for j in range(m):
         z0, y0, ok0 = _init_edge_point_from_support(
-            endpoints0[j], coeffs, stieltjes=stieltjes, delta=delta,
+            seedpoints0[j], coeffs, stieltjes=stieltjes, delta=delta,
             log=log, max_iter=max_iter, tol=tol)
+
+        # If the outside probe fails for any reason, fall back to the exact
+        # user-supplied endpoint to preserve the old behavior.
+        if not ok0:
+            z0, y0, ok0 = _init_edge_point_from_support(
+                endpoints0[j], coeffs, stieltjes=stieltjes, delta=delta,
+                log=log, max_iter=max_iter, tol=tol)
         zeta[j] = z0
         y[j] = y0
         ok[0, j] = ok0
@@ -553,7 +774,7 @@ def evolve_edges(t_grid, coeffs, support=None, stieltjes=None,
                 if not ok_cur[j]:
                     continue
                 z_new, y_new, okj = _advance_edge_step(
-                    ts0, ts1, z_cur[j], y_cur[j], coeffs,
+                    ts0, ts1, z_cur[j], y_cur[j], coeffs, c0,
                     max_iter=max_iter, tol=tol, log=log)
                 ok_cur[j] = bool(okj)
                 z_cur[j] = z_new
@@ -569,8 +790,10 @@ def evolve_edges(t_grid, coeffs, support=None, stieltjes=None,
         ok[it, :] = ok_cur
 
         tau = float(numpy.exp(t1))
-        c = tau - 1.0
-        complex_edges[it, :] = zeta - c / y
+        # c = tau - 1.0
+        complex_edges[it, :] = numpy.asarray([
+            _deform_pushforward(tau, zeta[j], y[j], c0)
+            for j in range(m)], dtype=numpy.complex128)
 
         if return_preimage:
             zeta_hist[it, :] = zeta
@@ -705,14 +928,21 @@ def _first_index_ge(t_grid, t0):
 # =======================
 
 def evolve_edges_with_births(t_grid, coeffs, support=None, cusps=None,
-                             stieltjes=None, delta=1e-5, dt_max=0.1,
+                             stieltjes=None, c0=1.0, delta=1e-5, dt_max=0.1,
                              max_iter=50, tol=1e-12,
                              return_preimage=False, split_tol=0.0,
                              seed_eps=1e-6, fill_gap='linear',
                              log=False):
     """
-    Evolve edges like evolve_edges(), but also creates new edge columns after
-    split cusps (bulk bifurcation).
+    Evolve edges like evolve_edges(), with deformed-cusp merge/death handling.
+
+    This function intentionally keeps the same name/signature as the free
+    counterpart so AlgebraicForm can dispatch both files uniformly.  In the
+    deformed case, however, a physical cusp is a merge of two existing adjacent
+    edges, not a birth of two new edges.  Therefore this routine never inserts
+    new columns.  It evolves the initial physical edges and, for each validated
+    cusp supplied by _deform_cusp_wrap, sets the colliding adjacent columns to
+    NaN after the merge time.
     """
 
     t_grid = numpy.asarray(t_grid, dtype=float).ravel()
@@ -721,413 +951,114 @@ def evolve_edges_with_births(t_grid, coeffs, support=None, cusps=None,
     if numpy.any(numpy.diff(t_grid) <= 0.0):
         raise ValueError('t_grid must be strictly increasing.')
 
-    nt = t_grid.size
-
     if return_preimage:
-        base_edges, base_ok, base_zeta, base_y = evolve_edges(
-            t_grid, coeffs, support=support, stieltjes=stieltjes,
+        edges_ext, ok_ext, zeta_ext, y_ext = evolve_edges(
+            t_grid, coeffs, support=support, stieltjes=stieltjes, c0=c0,
             delta=delta, dt_max=dt_max, max_iter=max_iter, tol=tol,
             return_preimage=True, log=log)
     else:
-        base_edges, base_ok = evolve_edges(
-            t_grid, coeffs, support=support, stieltjes=stieltjes,
+        edges_ext, ok_ext = evolve_edges(
+            t_grid, coeffs, support=support, stieltjes=stieltjes, c0=c0,
             delta=delta, dt_max=dt_max, max_iter=max_iter, tol=tol,
             return_preimage=False, log=log)
-        base_zeta = None
-        base_y = None
-
-    m0 = base_edges.shape[1]
-
-    if cusps is None or len(cusps) == 0:
-        if return_preimage:
-            return base_edges, base_ok, base_zeta, base_y
-        return base_edges, base_ok
-
-    split_list = []
-    for c in cusps:
-        if not isinstance(c, dict):
-            continue
-        t_star = float(c.get('t', numpy.nan))
-        x_star = float(c.get('x', numpy.nan))
-
-        dbg = c.get('debug', {})
-        if not isinstance(dbg, dict):
-            dbg = {}
-        zeta_star = dbg.get('zeta', None)
-        y_star = dbg.get('y', None)
-
-        if not (numpy.isfinite(t_star) and numpy.isfinite(x_star)):
-            continue
-        if zeta_star is None or y_star is None:
-            continue
-
-        it_ge = _first_index_ge(t_grid, t_star)
-        if it_ge is None:
-            continue
-        it_prev = max(0, it_ge - 1)
-
-        row_prev = numpy.real(base_edges[it_prev, :])
-        j = _bulk_index_containing_x(row_prev, x_star, tol=split_tol)
-
-        if j is None and m0 == 2:
-            j = 0
-        if j is None:
-            continue
-
-        split_list.append({
-            't': t_star,
-            'x': x_star,
-            'j': int(j),
-            'zeta': complex(zeta_star),
-            'y': complex(y_star),
-        })
-
-    if len(split_list) == 0:
-        if return_preimage:
-            return base_edges, base_ok, base_zeta, base_y
-        return base_edges, base_ok
-
-    split_list.sort(key=lambda d: d['t'])
-
-    edges_ext = base_edges.copy()
-    ok_ext = base_ok.copy()
-
-    if return_preimage:
-        zeta_ext = base_zeta.copy()
-        y_ext = base_y.copy()
-    else:
         zeta_ext = None
         y_ext = None
 
-    def _try_birth_two_interior_edges(t0, zeta_star, y_star, x_star,
-                                      a_parent, b_parent):
-        tau = float(numpy.exp(t0))
-        c = tau - 1.0
+    if cusps is None or len(cusps) == 0:
+        if return_preimage:
+            return edges_ext, ok_ext, zeta_ext, y_ext
+        return edges_ext, ok_ext
 
-        if not (numpy.isfinite(a_parent) and numpy.isfinite(b_parent) and
-                (b_parent > a_parent)):
+    def _cusp_tuple(c):
+        if not isinstance(c, dict):
+            return None
+        t_star = float(c.get('t', numpy.nan))
+        x_star = float(c.get('x', numpy.nan))
+        if not (numpy.isfinite(t_star) and numpy.isfinite(x_star)):
+            return None
+        return x_star, t_star
+
+    def _find_adjacent_pair(row, x_star):
+        vals = []
+        for j in range(row.size):
+            xj = float(numpy.real(row[j]))
+            if numpy.isfinite(xj):
+                vals.append((xj, j))
+        if len(vals) < 2:
             return None
 
-        edge_gap = float(b_parent - a_parent)
-        edge_tol = 1e-8 * (1.0 + edge_gap)
-        x_tol = 1e-7 * (1.0 + abs(float(x_star)))
+        vals.sort(key=lambda q: q[0])
 
-        def _dedup_trials(trials):
-            if len(trials) == 0:
-                return []
-            trials.sort(key=lambda r: r[0])
-            uniq = []
-            for (x1, z1, y1) in trials:
-                if not uniq or abs(x1 - uniq[-1][0]) > x_tol:
-                    uniq.append((x1, z1, y1))
-            return uniq
+        # For a deformed cusp/merge, the dying pair is the adjacent pair
+        # whose midpoint is closest to the cusp location. Do NOT prefer a
+        # bracketing pair. Near a sampled pre-cusp time the true colliding
+        # pair can both lie slightly to one side of x_star, while the outer
+        # neighbor brackets x_star and would be killed incorrectly.
+        best = None
+        best_score = None
+        for k in range(len(vals) - 1):
+            x0, j0 = vals[k]
+            x1, j1 = vals[k + 1]
+            mid = 0.5 * (x0 + x1)
+            gap = abs(x1 - x0)
+            mid_dist = abs(mid - x_star)
 
-        def _collect_local_trials(seed_scales):
-            eps_z0 = float(seed_eps) * (1.0 + abs(zeta_star))
-            eps_y0 = float(seed_eps) * (1.0 + abs(y_star))
+            # Lexicographic score: first choose the pair whose midpoint is
+            # closest to the solved cusp, then prefer the tighter gap. This
+            # preserves the physical merge pair without relying on sampling
+            # exactly at t_star.
+            score = (mid_dist, gap)
+            if best_score is None or score < best_score:
+                best_score = score
+                best = (j0, j1)
 
-            trials = []
-            dirs = (
-                (1.0, 0.0), (-1.0, 0.0),
-                (0.0, 1.0), (0.0, -1.0),
-                (1.0, 1.0), (-1.0, 1.0),
-                (1.0, -1.0), (-1.0, -1.0),
-            )
+        return best
 
-            for sc in seed_scales:
-                dz = sc * eps_z0
-                dy = sc * eps_y0
-                for (dr, di) in dirs:
-                    z0 = zeta_star + dz * (dr + 1.0j * di)
-                    y0 = y_star * (1.0 + 1.0j * dy *
-                                   numpy.sign(di if di != 0.0 else dr))
+    # Deduplicate very close cusp reports before applying deaths.
+    raw = []
+    for c in cusps:
+        q = _cusp_tuple(c)
+        if q is not None:
+            raw.append(q)
+    raw.sort(key=lambda q: (q[1], q[0]))
 
-                    z1, y1, ok1 = _edge_newton_step(
-                        t0, z0, y0, coeffs, max_iter=max_iter, tol=tol,
-                        log=log)
-                    if not ok1:
-                        continue
-                    if not (numpy.isfinite(z1.real) and
-                            numpy.isfinite(y1.real)):
-                        continue
+    uniq = []
+    for x_star, t_star in raw:
+        if uniq and abs(t_star - uniq[-1][1]) <= 1e-5 and \
+                abs(x_star - uniq[-1][0]) <= 1e-5:
+            continue
+        uniq.append((x_star, t_star))
 
-                    x1 = float((z1 - c / y1).real)
-                    if not (a_parent + edge_tol < x1 < b_parent - edge_tol):
-                        continue
-                    trials.append((x1, z1, y1))
-
-            return _dedup_trials(trials)
-
-        def _collect_scan_trials(seed_scales, imag_factors):
-            eps_y0 = float(seed_eps) * (1.0 + abs(y_star))
-            trials = []
-
-            n_scan = 17
-            if edge_gap > 0.0:
-                xs = numpy.linspace(a_parent + 0.15 * edge_gap,
-                                    b_parent - 0.15 * edge_gap,
-                                    n_scan)
-            else:
-                xs = numpy.array([0.5 * (a_parent + b_parent)])
-
-            for sc in seed_scales:
-                y_im = float(sc) * eps_y0
-                for x_seed in xs:
-                    z0 = complex(float(x_seed))
-                    try:
-                        roots = numpy.asarray(
-                            eval_roots(numpy.array([z0]), coeffs)[0],
-                            dtype=numpy.complex128).ravel()
-                    except Exception:
-                        roots = numpy.array([], dtype=numpy.complex128)
-
-                    if roots.size == 0:
-                        continue
-
-                    order = numpy.argsort(
-                            numpy.abs(numpy.real(roots - y_star)))
-                    take = min(6, roots.size)
-                    for idx in order[:take]:
-                        y_base = complex(roots[int(idx)])
-                        if not (numpy.isfinite(y_base.real) and
-                                numpy.isfinite(y_base.imag)):
-                            continue
-
-                        y_candidates = [y_base]
-                        for fac in imag_factors:
-                            for sgn in (-1.0, 1.0):
-                                y_candidates.append(
-                                    y_base * (1.0 + 1.0j * sgn * fac * y_im))
-                                y_candidates.append(
-                                    y_base + 1.0j * sgn * fac * y_im)
-
-                        for y0 in y_candidates:
-                            z1, y1, ok1 = _edge_newton_step(
-                                t0, z0, y0, coeffs, max_iter=max_iter,
-                                tol=tol, log=log)
-                            if not ok1:
-                                continue
-                            if not (numpy.isfinite(z1.real) and
-                                    numpy.isfinite(y1.real)):
-                                continue
-
-                            x1 = float((z1 - c / y1).real)
-                            if not (a_parent + edge_tol < x1 <
-                                    b_parent - edge_tol):
-                                continue
-                            trials.append((x1, z1, y1))
-
-            return _dedup_trials(trials)
-
-        uniq = _collect_local_trials((1.0, 10.0, 100.0))
-
-        if len(uniq) < 2:
-            uniq = _collect_scan_trials((1.0, 3.0, 10.0), (1.0, 3.0, 10.0))
-
-        if len(uniq) < 2:
-            uniq = _collect_local_trials((1.0, 3.0, 10.0, 30.0, 100.0,
-                                          300.0, 1000.0))
-
-        if len(uniq) < 2:
-            uniq = _collect_scan_trials((1.0, 3.0, 10.0, 30.0),
-                                        (1.0, 3.0, 10.0, 30.0))
-
-        if len(uniq) < 2:
-            return None
-
-        left_candidates = [u for u in uniq if u[0] < x_star - x_tol]
-        right_candidates = [u for u in uniq if u[0] > x_star + x_tol]
-
-        if left_candidates and right_candidates:
-            xL, zL, yL = min(left_candidates, key=lambda u: abs(u[0] - x_star))
-            xR, zR, yR = min(right_candidates,
-                             key=lambda u: abs(u[0] - x_star))
-            if xL < xR:
-                return zL, yL, zR, yR
-
-        best_pair = None
-        best_score = numpy.inf
-        for i in range(len(uniq)):
-            for j in range(i + 1, len(uniq)):
-                xL, zL, yL = uniq[i]
-                xR, zR, yR = uniq[j]
-                if not (xL < xR):
-                    continue
-                score = abs(xL - x_star) + abs(xR - x_star)
-                if score < best_score:
-                    best_score = score
-                    best_pair = (zL, yL, zR, yR)
-
-        return best_pair
-
-    for csp in split_list:
-        t_star = float(csp['t'])
-        x_star = float(csp['x'])
-        zeta_star = complex(csp['zeta'])
-        y_star = complex(csp['y'])
-
+    killed = set()
+    for x_star, t_star in uniq:
         it_ge = _first_index_ge(t_grid, t_star)
         if it_ge is None:
             continue
         it_prev = max(0, it_ge - 1)
 
-        row_prev_ext = numpy.real(edges_ext[it_prev, :])
-        j_cur = _bulk_index_containing_x(row_prev_ext, x_star, tol=split_tol)
-        if j_cur is None:
+        pair = _find_adjacent_pair(numpy.real(edges_ext[it_prev, :]), x_star)
+        if pair is None:
             continue
+        j0, j1 = int(pair[0]), int(pair[1])
 
-        insert_pos = 2 * j_cur + 1
+        # Do not re-apply duplicated or overlapping deaths.
+        if j0 in killed or j1 in killed:
+            continue
+        killed.add(j0)
+        killed.add(j1)
 
-        edges_ext = numpy.insert(
-            edges_ext, insert_pos, numpy.nan + 1j * numpy.nan, axis=1)
-        edges_ext = numpy.insert(
-            edges_ext, insert_pos, numpy.nan + 1j * numpy.nan, axis=1)
-
-        ok_ext = numpy.insert(ok_ext, insert_pos, False, axis=1)
-        ok_ext = numpy.insert(ok_ext, insert_pos, False, axis=1)
+        # Deformed cusp is a merge/death: the two colliding inner edges cease
+        # to be physical after the cusp.  Keep pre-cusp history intact.
+        edges_ext[it_ge:, j0] = numpy.nan + 1j * numpy.nan
+        edges_ext[it_ge:, j1] = numpy.nan + 1j * numpy.nan
+        ok_ext[it_ge:, j0] = False
+        ok_ext[it_ge:, j1] = False
 
         if return_preimage:
-            zeta_ext = numpy.insert(
-                zeta_ext, insert_pos, numpy.nan + 1j * numpy.nan, axis=1)
-            zeta_ext = numpy.insert(
-                zeta_ext, insert_pos, numpy.nan + 1j * numpy.nan, axis=1)
-            y_ext = numpy.insert(
-                y_ext, insert_pos, numpy.nan + 1j * numpy.nan, axis=1)
-            y_ext = numpy.insert(
-                y_ext, insert_pos, numpy.nan + 1j * numpy.nan, axis=1)
-
-        colL = int(insert_pos)
-        colR = int(insert_pos + 1)
-
-        edges_ext[it_ge, colL] = float(x_star)
-        edges_ext[it_ge, colR] = float(x_star)
-        ok_ext[it_ge, colL] = True
-        ok_ext[it_ge, colR] = True
-        if return_preimage:
-            zeta_ext[it_ge, colL] = zeta_star
-            zeta_ext[it_ge, colR] = zeta_star
-            y_ext[it_ge, colL] = y_star
-            y_ext[it_ge, colR] = y_star
-
-        # We do not try to birth immediately at the very next grid row. With a
-        # finer t-grid, that can be too close to the cusp and the two newborn
-        # edges are still numerically almost coincident.
-        if nt >= 2:
-            grid_dt = float(numpy.median(numpy.diff(t_grid)))
-        else:
-            grid_dt = 0.0
-
-        birth_dt_min = max(5.0 * grid_dt, 0.25 * float(dt_max))
-
-        t_birth_min = t_star + birth_dt_min
-        it0 = _first_index_ge(t_grid, t_birth_min)
-        if it0 is None:
-            continue
-
-        max_birth_tries = max(20, min(nt - it0, 200))
-        birth = None
-        it_birth = None
-
-        for it in range(it0, min(nt, it0 + max_birth_tries)):
-            t0 = float(t_grid[it])
-            a_parent = float(numpy.real(edges_ext[it, colL - 1]))
-            b_parent = float(numpy.real(edges_ext[it, colR + 1]))
-
-            birth = _try_birth_two_interior_edges(
-                t0, zeta_star, y_star, x_star, a_parent, b_parent)
-
-            if birth is not None:
-                it_birth = it
-                break
-
-        if birth is None or it_birth is None:
-            continue
-
-        t0 = float(t_grid[it_birth])
-        zL, yL, zR, yR = birth
-        tau0 = float(numpy.exp(t0))
-        c0 = tau0 - 1.0
-
-        xL0 = zL - c0 / yL
-        xR0 = zR - c0 / yR
-        if float(xL0.real) > float(xR0.real):
-            zL, yL, zR, yR = zR, yR, zL, yL
-            xL0, xR0 = xR0, xL0
-
-        edges_ext[it_birth, colL] = xL0
-        edges_ext[it_birth, colR] = xR0
-        ok_ext[it_birth, colL] = True
-        ok_ext[it_birth, colR] = True
-
-        if return_preimage:
-            zeta_ext[it_birth, colL] = zL
-            zeta_ext[it_birth, colR] = zR
-            y_ext[it_birth, colL] = yL
-            y_ext[it_birth, colR] = yR
-
-        if fill_gap == 'linear' and it_birth > it_ge + 1:
-            for it in range(it_ge + 1, it_birth):
-                w = (t_grid[it] - t_grid[it_ge]) / \
-                    (t_grid[it_birth] - t_grid[it_ge])
-                edges_ext[it, colL] = (1.0 - w) * \
-                    float(x_star) + w * float(xL0.real)
-                edges_ext[it, colR] = (1.0 - w) * \
-                    float(x_star) + w * float(xR0.real)
-                ok_ext[it, colL] = True
-                ok_ext[it, colR] = True
-
-        zeta_pair = numpy.array([zL, zR], dtype=numpy.complex128)
-        y_pair = numpy.array([yL, yR], dtype=numpy.complex128)
-        alive = numpy.array([True, True], dtype=bool)
-
-        for it in range(it_birth + 1, nt):
-            t_prev = float(t_grid[it - 1])
-            t_cur = float(t_grid[it])
-            dt = t_cur - t_prev
-            n_sub = max(1, int(numpy.ceil(dt / float(dt_max))))
-
-            for ks in range(1, n_sub + 1):
-                ts0 = t_prev + dt * ((ks - 1) / float(n_sub))
-                ts1 = t_prev + dt * (ks / float(n_sub))
-                for jj in range(2):
-                    if not alive[jj]:
-                        continue
-
-                    z_new, y_new, okj = _advance_edge_step(
-                        ts0, ts1, zeta_pair[jj], y_pair[jj], coeffs,
-                        max_iter=max_iter, tol=tol, log=log)
-                    zeta_pair[jj] = z_new
-                    y_pair[jj] = y_new
-
-                    if not (numpy.isfinite(z_new.real) and
-                            numpy.isfinite(y_new.real) and
-                            numpy.isfinite(z_new.imag) and
-                            numpy.isfinite(y_new.imag)):
-                        alive[jj] = False
-                        okj = False
-
-                    if jj == 0:
-                        ok_ext[it, colL] = okj
-                    else:
-                        ok_ext[it, colR] = okj
-
-            if not (alive[0] or alive[1]):
-                break
-
-            tau = float(numpy.exp(t_cur))
-            c = tau - 1.0
-
-            if alive[0]:
-                edges_ext[it, colL] = zeta_pair[0] - c / y_pair[0]
-                if return_preimage:
-                    zeta_ext[it, colL] = zeta_pair[0]
-                    y_ext[it, colL] = y_pair[0]
-
-            if alive[1]:
-                edges_ext[it, colR] = zeta_pair[1] - c / y_pair[1]
-                if return_preimage:
-                    zeta_ext[it, colR] = zeta_pair[1]
-                    y_ext[it, colR] = y_pair[1]
+            zeta_ext[it_ge:, j0] = numpy.nan + 1j * numpy.nan
+            zeta_ext[it_ge:, j1] = numpy.nan + 1j * numpy.nan
+            y_ext[it_ge:, j0] = numpy.nan + 1j * numpy.nan
+            y_ext[it_ge:, j1] = numpy.nan + 1j * numpy.nan
 
     if return_preimage:
         return edges_ext, ok_ext, zeta_ext, y_ext
@@ -1138,21 +1069,37 @@ def evolve_edges_with_births(t_grid, coeffs, support=None, cusps=None,
 # third cusp residual
 # ===================
 
-def third_cusp_residual(zeta, y, coeffs):
+def third_cusp_residual(zeta, y, coeffs, c0=1.0, tau=1.0):
     """
-    Absolute residual of the third cusp equation at a real state.
+    Absolute residual of the deformation third cusp equation at a real state.
+
+    If C is the cleared deformation edge critical equation, the third cusp
+    equation is C_z * P_y - C_y * P_z = 0, i.e. dC/dzeta = 0 along
+    P(zeta,y)=0 after clearing the implicit derivative denominator.
     """
 
     P, Pz, Py, Pzz, Pzy, Pyy = _eval_P_all_partials(complex(zeta), complex(y),
                                                     coeffs)
+    zeta = float(numpy.real(zeta))
+    y = float(numpy.real(y))
+    c0 = float(c0)
+    tau = float(tau)
     Pz = float(numpy.real(Pz))
     Py = float(numpy.real(Py))
     Pzz = float(numpy.real(Pzz))
     Pzy = float(numpy.real(Pzy))
     Pyy = float(numpy.real(Pyy))
-    y = float(numpy.real(y))
-    F3 = y * (Pzz * (Py * Py) - 2.0 * Pzy * Pz * Py + Pyy * (Pz * Pz)) + \
-        2.0 * (Pz * Pz) * Py
+
+    A = c0 * y * zeta + (c0 - 1.0)
+    Az = c0 * y
+    Ay = c0 * zeta
+    Bz = (c0 - 1.0) * Pzy + c0 * (2.0 * zeta * Pz + zeta * zeta * Pzz)
+    By = (c0 - 1.0) * Pyy + c0 * (zeta * zeta) * Pzy
+    Cz = tau * (2.0 * A * Az * Py + A * A * Pzy) + \
+        (tau - 1.0) * Bz
+    Cy = tau * (2.0 * A * Ay * Py + A * A * Pyy) + \
+        (tau - 1.0) * By
+    F3 = Cz * Py - Cy * Pz
     return abs(F3)
 
 
@@ -1160,7 +1107,7 @@ def third_cusp_residual(zeta, y, coeffs):
 # evolve edges from states
 # ========================
 
-def evolve_edges_from_states(t_grid, coeffs, zeta0, y0, max_iter=50,
+def evolve_edges_from_states(t_grid, coeffs, zeta0, y0, c0=1.0, max_iter=50,
                              tol=1e-12, return_preimage=False, log=False):
     """
     Continue already-initialized edge states over an arbitrary monotone t-grid.
@@ -1193,8 +1140,10 @@ def evolve_edges_from_states(t_grid, coeffs, zeta0, y0, max_iter=50,
         y_hist = None
 
     tau0 = float(numpy.exp(float(t_grid[0])))
-    c0 = tau0 - 1.0
-    complex_edges[0, :] = zeta - c0 / y
+    c0 = float(c0)
+    complex_edges[0, :] = numpy.asarray([
+        _deform_pushforward(tau0, zeta[j], y[j], c0)
+        for j in range(m)], dtype=numpy.complex128)
     ok[0, :] = numpy.isfinite(zeta.real) & numpy.isfinite(zeta.imag) & \
         numpy.isfinite(y.real) & numpy.isfinite(y.imag) & \
         (numpy.abs(y) > 0.0)
@@ -1219,7 +1168,7 @@ def evolve_edges_from_states(t_grid, coeffs, zeta0, y0, max_iter=50,
                 if not ok_cur[j]:
                     continue
                 z_new, y_new, okj = _advance_edge_step(
-                    ts0, ts1, z_cur[j], y_cur[j], coeffs,
+                    ts0, ts1, z_cur[j], y_cur[j], coeffs, c0,
                     max_iter=max_iter, tol=tol, log=log)
                 ok_cur[j] = bool(okj)
                 z_cur[j] = z_new
@@ -1234,8 +1183,10 @@ def evolve_edges_from_states(t_grid, coeffs, zeta0, y0, max_iter=50,
         y[:] = y_cur
         ok[it, :] = ok_cur
         tau = float(numpy.exp(float(t1)))
-        c = tau - 1.0
-        complex_edges[it, :] = zeta - c / y
+        # c = tau - 1.0
+        complex_edges[it, :] = numpy.asarray([
+            _deform_pushforward(tau, zeta[j], y[j], c0)
+            for j in range(m)], dtype=numpy.complex128)
         if return_preimage:
             zeta_hist[it, :] = zeta
             y_hist[it, :] = y
@@ -1250,8 +1201,8 @@ def evolve_edges_from_states(t_grid, coeffs, zeta0, y0, max_iter=50,
 # ==================
 
 def scan_edges_at_time(t, coeffs, x_range, n_scan=1024, stieltjes=None,
-                       delta=1e-5, max_iter=50, tol=1e-12, log=False,
-                       dedup_x_tol=1e-6):
+                       c0=1.0, delta=1e-5, max_iter=50, tol=1e-12,
+                       log=False, dedup_x_tol=1e-6):
     """
     Find all edge points at a fixed time by scanning x and solving the fixed-
     time edge equations. This uses the governing equations directly, not any
@@ -1264,7 +1215,7 @@ def scan_edges_at_time(t, coeffs, x_range, n_scan=1024, stieltjes=None,
         raise ValueError('invalid x_range.')
 
     tau = float(numpy.exp(float(t)))
-    c = tau - 1.0
+    # c = tau - 1.0
     xs = numpy.linspace(x_min, x_max, int(n_scan))
 
     cand = []
@@ -1285,8 +1236,8 @@ def scan_edges_at_time(t, coeffs, x_range, n_scan=1024, stieltjes=None,
                     _ = target
                 except Exception:
                     pass
-            zeta0 = complex(x) + c / y0 if abs(y0) > 0.0 else complex(x)
-            zeta1, y1, ok1 = _edge_newton_step(t, zeta0, y0, coeffs,
+            zeta0 = complex(x)
+            zeta1, y1, ok1 = _edge_newton_step(t, zeta0, y0, coeffs, c0,
                                                max_iter=max_iter, tol=tol,
                                                log=log)
             if not ok1:
@@ -1298,11 +1249,12 @@ def scan_edges_at_time(t, coeffs, x_range, n_scan=1024, stieltjes=None,
                 continue
             if abs(y1) == 0.0:
                 continue
-            x1 = float(numpy.real(zeta1 - c / y1))
+            x1 = float(numpy.real(_deform_pushforward(tau, zeta1, y1, c0)))
             if not numpy.isfinite(x1):
                 continue
             # equation residual as sanity check
-            F1, F2, *_ = _residual_jacobian_edge_tau(tau, zeta1, y1, coeffs)
+            F1, F2, *_ = _residual_jacobian_edge_tau(
+                tau, zeta1, y1, coeffs, c0)
             res = max(abs(F1), abs(F2))
             if not numpy.isfinite(res) or res > max(1e-8, 100.0 * tol):
                 continue
@@ -1326,10 +1278,10 @@ def scan_edges_at_time(t, coeffs, x_range, n_scan=1024, stieltjes=None,
             # keep smaller residual representative
             prev_idx = len(x_keep) - 1
             prev_res = max(abs(_residual_jacobian_edge_tau(
-                tau, z_keep[prev_idx], y_keep[prev_idx], coeffs)[0]),
+                tau, z_keep[prev_idx], y_keep[prev_idx], coeffs, c0)[0]),
                            abs(_residual_jacobian_edge_tau(
                                tau, z_keep[prev_idx], y_keep[prev_idx],
-                               coeffs)[1]))
+                               coeffs, c0)[1]))
             if res < prev_res:
                 x_keep[-1] = x1
                 z_keep[-1] = z1

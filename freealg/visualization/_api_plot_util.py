@@ -15,6 +15,7 @@ import numpy
 import matplotlib.pyplot as plt
 import texplot
 import matplotlib
+from matplotlib.colors import LogNorm
 import matplotlib.ticker as mticker
 from matplotlib.ticker import NullLocator
 from matplotlib.collections import PolyCollection
@@ -1122,9 +1123,11 @@ def _fill_bulks(ax, t, edges, color, alpha=0.05, zorder=-2, width_tol=1e-12):
 # ==========
 
 def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
-               edge_color='royalblue', alpha=0.1, fill_color='royal_blue',
-               figsize=None, annotate=False, xlim=None, log_x=False,
-               log_y=False, flip_y=False, save=False, latex=False):
+               x=None, rho=None, cbar_range=None, cbar_log=False, cmap=None,
+               bg_color='none', edge_color='royalblue', alpha=0.1,
+               fill_color='royal_blue', figsize=None, annotate=False,
+               annotate_color='0.45', xlim=None, log_x=False, log_y=False,
+               flip_y=False, save=False, latex=False):
     """
     """
 
@@ -1186,57 +1189,88 @@ def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
 
             if annotate:
                 if log_y:
-                    t_mid = numpy.sqrt(t_[-1] * t_cusps_[-1]) \
-                            if t_cusps_ is not None else t_[-1]**0.75
+                    if t_cusps_ is not None:
+                        t_mid = numpy.sqrt(t_[-1] * t_cusps_[-1])
+                    else:
+                        t_mid = numpy.sqrt(t_[-1] * t_[0])
                     j_mid = int(numpy.argmin(numpy.abs(t_ - t_mid)))
                     text_t = t_[j_mid] + 0.03 * (t_[-1] - t_[0])
                 else:
-                    t_mid = 0.5 * (t_[-1] + t_cusps_[-1]) \
-                            if t_cusps_ is not None else 0.75 * t_[-1]
+                    if t_cusps_ is not None:
+                        t_mid = 0.5 * (t_[-1] + t_cusps_[-1])
+                    else:
+                        t_mid = 0.5 * (t_[-1] + t_[0])
                     j_mid = int(numpy.argmin(numpy.abs(t_ - t_mid)))
                     text_t = t_[j_mid] * (t_[-1] / t_[0])**0.02
 
                 ax.annotate('', xy=(float(b_r[j_mid]), t_[j_mid]),
                             xytext=(float(a_r[j_mid]), t_[j_mid]),
-                            arrowprops=dict(arrowstyle='<->', color='gray',
-                                            lw=1.2))
+                            arrowprops=dict(arrowstyle='<->',
+                                            color=annotate_color, lw=1.2))
 
                 ax.text(0.5 * (float(a_r[j_mid]) + float(b_r[j_mid])), text_t,
-                        fr'$I_{{{j+1}}}(\tau)$',
-                        color='gray', ha='center', va='bottom', fontsize=11)
+                        fr'$I_{{{j+1}}}(\tau)$', color=annotate_color,
+                        ha='center', va='bottom', fontsize=11)
 
-        # Fill between edges including the bifurcated edges
-        _fill_bulks(ax, t_, real_merged_edges, color=fill_color, alpha=alpha,
-                    zorder=-2)
+        if rho is None:
+            # Fill between edges including the bifurcated edges
+            _fill_bulks(ax, t_, real_merged_edges, color=fill_color,
+                        alpha=alpha, zorder=-2)
+        else:
+            vmin = cbar_range[0] if cbar_range is not None \
+                else numpy.nanmin(rho)
+            vmax = cbar_range[1] if cbar_range is not None \
+                else numpy.nanmax(rho)
+
+            cmap.set_under(bg_color)
+            xx, tt_ = numpy.meshgrid(x, t_)
+
+            if cbar_log:
+                p = ax.pcolormesh(xx, tt_, rho, cmap=cmap, rasterized=True,
+                                  norm=LogNorm(vmin=vmin, vmax=vmax),
+                                  zorder=-2)
+            else:
+                p = ax.pcolormesh(xx, tt_, rho, cmap=cmap, rasterized=True,
+                                  vmin=vmin, vmax=vmax, zorder=-2)
+
+            cbar = plt.colorbar(p, pad=0.02, extend='min')
+            cbar.set_label(r'$\rho(\lambda, \tau)$')
+            cbar.solids.set_rasterized(True)
+            cbar.ax.minorticks_off()
+
+            if cbar_log:
+                cbar.ax.yaxis.set_major_locator(mticker.LogLocator(base=10))
+                cbar.ax.yaxis.set_minor_locator(mticker.LogLocator(
+                    base=10, subs='auto'))
+            cbar.ax.yaxis.set_minor_formatter(mticker.NullFormatter())
 
         # ----------
         # Plot I_(t)
         # ----------
 
-        if annotate:
+        if annotate and (t_cusps_ is not None):
             a_all = real_merged_edges[:, 0]
             b_all = real_merged_edges[:, -1]
 
             if log_y:
-                t_mid2 = (min(t_cusps_[0], t_[-1]) * t_[0])**0.5 \
-                        if t_cusps_ is not None else 0.45 * t_[-1]
+                t_mid2 = (min(t_cusps_[0], t_[-1]) * t_[0])**0.5
                 j_mid2 = int(numpy.argmin(numpy.abs(t_ - t_mid2)))
                 text_t = t_[j_mid2] * (t_[-1] / t_[0])**0.02
             else:
-                t_mid2 = 0.45 * min(t_cusps_[0], t_[-1]) + t_[0] \
-                        if t_cusps_ is not None else 0.45 * t_[-1]
+                t_mid2 = 0.45 * min(t_cusps_[0], t_[-1]) + t_[0]
                 j_mid2 = int(numpy.argmin(numpy.abs(t_ - t_mid2)))
                 text_t = t_[j_mid2] + 0.03 * (t_[-1] - t_[0])
 
             ax.annotate('', xy=(b_all[j_mid2], t_[j_mid2]),
                         xytext=(a_all[j_mid2], t_[j_mid2]),
-                        arrowprops=dict(arrowstyle='<->', color='gray',
+                        arrowprops=dict(arrowstyle='<->', color=annotate_color,
                                         lw=1.2))
 
             ax.text(0.52 * (a_all[j_mid2] + b_all[j_mid2]), text_t,
                     # r'$I_1(t) \cup I_2(t)$',
                     r'$I(\tau), \quad \tau < \tau_{\ast}$',
-                    color='gray', ha='center', va='bottom', fontsize=11)
+                    color=annotate_color, ha='center', va='bottom',
+                    fontsize=11)
 
         # Initial edges
         # if af.est_supp is not None:
@@ -1250,20 +1284,24 @@ def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
                 label = 'Cusp point' if i == 0 else ''
                 ax.plot(x_cusps[i], t_cusps_[i], 'o', color='navy',
                         markersize=2, label=label)
-                if (annotate is True):
+                if annotate is True:
                     if log_y:
                         text_t = t_cusps_[i] / 1.05
                     else:
                         text_t = t_cusps_[i] - 0.05
                     if i == 0:
                         ax.text(x_cusps[i] + 0.12, text_t,
-                                r'$(x_{\ast}, \tau_{\ast})$', fontsize=11)
+                                r'$(x_{\ast}, \tau_{\ast})$',
+                                color=annotate_color, fontsize=11)
 
         h, l = ax.get_legend_handles_labels()
-        h.append(matplotlib.patches.Patch(
-            facecolor=fill_color, alpha=alpha, edgecolor='none'))
-        l.append('Bulk interval')
-        ax.legend(h, l, fontsize='small')
+
+        if rho is None:
+            # Add the filled region to legend
+            h.append(matplotlib.patches.Patch(
+                facecolor=fill_color, alpha=alpha, edgecolor='none'))
+            l.append('Bulk interval')
+        ax.legend(h, l, fontsize='small', loc='lower right', framealpha=0.0)
 
         ax.set_xlabel(r'$\lambda$')
         ax.set_title(r'Evolution of Spectral Edges')
@@ -1292,6 +1330,9 @@ def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
         if flip_y:
             ax.invert_yaxis()
 
+        ax.set_facecolor(bg_color)
+        fig.patch.set_alpha(0)
+
         plt.tight_layout()
 
         if save is False:
@@ -1305,5 +1346,5 @@ def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
                 save_filename = 'edge.pdf'
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=200,
+                                  transparent_background=False, dpi=200,
                                   show_and_save=save_status, verbose=True)
