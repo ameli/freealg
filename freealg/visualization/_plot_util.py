@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import texplot
 import matplotlib
 import matplotlib.ticker as ticker
+import matplotlib.transforms as mtransforms
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.legend_handler import HandlerLine2D
@@ -219,6 +220,13 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
             else:
                 ax.legend(h, ell, loc='best', fontsize='x-small')
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         # Save
         if save is False:
             save_status = False
@@ -232,7 +240,8 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=400,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)
 
 
 # ============
@@ -273,6 +282,13 @@ def plot_hilbert(x, hilb, support=None, log=False, latex=False, save=False):
             ax.set_xscale('log')
             ax.set_yscale('log')
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         # Save
         if save is False:
             save_status = False
@@ -286,7 +302,8 @@ def plot_hilbert(x, hilb, support=None, log=False, latex=False, save=False):
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=400,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)
 
 
 # ===============
@@ -404,6 +421,13 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False, **kwargs):
 
         plt.tight_layout()
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         # Save
         if save is False:
             save_status = False
@@ -417,7 +441,8 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False, **kwargs):
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=400,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)
 
 
 # ======================
@@ -538,6 +563,13 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False,
 
         plt.tight_layout()
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         # Save
         if save is False:
             save_status = False
@@ -551,7 +583,8 @@ def plot_stieltjes_on_disk(r, t, m1_D, m2_D, support, latex=False, save=False,
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=400,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)
 
 
 # ============
@@ -577,6 +610,13 @@ def plot_samples(x, rho, x_min, x_max, samples, latex=False, save=False):
         ax.set_ylabel(r'$\rho(\lambda)$''')
         ax.set_title('Histogram of Samples from Distribution')
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         # Save
         if save is False:
             save_status = False
@@ -590,7 +630,8 @@ def plot_samples(x, rho, x_min, x_max, samples, latex=False, save=False):
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=400,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)
 
 
 # ===========
@@ -891,6 +932,13 @@ def plot_branches(z, m1, roots, support, latex=False, save=False, **kwargs):
         plt.tight_layout()
         fig.subplots_adjust(wspace=0.05, hspace=0.05)
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         # Save
         if save is False:
             save_status = False
@@ -904,4 +952,5 @@ def plot_branches(z, m1, roots, support, latex=False, save=False, **kwargs):
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=200,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)

@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import texplot
 import matplotlib
 from matplotlib.colors import LogNorm
+import matplotlib.transforms as mtransforms
 import matplotlib.ticker as mticker
 from matplotlib.ticker import NullLocator
 from matplotlib.collections import PolyCollection
@@ -57,8 +58,8 @@ def _decimal_text(val, mode):
 # plot flow
 # =========
 
-def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
-              figsize=None, xlim=None, ylim=None, share_ax=False,
+def plot_flow(sizes, x, rho, eig_init, eig_final, rho_dash=None, delta=None,
+              ax=None, figsize=None, xlim=None, ylim=None, share_ax=False,
               plot_middle=True, plot_floor=True, cmap=None, c_range=None,
               hist_color=None, nbins=(80, 120), label_mode='int',
               layout='horizontal', log=False, title='Free Decompression',
@@ -91,6 +92,9 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
         The empirical eigenvalues corresponding to the final matrix at the
         size ``sizes[-1]``. The histogram of this array is used to compare with
         ``rho[-1, :]``.
+
+    rho_dash : numpy.ndarray, default=None
+        Same as ``rho``, but this is plotted with dashed curves.
 
     delta : float, default=None
         Poisson kernel :math:`\\delta`-floor. This is only used when
@@ -278,8 +282,15 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
 
         # Left axis
         ax[0].plot(x, rho[0], color=colors[0], label='Fitted', zorder=1)
+
+        if rho_dash is not None:
+            ax[0].plot(x, rho_dash[0], '--', color=colors[0], zorder=1)
+
         if in_ax[0] is not None:
             in_ax[0].plot(x, rho[0], color=colors[0], zorder=1)
+
+            if rho_dash is not None:
+                in_ax[0].plot(x, rho_dash[0], '--', color=colors[0], zorder=1)
 
         supp_init = [numpy.nanmin(eig_init), numpy.nanmax(eig_init)]
         if log:
@@ -300,13 +311,29 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
             for i in range(rho.shape[0]):
                 label = _decimal_text(sizes[i] / 1000.0, label_mode)
                 ax[1].plot(x, rho[i], color=colors[i], label=label)
+
+                if rho_dash is not None:
+                    ax[1].plot(x, rho_dash[i], '--', color=colors[i],
+                               label=label)
+
                 if in_ax[1] is not None:
                     in_ax[1].plot(x, rho[i], color=colors[i])
 
+                    if rho_dash is not None:
+                        in_ax[1].plot(x, rho_dash[i], '--', color=colors[i])
+
         # Right axis
         ax[-1].plot(x, rho[-1], color=colors[-1], label='Prediction', zorder=1)
+
+        if rho_dash is not None:
+            ax[-1].plot(x, rho_dash[-1], '--', color=colors[-1], zorder=1)
         if in_ax[-1] is not None:
             in_ax[-1].plot(x, rho[-1], color=colors[-1], zorder=1)
+
+            if rho_dash is not None:
+                in_ax[-1].plot(x, rho_dash[-1], '--', color=colors[-1],
+                               zorder=1)
+
         supp_final = [numpy.nanmin(eig_final), numpy.nanmax(eig_final)]
 
         if log:
@@ -399,6 +426,13 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
 
         fig.patch.set_alpha(0)
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         if save is False:
             save_status = False
             save_filename = ''
@@ -411,7 +445,8 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, delta=None, ax=None,
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=False, dpi=200,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)
 
 
 # ================
@@ -527,7 +562,9 @@ def plot_mass(sizes, x, rho, x0=None, rho0=None, atoms=None, ax=None,
         if ax is None:
             if figsize is None:
                 figsize = (5.5, 3)
-            _, ax = plt.subplots(figsize=figsize)
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
 
         atom_mass_full = numpy.full_like(sizes, atom_mass, dtype=float)
         ac_mass_full = numpy.full_like(sizes, ac_mass, dtype=float)
@@ -560,6 +597,13 @@ def plot_mass(sizes, x, rho, x0=None, rho0=None, atoms=None, ax=None,
             ax.xaxis.set_major_formatter(
                 mticker.FuncFormatter(_k_pow2_formatter))
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         if save is False:
             save_status = False
             save_filename = ''
@@ -572,7 +616,8 @@ def plot_mass(sizes, x, rho, x0=None, rho0=None, atoms=None, ax=None,
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=200,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)
 
 
 # ======
@@ -596,11 +641,12 @@ def _darker(color, factor=0.85):
 # ridgeplot
 # =========
 
-def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
-              xlim=None, ylim=None, ylim_factor=1.0, scaley=True, log=False,
-              text_side='left', atom_tol=0.0, cmap=None, c_range=None,
-              hspace=-0.3, nbins=None, bin_factor=10, label_mode='int',
-              rho_color=None, title='', save=False, latex=False):
+def ridgeplot(sizes, x=None, rho=None, rho_dash=None, eigs=None, ax=None,
+              figsize=None, xlim=None, ylim=None, ylim_factor=1.0, scaley=True,
+              log=False, text_side='left', atom_tol=0.0, cmap=None,
+              c_range=None, hspace=-0.3, nbins=None, bin_factor=10,
+              label_mode='int', rho_color=None, title='', save=False,
+              latex=False):
     """
     Rideplot of a cascade of spectral density functions.
 
@@ -619,6 +665,9 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
         A 2D array where the row ``rho[i, :]`` correspond to a density at the
         matrix size ``sizes[i]``. If this argument is provided, also ``x``
         should be given.
+
+    rho_dash : numpy.ndarray, default=None
+        Same we ``rho``, but this is plotted with dashed curves.
 
     eigs : list
         The list of arrays of empirical eigenvalues corresponding to the
@@ -821,6 +870,10 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
                     rho_color = 'gray'
                 ax[i].plot(x, rho[i], linewidth=1, zorder=20, color=rho_color)
 
+                if rho_dash is not None:
+                    ax[i].plot(x, rho_dash[i], '--', linewidth=1, zorder=20,
+                               color=rho_color)
+
             # Text showing the submatrix sizes
             label = _decimal_text(sizes[i] / 1000.0, label_mode)
             ax[i].text(text_x, 0.07, label, color='black',
@@ -893,6 +946,13 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
             fig.suptitle(title, fontsize=fontsize,
                          x=(bbox.x0 + bbox.x1) / 2, y=bbox.y1 + 0.025)
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         if save is False:
             save_status = False
             save_filename = ''
@@ -905,7 +965,8 @@ def ridgeplot(sizes, x=None, rho=None, eigs=None, ax=None, figsize=None,
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=True, dpi=200,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)
 
 
 # ==========
@@ -1335,6 +1396,13 @@ def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
 
         plt.tight_layout()
 
+        # Zero pad on left, right, and top of canvas
+        fig.canvas.draw()
+        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = 0.75 / 72.0
+        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                             bbox.x1+pad, bbox.y1+pad)
+
         if save is False:
             save_status = False
             save_filename = ''
@@ -1347,4 +1415,5 @@ def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
 
         texplot.show_or_save_plot(plt, default_filename=save_filename,
                                   transparent_background=False, dpi=200,
-                                  show_and_save=save_status, verbose=True)
+                                  bbox_inches=bbox, show_and_save=save_status,
+                                  verbose=True)

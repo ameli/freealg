@@ -108,7 +108,7 @@ class AlgebraicForm(BaseForm):
         the rectangular matrix
         :math:`\\mathbb{X} \\in \\mathbb{R}^{p \\times n}`, then this
         argument is the aspect ratio :math:`c = p / n \\in (0, \\infty)`.
-        The argument is only used for free deformation in :func:`deform`.
+        The argument is only used for deformed decompression.
 
     log : bool, default=False
         If `True`, it is assumed the spectral density is positive-definite and
@@ -179,10 +179,6 @@ class AlgebraicForm(BaseForm):
         A list of tuples ``(a, b)`` for the spectral edges of the bulks. This
         attribute is only available after calling :func:`support`. These
         spectral edges are estimated form the fitted polynomial.
-
-    _stieltjes_emp : callable function
-        A function that computes Stieltjes transform from the empirical
-        eigenvalues.
 
     _stieltjes_poly : callable function
         A function that computes Stieltjes transform from the fitted polynomial
@@ -1153,6 +1149,7 @@ class AlgebraicForm(BaseForm):
 
         See Also
         --------
+
         hilbert
         stieltjes
 
@@ -1273,6 +1270,7 @@ class AlgebraicForm(BaseForm):
 
         See Also
         --------
+
         density
         stieltjes
 
@@ -1485,6 +1483,7 @@ class AlgebraicForm(BaseForm):
 
         kind : {``'free'``, ``'deformed'``}, default= ``'free'``
             The type of operation:
+
             * ``'free'``: evolve the spectral curve using free decompression
             * ``'deformed'``: evolve the spectral curve using deformed
               deformation.
@@ -1786,6 +1785,7 @@ class AlgebraicForm(BaseForm):
 
         kind : {``'free'``, ``'deformed'``}, default= ``'free'``
             The type of operation:
+
             * ``'free'``: evolve the spectral curve using free decompression
             * ``'deformed'``: evolve the spectral curve using deformed
               deformation.
@@ -2138,6 +2138,7 @@ class AlgebraicForm(BaseForm):
 
         kind : {``'free'``, ``'deformed'``}, default= ``'free'``
             The type of operation:
+
             * ``'free'``: evolve the spectral curve using free decompression
             * ``'deformed'``: evolve the spectral curve using deformed
               deformation.
@@ -2352,6 +2353,7 @@ class AlgebraicForm(BaseForm):
 
         kind : {``'free'``, ``'deformed'``}, default= ``'free'``
             The type of operation:
+
             * ``'free'``: evolve the spectral curve using free decompression
             * ``'deformed'``: evolve the spectral curve using deformed
               deformation.
