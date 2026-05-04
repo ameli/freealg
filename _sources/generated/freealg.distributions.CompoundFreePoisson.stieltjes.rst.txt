@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.CompoundFreePoisson.stieltjes
+===================================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: CompoundFreePoisson.stieltjes

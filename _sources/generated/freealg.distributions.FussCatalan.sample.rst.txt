@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.FussCatalan.sample
+========================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: FussCatalan.sample

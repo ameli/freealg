@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.GeometricForm.trace
+===========================
+
+.. currentmodule:: freealg
+
+.. automethod:: GeometricForm.trace

@@ -1,0 +1,29 @@
+﻿freealg.distributions.DeformedMarchenkoPastur
+=============================================
+
+.. currentmodule:: freealg.distributions
+
+.. autoclass:: DeformedMarchenkoPastur
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:
+
+  
+   .. HACK -- the point here is that we don't want this to appear in the output, but the autosummary should still generate the pages.
+      .. autosummary::
+         :toctree:
+      
+         DeformedMarchenkoPastur.density
+         DeformedMarchenkoPastur.matrix
+         DeformedMarchenkoPastur.plot_branches
+         DeformedMarchenkoPastur.poly
+         DeformedMarchenkoPastur.roots
+         DeformedMarchenkoPastur.sample
+         DeformedMarchenkoPastur.stieltjes
+         DeformedMarchenkoPastur.support
+      
+  
+
+  
+  
+  

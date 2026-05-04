@@ -1,0 +1,29 @@
+﻿freealg.distributions.CompoundFreePoisson
+=========================================
+
+.. currentmodule:: freealg.distributions
+
+.. autoclass:: CompoundFreePoisson
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:
+
+  
+   .. HACK -- the point here is that we don't want this to appear in the output, but the autosummary should still generate the pages.
+      .. autosummary::
+         :toctree:
+      
+         CompoundFreePoisson.density
+         CompoundFreePoisson.matrix
+         CompoundFreePoisson.plot_branches
+         CompoundFreePoisson.poly
+         CompoundFreePoisson.roots
+         CompoundFreePoisson.sample
+         CompoundFreePoisson.stieltjes
+         CompoundFreePoisson.support
+      
+  
+
+  
+  
+  

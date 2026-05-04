@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.DeformedWigner.poly
+=========================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: DeformedWigner.poly

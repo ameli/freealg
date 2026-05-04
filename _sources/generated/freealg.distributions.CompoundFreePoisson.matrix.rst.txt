@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.CompoundFreePoisson.matrix
+================================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: CompoundFreePoisson.matrix

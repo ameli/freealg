@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.CompoundFreePoisson.roots
+===============================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: CompoundFreePoisson.roots

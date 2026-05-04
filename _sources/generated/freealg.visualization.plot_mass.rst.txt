@@ -1,0 +1,6 @@
+﻿freealg.visualization.plot\_mass
+================================
+
+.. currentmodule:: freealg.visualization
+
+.. autofunction:: plot_mass

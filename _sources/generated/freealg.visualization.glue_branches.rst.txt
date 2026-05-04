@@ -1,0 +1,6 @@
+﻿freealg.visualization.glue\_branches
+====================================
+
+.. currentmodule:: freealg.visualization
+
+.. autofunction:: glue_branches

@@ -198,6 +198,16 @@
    freealg.FreeForm
   </a>
  </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.AlgebraicForm.html">
+   freealg.AlgebraicForm
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.GeometricForm.html">
+   freealg.GeometricForm
+  </a>
+ </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
@@ -289,6 +299,78 @@
    freealg.distributions.Meixner
   </a>
  </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.ChiralBlock.html">
+   freealg.distributions.ChiralBlock
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.DeformedWigner.html">
+   freealg.distributions.DeformedWigner
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.DeformedMarchenkoPastur.html">
+   freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.hist.html">
+   freealg.visualization.hist
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.auto_bins.html">
+   freealg.visualization.auto_bins
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.plot_flow.html">
+   freealg.visualization.plot_flow
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.plot_mass.html">
+   freealg.visualization.plot_mass
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="freealg.visualization.ridgeplot.html">
+   freealg.visualization.ridgeplot
+  </a>
+ </li>
 </ul>
 
     
@@ -353,18 +435,26 @@
 <h1>freealg.submatrix<a class="headerlink" href="#freealg-submatrix" title="Permalink to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="freealg.submatrix">
-<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">submatrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">paired</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.submatrix" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">freealg.</span></span><span class="sig-name descname"><span class="pre">submatrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">paired</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">haar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#freealg.submatrix" title="Permalink to this definition">#</a></dt>
 <dd><p>Randomly sample a submatrix from a larger matrix.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>matrix</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>A 2D square array</p>
 </dd>
-<dt><strong>size</strong><span class="classifier">int</span></dt><dd><p>Number of rows and columns of the submatrix</p>
+<dt><strong>size</strong><span class="classifier">int</span></dt><dd><p>Number of rows and columns of the output submatrix.</p>
+</dd>
+<dt><strong>block_size</strong><span class="classifier">int, default=None</span></dt><dd><p>If given, sampling is performed at the block level where contiguous
+blocks of size <code class="docutils literal notranslate"><span class="pre">block_size</span></code> are selected and preserved. The output
+<code class="docutils literal notranslate"><span class="pre">size</span></code> should be an integer multiple of <code class="docutils literal notranslate"><span class="pre">block_size</span></code>.</p>
 </dd>
 <dt><strong>paired</strong><span class="classifier">bool, default=True</span></dt><dd><p>If <cite>True</cite>, the rows and columns are sampled with the same random
 indices. If <cite>False</cite>, separate random indices are used for selecting
 rows and columns.</p>
+</dd>
+<dt><strong>haar</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <cite>True</cite>, apply a random orthogonal conjugation to the input matrix
+before sampling, using a Haar-distributed orthogonal matrix. Note that
+this can significantly increase the runtime for large matrices.</p>
 </dd>
 <dt><strong>seed</strong><span class="classifier">int, default=None</span></dt><dd><p>Seed for random number generation. If <cite>None</cite>, results will not be
 reproducible.</p>

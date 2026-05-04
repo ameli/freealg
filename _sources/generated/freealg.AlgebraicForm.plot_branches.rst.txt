@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.AlgebraicForm.plot_branches
+===================================
+
+.. currentmodule:: freealg
+
+.. automethod:: AlgebraicForm.plot_branches

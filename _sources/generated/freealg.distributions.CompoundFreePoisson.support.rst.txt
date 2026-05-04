@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.CompoundFreePoisson.support
+=================================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: CompoundFreePoisson.support

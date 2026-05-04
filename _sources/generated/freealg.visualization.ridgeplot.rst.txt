@@ -1,0 +1,6 @@
+﻿freealg.visualization.ridgeplot
+===============================
+
+.. currentmodule:: freealg.visualization
+
+.. autofunction:: ridgeplot

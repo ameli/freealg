@@ -200,6 +200,16 @@
    freealg.FreeForm
   </a>
  </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.AlgebraicForm.html">
+   freealg.AlgebraicForm
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.GeometricForm.html">
+   freealg.GeometricForm
+  </a>
+ </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
@@ -291,6 +301,78 @@
    freealg.distributions.Meixner
   </a>
  </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.distributions.ChiralBlock.html">
+   freealg.distributions.ChiralBlock
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.distributions.DeformedWigner.html">
+   freealg.distributions.DeformedWigner
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.distributions.DeformedMarchenkoPastur.html">
+   freealg.distributions.DeformedMarchenkoPastur
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.distributions.CompoundFreePoisson.html">
+   freealg.distributions.CompoundFreePoisson
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.distributions.FreeLevy.html">
+   freealg.distributions.FreeLevy
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.distributions.FussCatalan.html">
+   freealg.distributions.FussCatalan
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Visualization
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.visualization.domain_coloring.html">
+   freealg.visualization.domain_coloring
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.visualization.glue_branches.html">
+   freealg.visualization.glue_branches
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.visualization.hist.html">
+   freealg.visualization.hist
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.visualization.auto_bins.html">
+   freealg.visualization.auto_bins
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.visualization.plot_flow.html">
+   freealg.visualization.plot_flow
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.visualization.plot_mass.html">
+   freealg.visualization.plot_mass
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="generated/freealg.visualization.ridgeplot.html">
+   freealg.visualization.ridgeplot
+  </a>
+ </li>
 </ul>
 
     
@@ -336,6 +418,11 @@
    Classical Distributions
   </a>
  </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#visualization">
+   Visualization
+  </a>
+ </li>
 </ul>
 
 </nav>
@@ -372,6 +459,12 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.FreeForm.html#freealg.FreeForm" title="freealg.FreeForm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.FreeForm</span></code></a>(A[, support, delta, dtype])</p></td>
 <td><p>Free probability for large matrices.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.AlgebraicForm.html#freealg.AlgebraicForm" title="freealg.AlgebraicForm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.AlgebraicForm</span></code></a>(A[, support, n, ...])</p></td>
+<td><p>Algebraic surrogate for ensemble models.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.GeometricForm.html#freealg.GeometricForm" title="freealg.GeometricForm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.GeometricForm</span></code></a>(A[, support, delta, dtype])</p></td>
+<td><p>Geometric object representing Riemann surface for ensemble models.</p></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -403,13 +496,13 @@
 <p>The following functions are utilities for distributions.</p>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.supp.html#freealg.supp" title="freealg.supp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.supp</span></code></a>(eigs[, method, k, p])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.supp.html#freealg.supp" title="freealg.supp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.supp</span></code></a>(eigs[, method, k, p, tol, ...])</p></td>
 <td><p>Estimates the support of the eigenvalue density.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.sample.html#freealg.sample" title="freealg.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.sample</span></code></a>(x, rho, num_pts[, method, seed])</p></td>
 <td><p>Low-discrepancy sampling from density estimate.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.submatrix.html#freealg.submatrix" title="freealg.submatrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.submatrix</span></code></a>(matrix, size[, paired, seed])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.submatrix.html#freealg.submatrix" title="freealg.submatrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.submatrix</span></code></a>(matrix, size[, ...])</p></td>
 <td><p>Randomly sample a submatrix from a larger matrix.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.kde.html#freealg.kde" title="freealg.kde"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.kde</span></code></a>(eig, xs, lam_m, lam_p, h[, ...])</p></td>
@@ -437,6 +530,53 @@
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.distributions.Meixner.html#freealg.distributions.Meixner" title="freealg.distributions.Meixner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.Meixner</span></code></a>(a, b, c)</p></td>
 <td><p>Meixner distribution.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.distributions.ChiralBlock.html#freealg.distributions.ChiralBlock" title="freealg.distributions.ChiralBlock"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.ChiralBlock</span></code></a>(alpha, beta, c)</p></td>
+<td><p>Twisted chiral block model.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.distributions.DeformedWigner.html#freealg.distributions.DeformedWigner" title="freealg.distributions.DeformedWigner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.DeformedWigner</span></code></a>(t, w[, ...])</p></td>
+<td><p>Deformed Wiger distribution</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.distributions.DeformedMarchenkoPastur.html#freealg.distributions.DeformedMarchenkoPastur" title="freealg.distributions.DeformedMarchenkoPastur"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.DeformedMarchenkoPastur</span></code></a>(t, w)</p></td>
+<td><p>Deformed Marchenko-Pastur distribution</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.distributions.CompoundFreePoisson.html#freealg.distributions.CompoundFreePoisson" title="freealg.distributions.CompoundFreePoisson"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.CompoundFreePoisson</span></code></a>(t, ...)</p></td>
+<td><p>Compound free Poisson distribution</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.distributions.FreeLevy.html#freealg.distributions.FreeLevy" title="freealg.distributions.FreeLevy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.FreeLevy</span></code></a>(t, w, lam[, ...])</p></td>
+<td><p>Free Levy distribution.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.distributions.FussCatalan.html#freealg.distributions.FussCatalan" title="freealg.distributions.FussCatalan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.distributions.FussCatalan</span></code></a>([p])</p></td>
+<td><p>Fuss-Catalan (a.k.a.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="visualization">
+<h2>Visualization<a class="headerlink" href="#visualization" title="Permalink to this heading">#</a></h2>
+<p>Function utilities for visualizing of real and complex functions.</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.visualization.domain_coloring.html#freealg.visualization.domain_coloring" title="freealg.visualization.domain_coloring"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.visualization.domain_coloring</span></code></a>(c[, ...])</p></td>
+<td><p>Convert complex field c to RGB via HSV domain coloring.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.visualization.glue_branches.html#freealg.visualization.glue_branches" title="freealg.visualization.glue_branches"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.visualization.glue_branches</span></code></a>(z, m1, m2)</p></td>
+<td><p>m12 is the mixing of m1 and m2 where it contains m1 on C^+ and m2 on C^-.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.visualization.hist.html#freealg.visualization.hist" title="freealg.visualization.hist"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.visualization.hist</span></code></a>(array[, bins, m, ...])</p></td>
+<td><p>Histogram (optionally ASH-smoothed) with detected multi-interval support and atom-centered bins.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.visualization.auto_bins.html#freealg.visualization.auto_bins" title="freealg.visualization.auto_bins"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.visualization.auto_bins</span></code></a>(array[, ...])</p></td>
+<td><p>Automatic choice for the number of bins for the histogram of an array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.visualization.plot_flow.html#freealg.visualization.plot_flow" title="freealg.visualization.plot_flow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.visualization.plot_flow</span></code></a>(sizes, x, ...)</p></td>
+<td><p>Plot density evolution at various decompression sizes.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/freealg.visualization.plot_mass.html#freealg.visualization.plot_mass" title="freealg.visualization.plot_mass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.visualization.plot_mass</span></code></a>(sizes, x, rho)</p></td>
+<td><p>Plot mass of the absolutely continuous and atoms of spectral density.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/freealg.visualization.ridgeplot.html#freealg.visualization.ridgeplot" title="freealg.visualization.ridgeplot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freealg.visualization.ridgeplot</span></code></a>(sizes[, x, ...])</p></td>
+<td><p>Rideplot of a cascade of spectral density functions.</p></td>
 </tr>
 </tbody>
 </table>

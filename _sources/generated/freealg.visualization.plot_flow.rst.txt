@@ -1,0 +1,6 @@
+﻿freealg.visualization.plot\_flow
+================================
+
+.. currentmodule:: freealg.visualization
+
+.. autofunction:: plot_flow

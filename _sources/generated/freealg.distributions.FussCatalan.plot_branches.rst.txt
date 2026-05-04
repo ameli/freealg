@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.FussCatalan.plot_branches
+===============================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: FussCatalan.plot_branches

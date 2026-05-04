@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.ChiralBlock.stieltjes
+===========================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: ChiralBlock.stieltjes

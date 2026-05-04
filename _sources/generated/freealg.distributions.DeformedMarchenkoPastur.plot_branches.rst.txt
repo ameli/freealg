@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.DeformedMarchenkoPastur.plot_branches
+===========================================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: DeformedMarchenkoPastur.plot_branches

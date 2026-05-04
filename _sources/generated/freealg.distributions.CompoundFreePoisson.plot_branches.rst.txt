@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.CompoundFreePoisson.plot_branches
+=======================================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: CompoundFreePoisson.plot_branches

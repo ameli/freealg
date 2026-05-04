@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.distributions.FreeLevy.sample
+=====================================
+
+.. currentmodule:: freealg.distributions
+
+.. automethod:: FreeLevy.sample

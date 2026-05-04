@@ -1,0 +1,8 @@
+:orphan:
+
+freealg.AlgebraicForm.norm
+==========================
+
+.. currentmodule:: freealg
+
+.. automethod:: AlgebraicForm.norm
