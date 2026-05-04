@@ -413,8 +413,9 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, rho_dash=None, delta=None,
             ax[1].set_title(r'(b) ' + title)
 
         ax_letter = 'c' if plot_middle is True else 'b'
+        final_size = int(sizes[-1] / 1000 + 1e-8)
         ax[-1].set_title(
-            rf'({ax_letter}) Final Density ($n={{{sizes[-1]/1000:>0.0f}}}$K)')
+            rf'({ax_letter}) Final Density ($n={{{final_size:>0.0f}}}$K)')
 
         plt.tight_layout()
 

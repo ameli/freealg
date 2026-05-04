@@ -399,7 +399,7 @@ def plot_stieltjes(x, y, m1, m2, support, latex=False, save=False, **kwargs):
         sm_hue = plt.cm.ScalarMappable(norm=norm_hue, cmap=cmap_hue)
         sm_hue.set_array([])
         cb_hue = fig.colorbar(sm_hue, cax=cax_hue)
-        cb_hue.set_label(r'$\mathrm{Arg}(m(z))$', labelpad=-6)
+        cb_hue.set_label(r'$\mathrm{arg}(m(z))$', labelpad=-6)
         cb_hue.set_ticks([-numpy.pi, 0, numpy.pi])
         cb_hue.set_ticklabels([r'$-\pi$', '0', r'$\pi$'])
 

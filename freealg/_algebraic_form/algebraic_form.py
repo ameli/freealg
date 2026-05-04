@@ -1931,7 +1931,7 @@ class AlgebraicForm(BaseForm):
                 c_i = c_0 * alpha[i]
 
                 coeffs_i = deform_coeffs(self.coeffs, t_i, c_0)
-                plot_deform_candidates(coeffs_i, x, c=c_i, eig=eig,
+                plot_deform_candidates(coeffs_i, x, ax=None, c=c_i, eig=eig,
                                        delta=delta_, size=int(alpha[i]*self.n),
                                        log=self._log, markersize=markersize,
                                        ylim=ylim, latex=latex, verbose=verbose)

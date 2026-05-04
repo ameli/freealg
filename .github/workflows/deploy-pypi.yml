@@ -1,12 +1,12 @@
 name: deploy-pypi
 
-# on:
-#     push:
-#         branches:
-#             - main
-#     release:
-#         types:
-#             - published
+on:
+    push:
+        branches:
+            - main
+    release:
+        types:
+            - published
 
 jobs:
     build-and-deploy:
