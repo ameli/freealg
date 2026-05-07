@@ -1184,7 +1184,7 @@ def _fill_bulks(ax, t, edges, color, alpha=0.05, zorder=-2, width_tol=1e-12):
 # plot edges
 # ==========
 
-def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
+def plot_edges(t, real_merged_edges, cusps=None, sizes=None,
                x=None, rho=None, cbar_range=None, cbar_log=False, cmap=None,
                bg_color='none', edge_color='royalblue', alpha=0.1,
                fill_color='royal_blue', figsize=None, annotate=False,
@@ -1223,9 +1223,6 @@ def plot_edges(t, complex_edges, real_merged_edges, cusps=None, sizes=None,
         for j in range(k):
             a_r = real_merged_edges[:, 2*j + 0]
             b_r = real_merged_edges[:, 2*j + 1]
-
-            # a_c = complex_edges[:, 2*j + 0].real
-            # b_c = complex_edges[:, 2*j + 1].real
 
             # Plot spectral edges with solid lines
             label = 'Spectral edge' if j == 0 else ''

@@ -5,6 +5,7 @@
 import math
 import numpy
 import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
 import texplot
 from ._continuation_algebraic import _normalize_coefficients, eval_roots
 from ..visualization._hist_util import auto_bins
@@ -175,9 +176,9 @@ def deform_coeffs(a, t, c0, normalize=True):
 # plot deform candidates
 # ======================
 
-def plot_deform_candidates(a, x, c=1.0, eig=None, delta=1e-4, size=None,
-                           log=False, markersize=3, ylim=None, latex=False,
-                           verbose=False):
+def plot_deform_candidates(a, x, c=1.0, ax=None, eig=None, delta=1e-4,
+                           size=None, log=False, markersize=3, ylim=None,
+                           latex=False, verbose=False):
     """
     Plot candidate roots.
     """
@@ -231,9 +232,15 @@ def plot_deform_candidates(a, x, c=1.0, eig=None, delta=1e-4, size=None,
         ys = numpy.array([], dtype=float)
 
     with texplot.theme(use_latex=latex):
-        fig, ax = plt.subplots(figsize=(6, 2.7))
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(6, 2.7))
+            external_ax = False
+        else:
+            fig = ax.get_figure()
+            external_ax = True
+
         ax.scatter(xs, ys, s=markersize, alpha=1, linewidths=0, c='k',
-                   zorder=2, label='Roots')
+                   zorder=2, label='Roots', rasterized=True)
 
         ax.set_xlim([x[0], x[-1]])
 
@@ -246,9 +253,10 @@ def plot_deform_candidates(a, x, c=1.0, eig=None, delta=1e-4, size=None,
             else:
                 nbins = auto_bins(eig)
                 bins = numpy.linspace(lam_m, lam_p, nbins)
-            _ = ax.hist(eig, bins, density=True, color='royalblue', alpha=0.5,
+            _ = ax.hist(eig, bins, density=True, color='lightsteelblue',
+                        # alpha=0.5,
                         edgecolor='none', label='Empirical Histogram',
-                        zorder=1)
+                        zorder=-1, rasterized=True)
 
         if ylim is not None:
             ax.set_ylim(ylim)
@@ -282,13 +290,24 @@ def plot_deform_candidates(a, x, c=1.0, eig=None, delta=1e-4, size=None,
         if log:
             ax.set_xscale('log')
             ax.set_yscale('log')
-            ax.grid(which='both', axis='x')
+            # ax.grid(which='both', axis='x')
 
-        # Save
-        if size is not None:
-            ax.set_title("Candidate Density Cloud (size = {})".format(size))
-        save_status = False
-        save_filename = ''
-        texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=400,
-                                  show_and_save=save_status, verbose=True)
+        if not external_ax:
+
+            # Zero pad on left, right, and top of canvas
+            fig.canvas.draw()
+            bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+            pad = 0.75 / 72.0
+            bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                                 bbox.x1+pad, bbox.y1+pad)
+
+            # Save
+            if size is not None:
+                ax.set_title(
+                    rf'Candidate Density Cloud ($n = {{{int(size/1000)}}}$K)')
+            save_status = False
+            save_filename = ''
+            texplot.show_or_save_plot(plt, default_filename=save_filename,
+                                      transparent_background=True, dpi=400,
+                                      bbox_inches=bbox,
+                                      show_and_save=save_status, verbose=True)

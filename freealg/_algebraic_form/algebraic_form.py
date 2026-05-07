@@ -1478,8 +1478,7 @@ class AlgebraicForm(BaseForm):
             is produced.
 
         x : numpy.array, default=None
-            Positions where density to be evaluated at. If `None`, an interval
-            slightly larger than the support interval will be used.
+            Positions where density to be evaluated at.
 
         kind : {``'free'``, ``'deformed'``}, default= ``'free'``
             The type of operation:
@@ -1527,9 +1526,6 @@ class AlgebraicForm(BaseForm):
             * If ``size`` is an array of size `n`, ``rho`` is a 2D array with
               `n` rows, where each row corresponds to decompression to a size.
               Number of columns of ``rho`` is the same as the size of ``x``.
-
-        x : numpy.array
-            Locations where the spectral density is estimated
 
         See Also
         --------
@@ -1587,10 +1583,11 @@ class AlgebraicForm(BaseForm):
         alpha = numpy.atleast_1d(size) / self.n
 
         # Create x if not given
-        if x is None:
-            x = self._generate_grid(1.25, log=self._log)
-        else:
-            x = numpy.asarray(x)
+        # if x is None:
+        #     x = self._generate_grid(1.25, log=self._log)
+        # else:
+        #     x = numpy.asarray(x)
+        x = numpy.asarray(x)
 
         # Epsilon-neighborhood to exclude atoms from x
         if atom_eps is None:
@@ -1743,9 +1740,9 @@ class AlgebraicForm(BaseForm):
                          label=label, log=self._log, latex=latex, save=save)
 
         if return_atoms:
-            return rho, x, atoms_t
+            return rho, atoms_t
         else:
-            return rho, x
+            return rho
 
     # ================
     # debug decompress
@@ -1915,7 +1912,8 @@ class AlgebraicForm(BaseForm):
 
             if kind == 'free':
                 coeffs_i = decompress_coeffs(self.coeffs, t_i)
-                plot_decompress_candidates(coeffs_i, x, eig=eig, delta=delta_,
+                plot_decompress_candidates(coeffs_i, x, ax=None, eig=eig,
+                                           delta=delta_,
                                            size=int(alpha[i]*self.n),
                                            log=self._log,
                                            markersize=markersize, ylim=ylim,
@@ -1931,7 +1929,7 @@ class AlgebraicForm(BaseForm):
                 c_i = c_0 * alpha[i]
 
                 coeffs_i = deform_coeffs(self.coeffs, t_i, c_0)
-                plot_deform_candidates(coeffs_i, x, ax=None, c=c_i, eig=eig,
+                plot_deform_candidates(coeffs_i, x, c=c_i, ax=None, eig=eig,
                                        delta=delta_, size=int(alpha[i]*self.n),
                                        log=self._log, markersize=markersize,
                                        ylim=ylim, latex=latex, verbose=verbose)
@@ -2326,7 +2324,7 @@ class AlgebraicForm(BaseForm):
         real_edges = complex_edges.real
 
         # Remove spurious edges / merges for plotting
-        real_merged_edges, active_k = merge_edges(real_edges, tol=1e-4)
+        real_merged_edges, _ = merge_edges(real_edges, tol=1e-4)
 
         if verbose:
             m_exist = numpy.isfinite(numpy.real(complex_edges))
@@ -2334,7 +2332,7 @@ class AlgebraicForm(BaseForm):
                 numpy.count_nonzero(m_exist)
             print("edge success rate:", rate)
 
-        return complex_edges, real_merged_edges, active_k, cusps
+        return real_merged_edges, cusps
 
     # ====
     # cusp

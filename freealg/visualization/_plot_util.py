@@ -66,8 +66,9 @@ class HandlerLine2DArrow(HandlerLine2D):
 # plot density
 # ============
 
-def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
-                 title='Spectral Density', log=False, latex=False, save=False):
+def plot_density(x, rho, ax=None, eig=None, atoms=None, support=None, label='',
+                 title='Spectral Density', fill_color='silver', log=False,
+                 latex=False, save=False):
     """
     Parameters
     ----------
@@ -77,6 +78,9 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
     rho : numpy.ndarray, default=None
         A 1D array of density.
+
+    ax : matplotlib.axes._axes.Axes
+        matplotlib's axis object. If `None`, new axis and figure is created.
 
     eig : numpy.array, default=None
         If provided, the empirical histogram of the eigenvalues is also shown
@@ -97,6 +101,9 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
     title : str, default= ``'Spectral density'``
         Title of the plot
 
+    fill_color : str, default= ``'silver'``
+        The color of fill.
+
     log : bool, default=False
         If `True`. x and y axis are shown in log scale.
 
@@ -111,7 +118,12 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
 
     with texplot.theme(use_latex=latex):
 
-        fig, ax = plt.subplots(figsize=(6, 2.5))
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(6, 2.5))
+            external_ax = False
+        else:
+            fig = ax.get_figure()
+            external_ax = True
 
         # Copy rho if later it might be overwritten
         rho_ = numpy.copy(rho)
@@ -172,7 +184,7 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
             # ax.stairs(vals, edges, fill=True, color='silver', alpha=1.0,
             #           label='Empirical Histogram')
         else:
-            plt.fill_between(x, y1=rho_, y2=min_y, color='silver', zorder=-1)
+            ax.fill_between(x, y1=rho_, y2=min_y, color=fill_color, zorder=-1)
 
         arrow_handle = None
         if (atoms is not None) and (len(atoms) > 0):
@@ -220,28 +232,30 @@ def plot_density(x, rho, eig=None, atoms=None, support=None, label='',
             else:
                 ax.legend(h, ell, loc='best', fontsize='x-small')
 
-        # Zero pad on left, right, and top of canvas
-        fig.canvas.draw()
-        bbox = fig.get_tightbbox(fig.canvas.get_renderer())
-        pad = 0.75 / 72.0
-        bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
-                                             bbox.x1+pad, bbox.y1+pad)
+        if not external_ax:
 
-        # Save
-        if save is False:
-            save_status = False
-            save_filename = ''
-        else:
-            save_status = True
-            if isinstance(save, str):
-                save_filename = save
+            # Zero pad on left, right, and top of canvas
+            fig.canvas.draw()
+            bbox = fig.get_tightbbox(fig.canvas.get_renderer())
+            pad = 0.75 / 72.0
+            bbox = mtransforms.Bbox.from_extents(bbox.x0-pad, bbox.y0-pad,
+                                                 bbox.x1+pad, bbox.y1+pad)
+
+            # Save
+            if save is False:
+                save_status = False
+                save_filename = ''
             else:
-                save_filename = 'density.pdf'
+                save_status = True
+                if isinstance(save, str):
+                    save_filename = save
+                else:
+                    save_filename = 'density.pdf'
 
-        texplot.show_or_save_plot(plt, default_filename=save_filename,
-                                  transparent_background=True, dpi=400,
-                                  bbox_inches=bbox, show_and_save=save_status,
-                                  verbose=True)
+            texplot.show_or_save_plot(plt, default_filename=save_filename,
+                                      transparent_background=True, dpi=400,
+                                      bbox_inches=bbox,
+                                      show_and_save=save_status, verbose=True)
 
 
 # ============
