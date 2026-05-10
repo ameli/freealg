@@ -84,23 +84,6 @@ our `Contributing Guidelines <https://github.com/ameli/freealg/blob/main/CONTRIB
 before submitting their code. If you do not feel comfortable modifying the
 code, we also welcome feature requests and bug reports.
 
-How to Cite
-===========
-
-If you use this work, please cite our `paper <https://openreview.net/pdf?id=2CeGVUpOd7>`__.
-
-  .. code::
-
-      @inproceedings{
-            AMELI-2025,
-            title={Spectral Estimation with Free Decompression},
-            author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
-            booktitle={The Thirty-ninth Annual Conference on Neural Information Processing Systems},
-            year={2025},
-            url={https://openreview.net/forum?id=2CeGVUpOd7}
-      }
-
-
 License
 =======
 
