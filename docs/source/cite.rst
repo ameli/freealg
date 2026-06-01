@@ -1,24 +1,6 @@
 How to Cite
 ===========
 
-.. [1] Siavash Ameli, Chris van der Heide, Liam Hodgkinson, Michael W. Mahoney (2025). Spectral Estimation with Free Decompression. *The Thirty-ninth Annual Conference on Neural Information Processing Systems* |btn-free-doi| |ameli-free| |btn-bib-free| |btn-view-pdf-free|
-
-   .. raw:: html
-
-        <div class="highlight-BibTeX notranslate collapse" id="collapse-bib1">
-        <div class="highlight">
-        <pre class="language-bib">
-        <code class="language-bib">@inproceedings{
-            AMELI-2025,
-            title={Spectral Estimation with Free Decompression},
-            author={Siavash Ameli and Chris van der Heide and Liam Hodgkinson and Michael W. Mahoney},
-            booktitle={The Thirty-ninth Annual Conference on Neural Information Processing Systems},
-            year={2025},
-            url={https://openreview.net/forum?id=2CeGVUpOd7}
-        }</code></pre>
-        </div>
-        </div>
-
 .. |btn-free-doi| raw:: html
 
     <a href="https://openreview.net/pdf?id=2CeGVUpOd7" class="btn btn-outline-info btn-sm btn-extra-sm" role="button">DOI</a>
