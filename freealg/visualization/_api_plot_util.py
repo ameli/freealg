@@ -426,6 +426,8 @@ def plot_flow(sizes, x, rho, eig_init, eig_final, rho_dash=None, delta=None,
             fig.subplots_adjust(wspace=0.18)
 
         fig.patch.set_alpha(0)
+        for a in ax:
+            a.patch.set_alpha(0)
 
         # Zero pad on left, right, and top of canvas
         fig.canvas.draw()
@@ -539,12 +541,12 @@ def plot_mass(sizes, x, rho, x0=None, rho0=None, atoms=None, ax=None,
     else:
         atom_mass = 0.0
 
-    ac_mass = numpy.trapz(rho, x)
+    ac_mass = numpy.trapezoid(rho, x)
     dx = numpy.diff(sizes).min()
 
     # Higher resolution density for t=0
     if (x0 is not None) and (rho0 is not None):
-        ac_mass[0] = numpy.trapz(rho0, x0)
+        ac_mass[0] = numpy.trapezoid(rho0, x0)
 
     if log_x:
         logx = numpy.log2(sizes)
@@ -854,8 +856,18 @@ def ridgeplot(sizes, x=None, rho=None, rho_dash=None, eigs=None, ax=None,
                     mask = numpy.ones_like(counts).astype(bool)
                 else:
                     mask = counts > 0.1 * numpy.max(counts)
-                ax[i].step(edges[:-1][mask], counts[mask], where="post",
-                           color="white", linewidth=0.5, zorder=3)
+
+                # Horizontal white lines of step
+                ax[i].hlines(
+                    counts[mask], edges[:-1][mask], edges[1:][mask],
+                    colors='white', linewidths=0.5, zorder=3)
+
+                # Vertical white lines of step (more thin and transparent)
+                join = mask[:-1] & mask[1:]
+                ax[i].vlines(
+                    edges[1:-1][join],
+                    counts[:-1][join], counts[1:][join],
+                    colors='white', linewidths=0.1, alpha=0.1, zorder=3)
 
                 # Update min and max of y
                 min_y = numpy.nanmin([min_y, numpy.nanmin(counts[counts > 0])])

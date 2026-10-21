@@ -66,7 +66,7 @@ class FreeForm(BaseForm):
         * ``'complex128'``: 128-bit complex numbers, equivalent of two double
           precision floating point.
         * ``'complex256'``: 256-bit complex numbers, equivalent of two long
-          double precision floating point. This optino is only available on
+          double precision floating point. This option is only available on
           Linux machines.
 
         When using series acceleration methods (such as setting

@@ -228,9 +228,11 @@ def plot_density(x, rho, ax=None, eig=None, atoms=None, support=None, label='',
                 ell = ell[:insert_at] + ['Atom weight'] + ell[insert_at:]
 
                 ax.legend(h, ell, loc='best', fontsize='small',
+                          facecolor='none',
                           handler_map={arrow_handle: HandlerLine2DArrow()})
             else:
-                ax.legend(h, ell, loc='best', fontsize='x-small')
+                ax.legend(h, ell, loc='best', fontsize='x-small',
+                          facecolor='none')
 
         if not external_ax:
 
