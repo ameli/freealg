@@ -16,12 +16,12 @@ from .._base_form import BaseForm
 from .._util import compute_eig
 
 # Option 1. Use this version for diffusion example
-from ._continuation_algebraic_diffusion import sample_z_joukowski, \
-        filter_z_away_from_cuts, fit_polynomial_relation, eval_P
+# from ._continuation_algebraic_diffusion import sample_z_joukowski, \
+#         filter_z_away_from_cuts, fit_polynomial_relation, eval_P
 
 # Option 2. This version fixes moment constrains on orthogonal basis
-# from ._continuation_algebraic import sample_z_joukowski, \
-#         filter_z_away_from_cuts, fit_polynomial_relation, eval_P
+from ._continuation_algebraic import sample_z_joukowski, \
+        filter_z_away_from_cuts, fit_polynomial_relation, eval_P
 
 # Edges and cups for decompress
 from ._edge import evolve_edges, merge_edges, evolve_edges_with_births
